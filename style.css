@@ -655,6 +655,8 @@ p {
 }
 /*End Keyframes*/
 
+*{overflow: hidden;}
+
 /* Media query for tablet */
 @media only screen and (max-width: 768px) {
   .cta {
