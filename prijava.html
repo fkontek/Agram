@@ -51,15 +51,29 @@
   </style>
 </head>
 <body>
-  <h1>Prijava</h1>
-  <form action="#">
-    <label for="username">Korisničko ime</label>
-    <input type="text" id="username" name="username" required />
-
-    <label for="password">Lozinka</label>
-    <input type="password" id="password" name="password" required />
-
-    <button type="submit">Prijava</button>
-  </form>
-</body>
-</html>
+  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+    <h1>Prijava</h1>
+    <form action="login.php" method="POST">
+      <label for="username">Korisničko ime</label>
+      <input type="text" name="username" required />
+    
+      <label for="password">Lozinka</label>
+      <input type="password" name="password" required />
+    
+      <button type="submit">Prijava</button>
+    </form>
+    
+    <!-- ✅ Registracija (register) form -->
+    <form action=" https://agram-backend.filip-kontek.workers.dev" method="POST" style="margin-top: 40px;">
+      <h2>Registracija</h2>
+      <label for="new_username">Korisničko ime</label>
+      <input type="text" name="new_username" required />
+    
+      <label for="new_password">Lozinka</label>
+      <input type="password" name="new_password" required />
+    
+      <label for="email">Email</label>
+      <input type="email" name="email" required />
+    
+      <button type="submit">Registracija</button>
+    </form>
