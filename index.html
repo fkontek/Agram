@@ -29,7 +29,7 @@
           </div>
           <div class="nav-list">
             <div class="hamburger"><div class="bar"></div></div>
-            <ul>
+            <ul class="main-nav">
               <li><a href="#hero" data-after="Home">Početna</a></li>
               <li><a href="#services" data-after="Usluge">Usluge</a></li>
               <li><a href="#collaboration" data-after="Suradnja">Suradnja</a></li>
@@ -288,5 +288,23 @@
     <!-- End Footer section -->
     <script src="./ScrollEditor.js"></script>
     <script src="./app.js"></script>
+
+    <script>
+      const nav = document.querySelector(".main-nav");
+      const username = sessionStorage.getItem("username");
+
+      if (username) {
+        // Show username, link to dashboard, and remove "Prijava"
+        nav.innerHTML += 
+          <li><a href="dashboard.html">👤 ${username}</a></li>
+        ;
+
+        // Remove original "Prijava" link
+        const prijavaLink = [...nav.children].find (li =>
+        li.textContent.trim().toLowerCase().includes("prijava")
+        );
+        if (prijavaLink) prijavaLink.remove();
+      }
+    </script>>
   </body>
 </html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <title>Tvoj Profil</title>
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: #f4f4f4;
+      padding: 40px;
+      margin: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: goldenrod;
+      margin-bottom: 20px;
+    }
+    .info-box {
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: #fafafa;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .info-box h2 {
+      margin-top: 0;
+    }
+    .logout-btn {
+      background-color: #b22222;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .logout-btn:hover {
+      background-color: #8b0000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Dobrodošao, <span id="user-name"></span>!</h1>
+
+    <div class="info-box">
+      <h2>📅 Tvoj raspored</h2>
+      <ul>
+        <li>Pon 08:00 - Reformer</li>
+        <li>Uto 17:00 - Privatni trening</li>
+        <li>Čet 18:30 - Mat Pilates</li>
+      </ul>
+    </div>
+
+    <div class="info-box">
+      <h2>💳 Status članarine</h2>
+      <p>Članarina važi do: <strong>30. travnja 2025</strong></p>
+    </div>
+
+    <button class="logout-btn" onclick="logout()">Odjavi se</button>
+  </div>
+
+  <script>
+    const username = sessionStorage.getItem("username");
+    if (!username) {
+      window.location.href = "prijava.html";
+    } else {
+      document.getElementById("user-name").textContent = username;
+    }
+
+    function logout() {
+      sessionStorage.clear();
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>
