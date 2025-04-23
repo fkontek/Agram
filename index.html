@@ -292,19 +292,20 @@
     <script>
       const nav = document.querySelector(".main-nav");
       const username = sessionStorage.getItem("username");
-
+    
       if (username) {
         // Show username, link to dashboard, and remove "Prijava"
-        nav.innerHTML += 
+        nav.innerHTML += `
           <li><a href="dashboard.html">👤 ${username}</a></li>
-        ;
-
+        `;
+    
         // Remove original "Prijava" link
-        const prijavaLink = [...nav.children].find (li =>
-        li.textContent.trim().toLowerCase().includes("prijava")
+        const prijavaLink = [...nav.children].find(li =>
+          li.textContent.trim().toLowerCase().includes("prijava")
         );
         if (prijavaLink) prijavaLink.remove();
       }
-    </script>>
+    </script>
+    
   </body>
 </html>
