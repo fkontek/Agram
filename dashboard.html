@@ -10,6 +10,18 @@
       padding: 40px;
       margin: 0;
     }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('./img/AGRAM_profilna_1.jpg') no-repeat center center/cover;
+      opacity: 0.45;
+      z-index: -1;
+    }
+
     .container {
       max-width: 800px;
       margin: auto;
@@ -45,6 +57,17 @@
     .logout-btn:hover {
       background-color: #8b0000;
     }
+    .home-btn {
+      display: inline-block;
+      margin-top: 20px;
+      color: goldenrod;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+    .home-btn:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -65,7 +88,8 @@
       <p>Članarina važi do: <strong>30. travnja 2025</strong></p>
     </div>
 
-    <button class="logout-btn" onclick="logout()">Odjavi se</button>
+    <button class="logout-btn" onclick="logout()">Odjavi se</button><br>
+    <a href="index.html" class="home-btn">← Povratak na početnu</a>
   </div>
 
   <script>
