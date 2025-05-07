@@ -8,12 +8,14 @@ html {
   font-size: 12px;
   font-family: "Montserrat", sans-serif;
   scroll-behavior: smooth;
+  background-color: whitesmoke;
 }
 a {
   text-decoration: none;
 }
 .container {
-  min-height: 100vh;
+  
+  min-height: 80vh;
   width: 100%;
   display: flex;
   align-items: center;
@@ -51,11 +53,12 @@ p {
   color: white;
   background-color: transparent;
   border: 2px solid #a97700;
-  border-radius: 10px;
-  font-size: 2rem;
+  border-radius: 20px;
+  font-size: 2.5rem;
   text-transform: uppercase;
   letter-spacing: 0.1rem;
-  margin-top: 30px;
+  margin-top: 10px;
+  margin-left: 700px;
   transition: 0.3s ease;
   transition-property: background-color, color;
   animation-delay: 0.3;
@@ -66,7 +69,7 @@ p {
   background-color: goldenrod;
 }
 .brand h1 {
-  font-size: 3rem;
+  font-size: 2rem;
   text-transform: uppercase;
   color: white;
 }
@@ -86,7 +89,7 @@ p {
 #header .header {
   min-height: 8vh;
   background-color: rgba(31, 30, 30, 0.24);
-  transition: 0.3s ease background-color;
+  transition: 0.5s ease background-color;
 }
 #header .nav-bar {
   display: flex;
@@ -94,7 +97,7 @@ p {
   justify-content: flex-start; /* ← pull everything to the left */
   width: 100%;
   height: 100%;
-  max-width: 1500px;
+  max-width: 2000px;
   padding: 0 30px; /* ← add some breathing room */
   gap: 30px; /* ← space between brand and nav list */
 }
@@ -118,14 +121,14 @@ p {
   left: 0%;
 }
 #header .nav-list ul a {
-  font-size: 1.8rem;
-  font-weight: 500;
-  letter-spacing: 0.2rem;
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: 0.5rem;
   text-decoration: none;
   color: azure;
   text-transform: uppercase;
   padding: 20px;
-  display: block;
+  display:block;
 }
 #header .nav-list ul a::after {
   content: attr(data-after);
@@ -134,7 +137,7 @@ p {
   left: 50%;
   transform: translate(-50%, -50%) scale(0);
   color: rgba(240, 248, 200, 0.021);
-  font-size: 13rem;
+  font-size: 3rem;
   letter-spacing: 50px;
   z-index: -1;
   transition: 0.3s ease letter-spacing;
@@ -220,7 +223,7 @@ p {
   height: 100%;
   width: 100%;
   background-color: black;
-  opacity: 0.6;
+  opacity: 0.85;
   z-index: -1;
 }
 #hero .hero {
@@ -231,10 +234,10 @@ p {
 #hero h1 {
   display: block;
   width: fit-content;
-  font-size: 4rem;
+  font-size: 5rem;
   position: relative;
   color: transparent;
-  animation: text_reveal 1s 0.5s ease forwards;
+  animation: text_reveal 1s 1.5s ease forwards;
   animation-delay: 1s;
 }
 #hero h1:nth-child(1) {
@@ -250,7 +253,7 @@ p {
   left: 0;
   height: 100%;
   width: 0%;
-  border-radius: 5px;
+  border-radius: 20px;
   background-color: white;
   animation: text_reveal_box 1s ease;
   animation-delay: 0.5s;
@@ -266,13 +269,18 @@ p {
 
 /* Services section */
 
+#services {
+  margin-bottom: 1px; /* Smanjuje razmak ispod Service sekcije */
+}
+
 #services .services {
   flex-direction: column;
   text-align: center;
-  max-width: 1500px;
+  max-width: 2000px;
   margin: 0 auto;
   padding: 100px 0;
-  background-color: white;
+  background-color: whitesmoke;
+  opacity: 0.85;
 }
 
 #services .service-bottom {
@@ -299,7 +307,7 @@ p {
   position: relative;
   z-index: 1;
   overflow: hidden;
-  box-shadow: 0px 10px 15px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0px 10px 15px 5px rgba(0, 0, 0, 0.644);
 }
 
 #services .service-item.show {
@@ -334,9 +342,68 @@ p {
 }
 /* End Services section */
 
+/* Schedule section */
+
+#raspored {
+  text-align: center; /* Centriranje sadržaja */
+  margin-top: 20x; /* Smanjuje razmak iznad Raspored Treninga sekcije */
+  background-color: whitesmoke;
+}
+
+#raspored .schedule {
+  margin: 0 auto; /* Centriranje tablice */
+  width: 100%; /* Osigurava da tablica zauzima cijelu širinu */
+  max-width: 800px; /* Ograničava maksimalnu širinu tablice */
+}
+
+#raspored .container {
+  display: block;
+  text-align: center;
+  padding: 50px 20px 10px 20px; /* Dodan manji bottom padding */
+}
+
+#raspored p {
+  margin-bottom: 10px; /* smanjuje razmak ispod teksta*/
+  font-size: 1.4rem; /* povećava veličinu fonta */
+  text-align: center; /* centriranje teksta */
+}
+
+
+.schedule table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  font-size: 1.4rem;
+  text-align: left;
+}
+
+.schedule th, .schedule td {
+  border: 1px solid #ddd;
+  padding: 10px;
+}
+
+.schedule th {
+  background-color: goldenrod;
+  color: white;
+  text-transform: uppercase;
+}
+
+.schedule tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.schedule tr:hover {
+  background-color: #f1f1f1;
+}
+
+.schedule td {
+  color: #333;
+}
+/* End Schedule section */
+
 /* collaboration section */
 #collaboration {
-  margin-top: -80px; /* Adjust this value as needed */
+  margin-top: -50px; /* Adjust this value as needed */
 }
 
 #collaboration .collaboration {
@@ -363,7 +430,7 @@ p {
   margin: 20px auto;
   overflow: hidden;
   border-radius: 10px;
-  box-shadow: 0px 0px 15px 5px rgba(72, 85, 99, 0.7);
+  box-shadow: 0px 0px 15px 5px rgba(180, 52, 17, 0.7);
 }
 #collaboration .collaboration-info {
   padding: 30px;
@@ -656,7 +723,7 @@ p {
 }
 /*End Keyframes*/
 
-*{overflow: hidden;}
+/*{overflow: hidden;}
 
 /* Media query for tablet */
 @media only screen and (max-width: 768px) {
