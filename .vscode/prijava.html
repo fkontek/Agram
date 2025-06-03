@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prijava</title>
+  <style>
+    body {
+      background-color: white;
+      font-family: 'Montserrat', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      width: 300px;
+    }
+    label {
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+    input {
+      padding: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+    button {
+      padding: 10px;
+      background-color: goldenrod;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #a97700;
+    }
+  </style>
+</head>
+<section id="header">
+    <div class="header">
+      <div class="nav-bar">
+        <div class="brand"><h1><span>Moje</span>Ime</h1></div>
+        <div class="nav-list">
+          <ul>
+            <li><a href="index.html#home">Početna</a></li>
+            <li><a href="index.html#services">Uslug</a></li>
+            <li><a href="index.html#about">O Nama</a></li>
+            <li><a href="index.html#contact">Kontakt</a></li>
+            <li><a href="prijava.html">Prijava</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ✅ End nav -->
+
+  <!-- 👇 Your login form can go here -->
+  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+    <h1>Prijava</h1>
+    <form action="login.php" method="POST">
+      <label for="username">Korisničko ime</label>
+      <input type="text" name="username" required />
+    
+      <label for="password">Lozinka</label>
+      <input type="password" name="password" required />
+    
+      <button type="submit">Prijava</button>
+    </form>
+    
+    <!-- ✅ Registracija (register) form -->
+    <form action="register.php" method="POST" style="margin-top: 40px;">
+      <h2>Registracija</h2>
+      <label for="new_username">Korisničko ime</label>
+      <input type="text" name="new_username" required />
+    
+      <label for="new_password">Lozinka</label>
+      <input type="password" name="new_password" required />
+    
+      <label for="email">Email</label>
+      <input type="email" name="email" required />
+    
+      <button type="submit">Registracija</button>
+    </form>
