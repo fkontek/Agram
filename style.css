@@ -209,9 +209,9 @@ p {
 
 /* Hero section */
 #hero {
-  background-image: url(./img/background.jpg);
+  background-image: url(./img/ulaz.jpg);
   background-size: cover;
-  background-position: top center;
+  background-position: center 40%; /* Moves image up, shows more bottom */
   position: relative;
   z-index: 1;
 }
@@ -270,44 +270,50 @@ p {
 /* Services section */
 
 #services {
-  margin-bottom: 1px; /* Smanjuje razmak ispod Service sekcije */
+  margin-bottom: 1px;
 }
 
 #services .services {
+  display: flex;
   flex-direction: column;
+  align-items: center;
   text-align: center;
   max-width: 2000px;
   margin: 0 auto;
-  padding: 100px 0;
+  padding: 50px 0;
   background-color: whitesmoke;
-  opacity: 0.85;
 }
 
 #services .service-bottom {
   display: flex;
-  align-items: center;
+  flex-wrap: nowrap;
   justify-content: center;
-  flex-wrap: wrap;
+  gap: 30px;
+  width: 100%;
+  max-width: 2000px; /* Add or increase this value */
+  margin: 0 auto;
+  overflow-x: unset; /* Remove horizontal scroll */
 }
-#services .service-top {
-  width: 500px;
-  shape-margin: 0 auto;
-}
+
 #services .service-item {
-  flex-basis: 80%;
+  flex: 0 0 320px;        /* Fixed width for each box */
+  min-width: 300px;
+  max-width: 350px;
+  min-height: 350px;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
   flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   padding: 30px;
   border-radius: 10px;
   background-image: url(./img/studio.jpg);
   background-size: cover;
-  margin: 10px 5%;
+  background-position: center;
   position: relative;
   z-index: 1;
   overflow: hidden;
   box-shadow: 0px 10px 15px 5px rgba(0, 0, 0, 0.644);
+  opacity: 1;
 }
 
 #services .service-item.show {
@@ -325,17 +331,20 @@ p {
   opacity: 0.9;
   z-index: -1;
 }
-#services .service-bottom .icon {
+
+#services .icon {
   height: 80px;
   width: 80px;
   margin-bottom: 20px;
 }
-#services .service-bottom h2 {
+
+#services .service-item h2 {
   font-size: 2rem;
   color: white;
   margin-bottom: 10px;
   text-transform: uppercase;
 }
+
 #services .service-item p {
   color: white;
   text-align: start;
@@ -351,10 +360,11 @@ p {
 }
 
 #raspored .schedule {
-  margin: 0 auto; /* Centriranje tablice */
-  width: 100%; /* Osigurava da tablica zauzima cijelu širinu */
-  max-width: 800px; /* Ograničava maksimalnu širinu tablice */
+  margin: 0 auto;
+  width: 100%;
+  max-width: 1200px; /* Make this as wide as you want */
 }
+
 
 #raspored .container {
   display: block;
@@ -370,11 +380,12 @@ p {
 
 
 .schedule table {
-  width: 100%;
+  width: 100%;        /* Table fills the schedule container */
+  max-width: 70%;
   border-collapse: collapse;
-  margin-top: 20px;
+  margin: 20px auto 0 auto;
   font-size: 1.4rem;
-  text-align: left;
+  text-align: middle; /* Center text in table cells */
 }
 
 .schedule th, .schedule td {
@@ -403,7 +414,7 @@ p {
 
 /* collaboration section */
 #collaboration {
-  margin-top: -50px; /* Adjust this value as needed */
+  margin-top: -200px; /* Adjust this value as needed */
 }
 
 #collaboration .collaboration {
@@ -547,8 +558,14 @@ p {
   height: 60%;
   width: 100%;
   position: relative;
-  border: 10px solid white;
+  /*border: 10px solid white;*/
 }
+
+#about .col-left .about-img img {
+  border-radius: 20px; /* Adjust the px value for more or less rounding */
+  box-shadow: 0px 0px 18px 0 #29323c;
+}
+
 #about .col-left .about-img::after {
   content: "";
   position: absolute;
@@ -612,21 +629,31 @@ p {
   font-weight: 500;
 }
 #contact .contact-info iframe {
-  width: 150px;
-  height: 150px;
+  width: 100%;
+  max-width: 400px;
+  height: 300px;
+  min-height: 200px;
+  border: 0;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
 }
 /*End contact section*/
 
-/*Footer section*/
+/* Footer section */
 #footer {
   background: linear-gradient(to bottom, white, #696969 75%);
 }
+
 #footer .footer {
   min-height: 200px;
+  display: flex;
   flex-direction: column;
+  align-items: center;
   padding-top: 50px;
   padding-bottom: 10px;
 }
+
 #footer h2 {
   color: white;
   font-weight: 500;
@@ -635,20 +662,58 @@ p {
   margin-top: 10px;
   margin-bottom: 10px;
 }
+
 #footer .social-icon {
   display: flex;
+  gap: 10px;
   margin-bottom: 30px;
 }
+
 #footer .social-item {
   height: 40px;
   width: 40px;
   margin: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+#footer .social-item a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+#footer .social-img {
+  width: 100%;
+  height: auto;
+  max-width: 40px;
+  max-height: 40px;
+  display: block;
+}
+
+#footer .social-item img {
+  width: 100%;
+  height: auto;
+  max-width: 40px;
+  display: block;
+  transition: transform 0.2s;
+}
+
+#footer .social-item a:hover img,
+#footer .social-item:hover img {
+  transform: scale(1.15);
+}
+
 #footer p {
   color: white;
   font-size: 1.3rem;
+  margin: 0;
+  text-align: center;
 }
-/*End Footer section*/
+/* End Footer section */
 
 .overlay {
   position: fixed; /* Stay in place */
@@ -723,7 +788,7 @@ p {
 }
 /*End Keyframes*/
 
-*{overflow: hidden;}
+/*{overflow: hidden;}*/
 
 /* Media query for tablet */
 @media only screen and (max-width: 768px) {
@@ -873,4 +938,12 @@ p {
   }
 }
 /* End Media query for Desktop */
+
+@media only screen and (max-width: 480px) {
+  .cta { font-size: 1.5rem; padding: 10px 20px; }
+  #hero h1 { font-size: 3rem; }
+  /* ...other tweaks... */
+}
+
 /* For mobile devices with screen width less than or equal to 768px */
+
