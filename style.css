@@ -217,7 +217,7 @@ p {
 #hero {
   background-image: url(./img/ulaz.jpg);
   background-size: cover;
-  background-position: center 40%; /* Moves image up, shows more bottom */
+  background-position: top center; /* Moves image up, shows more bottom */
   position: relative;
   z-index: 1;
 }
@@ -853,13 +853,12 @@ p {
   }
 
   /* Hero */
-  #hero h1 {
-    font-size: 7rem;
-  }
   #hero {
-    background-size: contain;
-    background-position: center center;
-  }*/
+    background-size: cover;
+    background-position: top center;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+  }
   /* End Hero */
 
   /* Services Section */
@@ -961,8 +960,6 @@ p {
 /* End Media query for tablet */
 
 /* Media query for Desktop */
-
-
 @media only screen and (min-width: 1500px) {
   #header .hamburger {
     display: none;
