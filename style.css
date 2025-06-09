@@ -952,9 +952,11 @@ p {
     padding-left: 20px;
   }
   #contact h1.section-title {
-    font-size: 4rem;
-    margin-bottom: 20px;
-  }
+  font-size: 3rem;
+  margin: 0 auto 20px auto;
+  max-width: 90%;
+  text-align: center;
+}
   /* End Contact */
 
   #overlay-content {
@@ -1018,8 +1020,13 @@ p {
     box-sizing: border-box;
   }
 
+  .section-title {
+    font-size: 2.2rem;
+    margin-top: 100px;
+  }
+
   h1 .section-title {
-    font-size: 6rem;
+    font-size: 7rem;
   }
 
   #hero h1 {
