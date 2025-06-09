@@ -10,9 +10,6 @@ html {
   scroll-behavior: smooth;
   background-color: whitesmoke;
   background: linear-gradient(to bottom, #3a2c1a 0%, whitesmoke 40%);
-
-
-
 }
 a {
   text-decoration: none;
@@ -229,7 +226,7 @@ p {
   height: 100%;
   width: 100%;
   background-color: black;
-  opacity: 0.85;
+  opacity: 0.5;
   z-index: -1;
 }
 #hero .hero {
@@ -275,6 +272,7 @@ p {
 /* Services section */
 #services {
   margin-bottom: -200px;
+  background: whitesmoke
 }
 
 #services .services {
@@ -283,8 +281,7 @@ p {
   align-items: center;
   text-align: center;
   margin: 0 auto;
-  padding: 50px 20px 0 20px;;
-  background-color: whitesmoke;
+  padding: 50px 20px 0 20px;
 }
 
 #services .service-bottom {
