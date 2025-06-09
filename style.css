@@ -9,6 +9,10 @@ html {
   font-family: "Montserrat", sans-serif;
   scroll-behavior: smooth;
   background-color: whitesmoke;
+  background: linear-gradient(to bottom, #3a2c1a 0%, whitesmoke 40%);
+
+
+
 }
 a {
   text-decoration: none;
@@ -57,8 +61,7 @@ p {
   font-size: 2.5rem;
   text-transform: uppercase;
   letter-spacing: 0.1rem;
-  margin-top: 10px;
-  margin-left: 700px;
+  margin: 10px auto 0 auto; /* Center horizontally */
   transition: 0.3s ease;
   transition-property: background-color, color;
   animation-delay: 0.3;
@@ -264,13 +267,11 @@ p {
 #hero h1:nth-child(2) span {
   animation-delay: 1.3s;
 }
-
 /* End Hero Section*/
 
 /* Services section */
-
 #services {
-  margin-bottom: 1px;
+  margin-bottom: -200px;
 }
 
 #services .services {
@@ -278,9 +279,8 @@ p {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  max-width: 2000px;
   margin: 0 auto;
-  padding: 50px 0;
+  padding: 50px 20px 0 20px;;
   background-color: whitesmoke;
 }
 
@@ -356,7 +356,9 @@ p {
 #raspored {
   text-align: center; /* Centriranje sadržaja */
   margin-top: 20x; /* Smanjuje razmak iznad Raspored Treninga sekcije */
+  margin-bottom: -50px; /* Smanjuje razmak ispod Raspored Treninga sekcije */
   background-color: whitesmoke;
+  scroll-margin-top: 8vh; /* or use the pixel height of your header, e.g. 60px */
 }
 
 #raspored .schedule {
@@ -369,7 +371,7 @@ p {
 #raspored .container {
   display: block;
   text-align: center;
-  padding: 50px 20px 10px 20px; /* Dodan manji bottom padding */
+  padding: 200px 20px 0 20px;
 }
 
 #raspored p {
@@ -412,9 +414,55 @@ p {
 }
 /* End Schedule section */
 
+/* Prices section */
+#cjenik {
+  margin-top: 20px; /* Adjust this value as needed */
+  background: whitesmoke;
+  padding: 20px 0 20px 0; /* Change top padding from 40px to 20px */
+  scroll-margin-top: 8vh;
+}
+
+.cjenik.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.price-table table {
+  width: 100%;
+  max-width: 800px;
+  margin: 20px auto;
+  border-collapse: collapse;
+  font-size: 1.4rem;
+  text-align: left;
+}
+
+.price-table th, .price-table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+}
+
+.price-table th {
+  background-color: goldenrod;
+  color: white;
+  text-transform: uppercase;
+}
+
+.price-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.price-table tr:hover {
+  background-color: #f1f1f1;
+}
+/* End Prices section */
+
 /* collaboration section */
 #collaboration {
   margin-top: -200px; /* Adjust this value as needed */
+  margin-bottom: 150px; /* Adjust this value as needed */
+  scroll-margin-top: 8vh; /* Ensures section is visible below fixed header */
 }
 
 #collaboration .collaboration {
@@ -555,6 +603,7 @@ p {
   font-size: 2rem;
 }
 #about .col-left .about-img {
+  margin-top: 50px;
   height: 60%;
   width: 100%;
   position: relative;
@@ -582,6 +631,7 @@ p {
 /*Contact section*/
 #contact {
   margin-top: -300px;
+  scroll-margin-top: 8vh; /* Ensures section is visible below fixed header */
 }
 #contact .contact {
   flex-direction: column;
@@ -788,7 +838,7 @@ p {
 }
 /*End Keyframes*/
 
-*{overflow: hidden;}
+/*{overflow: hidden;}
 
 /* Media query for tablet */
 @media only screen and (max-width: 768px) {
