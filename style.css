@@ -40,6 +40,8 @@ p {
 }
 
 .section-title {
+  margin-top: 50px;
+  position: relative;
   font-size: 4rem;
   font-weight: 300;
   color: black;
@@ -47,6 +49,7 @@ p {
   text-transform: uppercase;
   letter-spacing: 0.2rem;
   text-align: center;
+  z-index: 1;
 }
 .section-title span {
   color: goldenrod;
@@ -646,7 +649,6 @@ p {
   margin: 0;
 }
 #contact .contact-item {
-  width: 30%;
   padding: 20px;
   text-align: center;
   border-radius: 10px;
@@ -1001,5 +1003,22 @@ p {
     flex: 1 1 100%;
     min-width: unset;
     max-width: 100%;
+  }
+
+  #contact .contact-items {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  #contact .contact-item {
+    width: 90%;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .section-title {
+    font-size: 2.2rem;
+    margin-top: 60px;
   }
 }
