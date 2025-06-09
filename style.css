@@ -1009,8 +1009,13 @@ p {
   }
 
   .cta {
-    font-size: 2.5rem;
-    padding: 20px 60px;
+    font-size: 2.5rem;          /* manji tekst na mobitelu */
+    padding: 10px 20px;         /* manji razmaci */
+    width: 90%;                 /* širina gumba - fleksibilna */
+    margin: 30px auto 0 auto;   /* centriraj */
+    text-align: center;         /* poravnaj tekst unutar gumba */
+    display: block;
+    box-sizing: border-box;
   }
 
   h1 .section-title {
@@ -1018,7 +1023,7 @@ p {
   }
 
   #hero h1 {
-    font-size: 7rem;
+    font-size: 5rem;
   }
 
   #hero {
@@ -1072,7 +1077,10 @@ p {
   #about .about-img {
     margin: 0 auto;
     display: block;
+    width: 90%;     /* ili točno 90% ako želiš kontrolu */
+    position: relative;
   }
+
 
   #about .col-right {
     order: 1;
@@ -1084,14 +1092,21 @@ p {
     width: 100%;
     height: auto;
     padding: 0;
+    position: relative;
   }
 
   #about .about-img::after {
-  left: auto;  /* ili auto */
-  right: auto;
-  margin: 0 auto;
-  top: 0;
-}
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    border: 6px solid #b8860b;
+    z-index: -1;
+    border-radius: 12px;
+  }
 
   #footer .brand h1 {
     text-align: center;
