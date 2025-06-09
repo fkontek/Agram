@@ -214,9 +214,15 @@ p {
 #hero {
   background-image: url(./img/ulaz.jpg);
   background-size: cover;
-  background-position: top center; /* Moves image up, shows more bottom */
+  background-position: center top;
+  background-repeat: no-repeat;
   position: relative;
   z-index: 1;
+  height: 400px;         /* ↙️ visina sekcije (odrezuje sliku) */
+  overflow: hidden;      /* ↙️ sakriva sve što “strši” izvan */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #hero::after {
   content: "";
@@ -231,8 +237,8 @@ p {
 }
 #hero .hero {
   max-width: 1200px;
-  margin: 2 auto;
-  padding: 1 50px;
+  margin: 0 auto;
+  padding: 20px 50px;
 }
 #hero h1 {
   display: block;
@@ -418,7 +424,7 @@ p {
 #cjenik {
   margin-top: 20px;
   background: whitesmoke;
-  padding: 20px 0 100px 0; /* donji padding povećan */
+  padding: 20px 0 10px 0; /* donji padding povećan */
   scroll-margin-top: 8vh;
 }
 
@@ -460,8 +466,8 @@ p {
 
 /* collaboration section */
 #collaboration {
-  margin-top: 100px; /* Adjust this value as needed */
-  margin-bottom: 150px; /* Adjust this value as needed */
+  margin-top: -300px; /* Adjust this value as needed */
+  margin-bottom: 50px; /* Adjust this value as needed */
   scroll-margin-top: 8vh; /* Ensures section is visible below fixed header */
 }
 
@@ -570,7 +576,7 @@ p {
 
 /* about Section */
 #about {
-  margin-top: -100px; /* Adjust this value as needed */
+  margin-top: 0; /* Adjust this value as needed */
 }
 
 #about .about {
@@ -630,7 +636,7 @@ p {
 
 /*Contact section*/
 #contact {
-  margin-top: -300px;
+  margin-top: 0;
   scroll-margin-top: 8vh; /* Ensures section is visible below fixed header */
 }
 #contact .contact {
@@ -704,6 +710,7 @@ p {
 }
 
 #footer h2 {
+  text-align: center;
   color: white;
   font-weight: 500;
   font-size: 1.8rem;
@@ -1015,8 +1022,9 @@ p {
   }
 
   #hero {
-    background-size: contain;
-    background-position: center center;
+    background-size: 100% 100%;   /* Stretch image to fill */
+    background-position: top center;
+    height: 300px;             /* Optional: adjust height for mobile */
   }
 
   #contact .contact-items {
@@ -1034,6 +1042,84 @@ p {
   .section-title {
     font-size: 2.2rem;
     margin-top: 100px;
+  }/* Add this for the About section */
+
+  .price-table {
+    width: 100%;
+    overflow-x: auto;
+    padding-left: 10px;
+    padding-right: 10px;
+    box-sizing: border-box;
+  }
+  .price-table table {
+    width: 100%;
+    min-width: unset;
+    max-width: 400px;    /* Set a max-width for the table */
+    margin: 0 auto;      /* Center the table */
+    font-size: 1rem;
+  }
+  .price-table th,
+  .price-table td {
+    padding: 8px;
+    font-size: 1rem;
+  }
+
+  #about .about {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #about .about-img {
+    margin: 0 auto;
+    display: block;
+  }
+
+  #about .col-right {
+    order: 1;
+    width: 100%;
+    padding: 0;
+  }
+  #about .col-left {
+    order: 2;
+    width: 100%;
+    height: auto;
+    padding: 0;
+  }
+
+  #about .about-img::after {
+  left: auto;  /* ili auto */
+  right: auto;
+  margin: 0 auto;
+  top: 0;
+}
+
+  #footer .brand h1 {
+    text-align: center;
+    width: 100%;
+  }
+
+  #collaboration .collaboration-item {
+    flex-direction: column;
+  }
+
+  #collaboration .collaboration-info {
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  #collaboration .collaboration-image {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  #collaboration .collaboration-image img {
+    width: 100%;
+    height: auto;
+    max-height: none;          /* sprječava skaliranje dolje */
+    object-fit: contain;       /* osigurava da se cijela slika vidi */
+    display: block;
   }
 }
 
