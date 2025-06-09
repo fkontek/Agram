@@ -286,7 +286,7 @@ p {
 
 #services .service-bottom {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 30px;
   width: 100%;
@@ -416,9 +416,9 @@ p {
 
 /* Prices section */
 #cjenik {
-  margin-top: 20px; /* Adjust this value as needed */
+  margin-top: 20px;
   background: whitesmoke;
-  padding: 20px 0 20px 0; /* Change top padding from 40px to 20px */
+  padding: 20px 0 100px 0; /* donji padding povećan */
   scroll-margin-top: 8vh;
 }
 
@@ -460,7 +460,7 @@ p {
 
 /* collaboration section */
 #collaboration {
-  margin-top: -200px; /* Adjust this value as needed */
+  margin-top: 100px; /* Adjust this value as needed */
   margin-bottom: 150px; /* Adjust this value as needed */
   scroll-margin-top: 8vh; /* Ensures section is visible below fixed header */
 }
@@ -996,4 +996,10 @@ p {
 }
 
 /* For mobile devices with screen width less than or equal to 768px */
-
+@media only screen and (max-width: 768px) {
+  #services .service-item {
+    flex: 1 1 100%;
+    min-width: unset;
+    max-width: 100%;
+  }
+}
