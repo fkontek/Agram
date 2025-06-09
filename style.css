@@ -1074,25 +1074,27 @@ p {
     flex-direction: column;
   }
 
-  #about .about-img {
-    margin: 0 auto;
-    display: block;
-    width: 90%;     /* ili točno 90% ako želiš kontrolu */
-    position: relative;
-  }
-
-
-  #about .col-right {
-    order: 1;
-    width: 100%;
-    padding: 0;
-  }
   #about .col-left {
     order: 2;
     width: 100%;
-    height: auto;
     padding: 0;
     position: relative;
+    display: flex;
+    justify-content: center;
+  }
+
+  #about .about-img {
+    position: relative;
+    display: inline-block;
+    max-width: 90%;
+    margin: 0 auto;
+  }
+
+  #about .about-img img {
+    width: 100%;
+    display: block;
+    border-radius: 20px;
+    box-shadow: 0 0 18px rgba(0, 0, 0, 0.4);
   }
 
   #about .about-img::after {
@@ -1102,10 +1104,15 @@ p {
     left: 0;
     right: 0;
     bottom: 0;
-    margin: auto;
-    border: 6px solid #b8860b;
+    border: 7px solid #b8860b;
+    border-radius: 20px;
     z-index: -1;
-    border-radius: 12px;
+  }
+
+  #about .col-right {
+    order: 1;
+    width: 100%;
+    padding: 0;
   }
 
   #footer .brand h1 {
