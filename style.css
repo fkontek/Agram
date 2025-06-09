@@ -855,7 +855,7 @@ p {
   /* Hero */
   #hero {
     background-size: cover;
-    background-position: top center;
+    background-position: 30% center;
     background-repeat: no-repeat;
     min-height: 100vh;
   }
