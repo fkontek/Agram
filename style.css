@@ -843,7 +843,7 @@ p {
 /*{overflow: hidden;}
 
 /* Media query for tablet */
-@media only screen and (max-width: 768px) {
+/*@media only screen and (max-width: 768px) {
   .cta {
     font-size: 2.5rem;
     padding: 20px 60px;
@@ -859,7 +859,7 @@ p {
   #hero {
     background-size: contain;
     background-position: center center;
-  }
+  }*/
   /* End Hero */
 
   /* Services Section */
@@ -957,10 +957,12 @@ p {
   #overlay-content {
     font-size: 2rem;
   }
-}
+
 /* End Media query for tablet */
 
 /* Media query for Desktop */
+
+
 @media only screen and (min-width: 1500px) {
   #header .hamburger {
     display: none;
@@ -1005,6 +1007,24 @@ p {
     max-width: 100%;
   }
 
+  .cta {
+    font-size: 2.5rem;
+    padding: 20px 60px;
+  }
+
+  h1 .section-title {
+    font-size: 6rem;
+  }
+
+  #hero h1 {
+    font-size: 7rem;
+  }
+
+  #hero {
+    background-size: contain;
+    background-position: center center;
+  }
+
   #contact .contact-items {
     flex-direction: column;
     align-items: center;
@@ -1019,6 +1039,7 @@ p {
 
   .section-title {
     font-size: 2.2rem;
-    margin-top: 60px;
+    margin-top: 100px;
   }
 }
+
