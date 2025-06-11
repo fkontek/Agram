@@ -466,9 +466,10 @@ p {
 
 /* collaboration section */
 #collaboration {
-  margin-top: -300px; /* Adjust this value as needed */
-  margin-bottom: 50px; /* Adjust this value as needed */
-  scroll-margin-top: 8vh; /* Ensures section is visible below fixed header */
+  margin-top: 0;
+  padding-top: 120px;
+  margin-bottom: 50px;
+  scroll-margin-top: 8vh;
 }
 
 #collaboration .collaboration {
@@ -848,7 +849,7 @@ p {
 /*{overflow: hidden;}
 
 /* Media query for tablet */
-@media only screen and (max-width: 768px) {
+/*@media only screen and (max-width: 768px) {
   .cta {
     font-size: 2.5rem;
     padding: 20px 60px;
@@ -1127,6 +1128,8 @@ p {
     text-align: center;
     width: 100%;
   }
+
+  #collaboration { margin-top: 0; }
 
   #collaboration .collaboration-item {
     flex-direction: column;
