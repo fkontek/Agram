@@ -214,11 +214,11 @@ p {
 #hero {
   background-image: url(./img/ulaz.jpg);
   background-size: cover;
-  background-position: center top;
+  background-position: center -500px;
   background-repeat: no-repeat;
   position: relative;
   z-index: 1;
-  height: 400px;         /* ↙️ visina sekcije (odrezuje sliku) */
+  height: 80vh;         /* ↙️ visina sekcije (odrezuje sliku) */
   overflow: hidden;      /* ↙️ sakriva sve što “strši” izvan */
   display: flex;
   align-items: center;
@@ -361,7 +361,7 @@ p {
 
 #raspored {
   text-align: center; /* Centriranje sadržaja */
-  margin-top: 20x; /* Smanjuje razmak iznad Raspored Treninga sekcije */
+  margin-top: 20px; /* Smanjuje razmak iznad Raspored Treninga sekcije */
   margin-bottom: -50px; /* Smanjuje razmak ispod Raspored Treninga sekcije */
   background-color: whitesmoke;
   scroll-margin-top: 8vh; /* or use the pixel height of your header, e.g. 60px */
@@ -393,7 +393,7 @@ p {
   border-collapse: collapse;
   margin: 20px auto 0 auto;
   font-size: 1.4rem;
-  text-align: middle; /* Center text in table cells */
+  text-align: center; /* Center text in table cells */
 }
 
 .schedule th, .schedule td {
@@ -630,6 +630,7 @@ p {
   width: 98%;
   border: 7px solid;
   border-color: #b8860b;
+  border-radius: 20px;
   z-index: -1;
 }
 /* end about Section */
@@ -847,17 +848,17 @@ p {
 /*{overflow: hidden;}
 
 /* Media query for tablet */
-/*@media only screen and (max-width: 768px) {
+@media only screen and (max-width: 768px) {
   .cta {
     font-size: 2.5rem;
     padding: 20px 60px;
   }
   h1 .section-title {
     font-size: 6rem;
-  }
+  }}
 
   /* Hero */
-  #hero {
+  /*#hero {
     background-size: cover;
     background-position: 30% center;
     background-repeat: no-repeat;
@@ -1013,8 +1014,8 @@ p {
   .cta {
     font-size: 2.5rem;          /* manji tekst na mobitelu */
     padding: 10px 20px;         /* manji razmaci */
-    width: 90%;                 /* širina gumba - fleksibilna */
-    margin: 30px auto 0 auto;   /* centriraj */
+    width: 100%;                 /* širina gumba - fleksibilna */
+    margin: 50px auto 0 auto;   /* centriraj */
     text-align: center;         /* poravnaj tekst unutar gumba */
     display: block;
     box-sizing: border-box;
@@ -1036,7 +1037,7 @@ p {
   #hero {
     background-size: 100% 100%;   /* Stretch image to fill */
     background-position: top center;
-    height: 300px;             /* Optional: adjust height for mobile */
+    height: 800px;             /* Optional: adjust height for mobile */
   }
 
   #contact .contact-items {
@@ -1151,4 +1152,6 @@ p {
     display: block;
   }
 }
+
+
 
