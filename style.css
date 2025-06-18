@@ -846,7 +846,7 @@ p {
 }
 /*End Keyframes*/
 
-/*{overflow: hidden;}
+
 
 /* Media query for tablet */
 /*@media only screen and (max-width: 768px) {
@@ -1129,7 +1129,7 @@ p {
     width: 100%;
   }
 
-  #collaboration { margin-top: 0; }
+  #collaboration { margin-top: -20px; }
 
   #collaboration .collaboration-item {
     flex-direction: column;
@@ -1143,7 +1143,7 @@ p {
 
   #collaboration .collaboration-image {
     width: 100%;
-    height: auto;
+    height: 400px;
     display: block;
   }
 
