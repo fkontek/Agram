@@ -32,6 +32,7 @@
               <li><a href="#services" data-after="Usluge">Usluge</a></li>
               <li><a href="#cjenik" data-after="Cjenik">Cjenik</a></li>
               <li><a href="#collaboration" data-after="Suradnja">Suradnja</a></li>
+              <li><a href="#galerija" data-after="Galerija">Galerija</a></li>
               <li><a href="#about" data-after="O nama">O nama</a></li>
               <li><a href="#contact" data-after="Kontakt">Kontakt</a></li>
               <!-- <li><a href="prijava.html">Prijava</a></li>-->
@@ -99,6 +100,14 @@
             <p>
               U suradnji s vanjskim stručnjacima moguće je osmisliti individualizirani plan prehrane, usklađen s ciljevima vježbanja i općim životnim stilom. 
               Fokus je na stvaranju održivih prehrambenih navika koje prate napredak kroz tjelesnu aktivnost.
+            </p>
+          </div>
+          <div class="service-item">
+            <div class="icon"><img src="./iconPack/leg.png" /></div>
+            <h2>Kompresijske čizme</h2>
+            <p>
+              Regeneracija uz Normatec 3 kompresijske čizme pruža ciljanu limfnu drenažu i osjećaj olakšanja nakon vježbanja.
+              Namijenjena je poticanju cirkulacije, smanjenju napetosti i bržem oporavku mišića, kao podrška Vašem aktivnom ritmu i osjećaju ravnoteže.
             </p>
           </div>
         </div>
@@ -271,6 +280,27 @@
     </section>
     <!--End collaboration section-->
 
+<!-- Gallery Section -->
+<section id="galerija">
+  <div class="galerija container">
+    <h1 class="section-title"><span>G</span>alerija</h1>
+    <div class="gallery-grid">
+      <img src="./img/dana1.png" alt="">
+      <img src="./img/reformer1.png" alt="">
+      <img src="./img/Dana2.jpeg" alt="">
+      <img src="./img/reformer1.png" alt="">
+      <!-- Dodaj još slika po želji -->
+    </div>
+  </div>
+</section>
+<!-- End Gallery Section -->
+
+<!-- Gallery Lightbox Overlay -->
+<div id="gallery-overlay" style="display:none;">
+  <div id="gallery-overlay-bg"></div>
+  <img id="gallery-overlay-img" src="" alt="Povećana slika" />
+</div>
+
     <!-- About section -->
     <section id="about">
       <div class="about container">
@@ -395,5 +425,21 @@
       }
     </script>
     
+<script>
+  // Otvori sliku u overlayu
+  document.querySelectorAll('.gallery-grid img').forEach(img => {
+    img.addEventListener('click', function() {
+      document.getElementById('gallery-overlay-img').src = this.src;
+      document.getElementById('gallery-overlay').style.display = 'flex';
+    });
+  });
+
+  // Zatvori overlay klikom izvan slike
+  document.getElementById('gallery-overlay-bg').onclick = function() {
+    document.getElementById('gallery-overlay').style.display = 'none';
+    document.getElementById('gallery-overlay-img').src = '';
+  };
+</script>
+
   </body>
 </html>
