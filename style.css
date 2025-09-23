@@ -437,30 +437,42 @@ p {
 
 .price-table table {
   width: 100%;
-  max-width: 800px;
-  margin: 20px auto;
-  border-collapse: collapse;
-  font-size: 1.4rem;
-  text-align: left;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  font-family: 'Poppins', sans-serif;
+  font-size: 16px;
+  background-color: #fff;
 }
 
-.price-table th, .price-table td {
-  border: 1px solid #ddd;
-  padding: 12px;
+.price-table th,
+.price-table td {
+  text-align: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #ddd;
 }
 
-.price-table th {
+.price-table thead th {
   background-color: goldenrod;
   color: white;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
-.price-table tr:nth-child(even) {
-  background-color: #f9f9f9;
+.price-table tbody tr:hover {
+  background-color: #fdf6e3;
+  transition: background-color 0.3s ease;
 }
 
-.price-table tr:hover {
-  background-color: #f1f1f1;
+.price-table tr:last-child td {
+  border-bottom: none;
+}
+
+.price-table td:first-child {
+  font-weight: 500;
+  color: #444;
 }
 /* End Prices section */
 
@@ -1121,7 +1133,43 @@ p {
     min-width: unset;
     max-width: 100%;
   }
+@media (max-width: 768px) {
+  .price-table table,
+  .price-table thead,
+  .price-table tbody,
+  .price-table th,
+  .price-table td,
+  .price-table tr {
+    display: block;
+    width: 100%;
+  }
 
+  .price-table thead {
+    display: none;
+  }
+
+  .price-table tr {
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  .price-table td {
+    text-align: left;
+    padding: 10px;
+    position: relative;
+  }
+
+  .price-table td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    display: block;
+    margin-bottom: 4px;
+    color: #555;
+  }
+}
   .cta {
     font-size: 2.5rem;          /* manji tekst na mobitelu */
     padding: 10px 20px;         /* manji razmaci */
@@ -1177,15 +1225,20 @@ p {
   }
   .price-table table {
     width: 100%;
-    min-width: unset;
-    max-width: 400px;    /* Set a max-width for the table */
-    margin: 0 auto;      /* Center the table */
-    font-size: 1rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  font-family: 'Poppins', sans-serif;
+  font-size: 16px;
+  background-color: #fff;
   }
   .price-table th,
   .price-table td {
-    padding: 8px;
-    font-size: 1rem;
+    text-align: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #ddd;
   }
 
   #about .about {
