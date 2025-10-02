@@ -274,6 +274,21 @@
 </section>
 <!-- End Cjenik Section -->
  
+<!-- Napomena Overlay -->
+<div id="price-note-overlay">
+  <div class="note-content">
+    <button id="close-note">×</button>
+    <h3>Napomena</h3>
+    <p>
+      Za dogovor oko prvog <strong>Drop-in</strong> dolaska, ljubazno molimo da nas kontaktirate telefonski kako bismo zajedno odabrali grupu koja Vam najbolje odgovara. Nakon toga, moći ćete samostalno rezervirati termine putem aplikacije.
+    </p>
+    <p>
+      Mjesečni paketi vrijede <strong>30 dana</strong> od dana uplate. Na primjer, paket od 16 dolazaka podrazumijeva četiri dolaska tjedno tijekom 30 dana + 7 dana u slučaju nemogućnosti dolaska zbog putovanja / bolesti / neodgodivih obaveza.
+    </p>
+  </div>
+</div>
+<!-- Napomena Overlay End -->
+
     <!--collaboration section-->
     <section id="collaboration">
       <div class="collaboration container">
@@ -310,13 +325,22 @@
 <section id="galerija">
   <div class="galerija container">
     <h1 class="section-title"><span>G</span>alerija</h1>
-    <div class="gallery-grid">
+
+    <!-- Desktop gallery -->
+    <div class="gallery-grid desktop-gallery">
       <img src="./img/dana1.png" alt="">
       <img src="./img/reformer1.png" alt="">
       <img src="./img/Dana2.jpeg" alt="">
       <img src="./img/reformer1.png" alt="">
-      <!-- Dodaj još slika po želji -->
     </div>
+
+    <!-- Mobile preview only -->
+<div class="mobile-gallery" onclick="openGalleryOverlay()">
+  <div class="gallery-preview-wrapper">
+    <img src="./img/dana1.png" alt="Kliknite za galeriju">
+    <div class="gallery-overlay-text">Pogledaj galeriju</div>
+  </div>
+</div>
   </div>
 </section>
 

@@ -587,6 +587,66 @@ p {
 }*/
 /* End collaboration section */
 
+/* Price note overlay */
+#price-note-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+}
+
+.note-content {
+  background-color: rgba(33, 33, 33, 0.95); /* tamno siva, blago prozirna */
+  border-radius: 16px;
+  max-width: 600px;
+  padding: 40px 30px;
+  position: relative;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  font-family: 'Poppins', sans-serif;
+  color: #fff;
+  text-align: left;
+}
+
+.note-content h3 {
+  font-size: 1.8rem;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #ffc107; /* zlatnožuta - u skladu s ostatkom dizajna */
+}
+
+.note-content p {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: #eaeaea;
+}
+
+#close-note {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s ease-in-out;
+}
+
+#close-note:hover {
+  color: #ff4c4c;
+}
+/* End Price note overlay */
+
+/* Gallery section */
 #galerija {
   background: whitesmoke;
   padding: 60px 0 40px 0;
@@ -621,34 +681,28 @@ p {
   transform: scale(1.04);
 }
 
-#gallery-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
+
+
 #gallery-overlay-bg {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0; left: 0;
   width: 100%; height: 100%;
   cursor: pointer;
 }
-#gallery-overlay img {
-   position: relative;
-  max-width: 95vw;
-  max-height: 90vh;
+
+#gallery-overlay-img {
+  position: relative;
+  max-width: 90vw;
+  max-height: 85vh;
   width: auto;
   height: auto;
   border-radius: 16px;
-  box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
   background: #fff;
-  padding: 0;
-  z-index: 1;
   display: block;
+  z-index: 1;
 }
+
 
 #lightbox {
   display: none;
@@ -1241,6 +1295,65 @@ p {
   border-bottom: 1px solid #ddd;
   }
 
+/* Gallery css section */
+/* Prikaži desktop galeriju samo na velikim ekranima */
+.desktop-gallery {
+  display: grid;
+}
+
+@media (min-width: 769px) {
+  .mobile-gallery {
+    display: none !important;
+  }
+}
+
+/* Na mobilnim uređajima zamijeni s preview varijantom */
+@media (max-width: 768px) {
+  .desktop-gallery {
+    display: none !important;
+  }
+
+  .mobile-gallery {
+    display: block !important;
+    margin-bottom: 30px;
+  }
+}
+
+.gallery-preview-wrapper {
+  position: relative;
+  cursor: pointer;
+  max-width: 400px;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: transform 0.3s ease;
+}
+
+.gallery-preview-wrapper:hover {
+  transform: scale(1.02);
+}
+
+.gallery-preview-wrapper img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.gallery-overlay-text {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  text-align: center;
+  padding: 10px 0;
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+}
+/* End Gallery css section */
+
+
   #about .about {
     display: flex;
     flex-direction: column;
@@ -1319,5 +1432,31 @@ p {
   }
 }
 
+/* Media query for overlay */
+@media (max-width: 480px) {
+  .note-content {
+    padding: 25px 20px;
+    margin: 0 15px;
+    font-size: 1rem;
+  }
+
+  .note-content h3 {
+    font-size: 1.5rem;
+  }
+
+  .note-content p {
+    font-size: 1rem;
+  }
+
+  #close-note {
+    font-size: 2rem;
+    top: 10px;
+    right: 15px;
+  }
+}
+
+
+
+/* End Media query for mobile */
 
 
