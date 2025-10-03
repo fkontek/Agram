@@ -25,59 +25,6 @@ menu_item.forEach(item=>{
     });
 });
 
-const galleryImages = document.querySelectorAll('.gallery-grid img');
-const lightbox = document.getElementById('lightbox');
-const lightboxImg = document.getElementById('lightbox-img');
-const closeBtn = document.getElementById('close-lightbox');
-const prevBtn = document.getElementById('prev-btn');
-const nextBtn = document.getElementById('next-btn');
-
-let currentIndex = 0;
-
-function showImage(index) {
-  currentIndex = index;
-  lightboxImg.src = galleryImages[currentIndex].src;
-  lightbox.style.display = 'flex';
-}
-
-galleryImages.forEach((img, index) => {
-  img.addEventListener('click', () => {
-    showImage(index);
-  });
-});
-
-closeBtn.addEventListener('click', () => {
-  lightbox.style.display = 'none';
-});
-
-nextBtn.addEventListener('click', () => {
-  currentIndex = (currentIndex + 1) % galleryImages.length;
-  showImage(currentIndex);
-});
-
-prevBtn.addEventListener('click', () => {
-  currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
-  showImage(currentIndex);
-});
-
-
-function openGalleryOverlay() {
-  const overlay = document.getElementById("gallery-overlay");
-  const overlayImg = document.getElementById("gallery-overlay-img");
-  const previewImg = document.querySelector(".mobile-gallery img");
-
-  // Uzmi sliku iz previewa
-  overlayImg.src = previewImg.src;
-
-  // Pokaži overlay
-  overlay.style.display = "flex";
-}
-
-document.getElementById("gallery-overlay-bg").addEventListener("click", () => {
-  document.getElementById("gallery-overlay").style.display = "none";
-  document.getElementById("gallery-overlay-img").src = "";
-});
-
 
 
 // Overlay za napomenu o cijenama
@@ -94,12 +41,4 @@ window.addEventListener('DOMContentLoaded', () => {
     overlay.style.display = 'none';
     sessionStorage.setItem('noteClosed', 'true');
   });
-});
-
-
-// Zatvaranje klikom izvan slike
-lightbox.addEventListener('click', (e) => {
-  if (e.target === lightbox) {
-    lightbox.style.display = 'none';
-  }
 });

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -35,7 +36,7 @@
               <li><a href="#galerija" data-after="Galerija">Galerija</a></li>
               <li><a href="#about" data-after="O nama">O nama</a></li>
               <li><a href="#contact" data-after="Kontakt">Kontakt</a></li>
-              <!-- <li><a href="prijava.html">Prijava</a></li>-->
+              <li><a href="prijava.html">Prijava</a></li>
             </ul>
           </div>
         </div>
@@ -287,7 +288,7 @@
     </p>
   </div>
 </div>
-<!-- Napomena Overlay End -->
+<!-- End Overlay -->
 
     <!--collaboration section-->
     <section id="collaboration">
@@ -320,45 +321,6 @@
       </div>
     </section>
     <!--End collaboration section-->
-
-<!-- Gallery Section -->
-<section id="galerija">
-  <div class="galerija container">
-    <h1 class="section-title"><span>G</span>alerija</h1>
-
-    <!-- Desktop gallery -->
-    <div class="gallery-grid desktop-gallery">
-      <img src="./img/dana1.png" alt="">
-      <img src="./img/reformer1.png" alt="">
-      <img src="./img/Dana2.jpeg" alt="">
-      <img src="./img/reformer1.png" alt="">
-    </div>
-
-    <!-- Mobile preview only -->
-<div class="mobile-gallery" onclick="openGalleryOverlay()">
-  <div class="gallery-preview-wrapper">
-    <img src="./img/dana1.png" alt="Kliknite za galeriju">
-    <div class="gallery-overlay-text">Pogledaj galeriju</div>
-  </div>
-</div>
-  </div>
-</section>
-
-<!-- Lightbox -->
-<div id="lightbox">
-  <span id="close-lightbox">×</span>
-  <img id="lightbox-img" src="" alt="">
-  <button id="prev-btn">←</button>
-  <button id="next-btn">→</button>
-</div>
-<!-- Lightbox End -->
-<!-- End Gallery Section -->
-
-<!-- Gallery Lightbox Overlay -->
-<div id="gallery-overlay" style="display:none;">
-  <div id="gallery-overlay-bg"></div>
-  <img id="gallery-overlay-img" src="" alt="Povećana slika" />
-</div>
 
     <!-- About section -->
     <section id="about">
@@ -483,22 +445,5 @@
         if (prijavaLink) prijavaLink.remove();
       }
     </script>
-    
-<script>
-  // Otvori sliku u overlayu
-  document.querySelectorAll('.gallery-grid img').forEach(img => {
-    img.addEventListener('click', function() {
-      document.getElementById('gallery-overlay-img').src = this.src;
-      document.getElementById('gallery-overlay').style.display = 'flex';
-    });
-  });
-
-  // Zatvori overlay klikom izvan slike
-  document.getElementById('gallery-overlay-bg').onclick = function() {
-    document.getElementById('gallery-overlay').style.display = 'none';
-    document.getElementById('gallery-overlay-img').src = '';
-  };
-</script>
-
   </body>
 </html>
