@@ -42,3 +42,57 @@ window.addEventListener('DOMContentLoaded', () => {
     sessionStorage.setItem('noteClosed', 'true');
   });
 });
+
+
+// Gallery script
+const galleryImages = document.querySelectorAll('.gallery-grid img');
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightbox-img');
+const closeBtn = document.getElementById('close-lightbox');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+
+let currentIndex = 0;
+
+function showImage(index) {
+  currentIndex = index;
+  lightboxImg.src = galleryImages[currentIndex].src;
+  lightbox.style.display = 'flex';
+}
+
+galleryImages.forEach((img, index) => {
+  img.addEventListener('click', () => {
+    showImage(index);
+  });
+});
+
+closeBtn.addEventListener('click', () => {
+  lightbox.style.display = 'none';
+});
+
+nextBtn.addEventListener('click', () => {
+  currentIndex = (currentIndex + 1) % galleryImages.length;
+  showImage(currentIndex);
+});
+
+prevBtn.addEventListener('click', () => {
+  currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
+  showImage(currentIndex);
+});
+
+lightbox.addEventListener('click', (e) => {
+  if (e.target === lightbox) {
+    lightbox.style.display = 'none';
+  }
+});
+// Funkcija za otvaranje galerije s mobilnog pregleda
+function openGalleryFromMobile() {
+  // Otvori prvi sliku u lightboxu
+  const firstImage = document.querySelector('.gallery-grid img');
+  if (firstImage) {
+    document.getElementById('lightbox-img').src = firstImage.src;
+    document.getElementById('lightbox').style.display = 'flex';
+  }
+}
+
+// End of gallery script

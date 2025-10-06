@@ -476,6 +476,97 @@ p {
 }
 /* End Prices section */
 
+/* Gallery section */
+
+.galerija.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.galerija .section-title {
+  font-size: 8rem;
+  font-weight: 300;
+  margin-bottom: 40px;
+  text-align: center;
+  width: 100%;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 10px;
+}
+
+.gallery-grid img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.gallery-grid img:hover {
+  transform: scale(1.03);
+}
+
+#lightbox {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  z-index: 9999;
+  flex-direction: column;
+}
+
+#lightbox img {
+  max-width: 90vw;
+  max-height: 80vh;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+#close-lightbox {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  font-size: 2.5rem;
+  color: white;
+  cursor: pointer;
+  z-index: 10001;
+}
+
+#prev-btn,
+#next-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 3rem;
+  color: white;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 10001;
+}
+
+#prev-btn { left: 20px; }
+#next-btn { right: 20px; }
+
+#prev-btn:hover,
+#next-btn:hover,
+#close-lightbox:hover {
+  color: #ffc107;
+}
+/* End Gallery section */
+
 /* collaboration section */
 #collaboration {
   margin-top: 0;
@@ -1302,6 +1393,63 @@ p {
 
 
 /* end price note*/
+
+/* CSS for mobile gallery view*/
+/* Desktop – sakrij mobilnu galeriju */
+@media (min-width: 769px) {
+  .mobile-gallery {
+    display: none !important;
+  }
+}
+
+/* Mobile – sakrij desktop galeriju i prikaži preview */
+@media (max-width: 768px) {
+  .gallery-grid {
+    display: none !important;
+  }
+
+  .galerija .section-title {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    padding: 0 10px;
+    word-wrap: break-word;
+  }
+
+  .mobile-gallery {
+    display: block !important;
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .gallery-preview-wrapper {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    cursor: pointer;
+  }
+
+  .gallery-preview-wrapper img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  .gallery-overlay-text {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    text-align: center;
+    padding: 12px;
+    font-size: 1.2rem;
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+}
+/* END CSS for mobile gallery view*/
 
 /* Media query for overlay */
 @media (max-width: 480px) {
