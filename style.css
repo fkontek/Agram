@@ -567,111 +567,114 @@ p {
 }
 /* End Gallery section */
 
-/* collaboration section */
+
+/* Collaboration Section */
+
+/* === Collaboration section === */
 #collaboration {
-  margin-top: 0;
   padding-top: 120px;
   margin-bottom: 50px;
   scroll-margin-top: 8vh;
 }
 
 #collaboration .collaboration {
-  flex-direction: column;
   max-width: 1500px;
   margin: 0 auto;
   padding: 20px 0;
+  display: flex;
+  flex-direction: column;
 }
+
 #collaboration .collaboration-header h1 {
   margin-bottom: 50px;
 }
+
 #collaboration .all-collaboration {
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   flex-direction: column;
 }
+
 #collaboration .collaboration-item {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  width: 80%;
+  width: 90%; /* malo uže i centraliziranije */
   margin: 20px auto;
   overflow: hidden;
-  border-radius: 10px;
-  box-shadow: 0px 0px 15px 5px rgba(180, 52, 17, 0.7);
+  border-radius: 16px; /* mrvicu više zaobljeno */
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2); /* siva sjena umjesto crvene */
+  background-color: white; /* ako želiš da pozadina bude čista, dodaj i ovo */
 }
+
 #collaboration .collaboration-info {
+  flex: 1;
   padding: 30px;
-  flex-basis: 50%;
-  height: 100%;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
   flex-direction: column;
-  background-image: linear-gradient(to bottom, #b8860b 0%, #a97700 100%);
+  justify-content: center;
+  background: linear-gradient(to bottom, #b8860b 0%, #a97700 100%);
   color: white;
 }
-#collaboration .collaboration-item h2 {
+
+#collaboration .collaboration-info h2 {
   font-size: 2rem;
-  color: white;
-  margin-bottom: 10px;
+  font-weight: 800;
   text-transform: uppercase;
+  margin-bottom: 10px;
 }
-#collaboration .collaboration-item {
-  display: flex;
-  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+
+#collaboration .collaboration-info p {
+  font-size: 1.4rem;
+  line-height: 1.8;
+  color: white;
 }
+
 #collaboration .collaboration-image {
+  flex: 1;
   position: relative;
+  overflow: hidden;
 }
+
+#collaboration .collaboration-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+#collaboration .collaboration-item:hover .collaboration-image img {
+  transform: scale(1.1);
+}
+
 #collaboration .collaboration-button {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  background-image: linear-gradient(to bottom, #b8860b 0%, #a97700 100%);
+  background: linear-gradient(to bottom, #b8860b 0%, #a97700 100%);
   color: white;
-  padding: 8px 10px;
-  border-radius: 5px;
-  text-decoration: none;
+  padding: 8px 12px;
   font-size: 14px;
   border: 1px solid black;
+  border-radius: 5px;
   letter-spacing: 0.1rem;
-}
-#collaboration .collaboration-button {
+  text-decoration: none;
   animation: fadeIn 2s;
 }
-#collaboration .collaboration-info h2 {
-  font-size: 2rem;
-  font-weight: 800;
-  margin-top: 10px;
-}
-#collaboration .collaboration-info p {
-  color: white;
-}
-#collaboration .collaboration-image {
-  flex-basis: 50%;
-  height: 400px;
-  overflow: hidden;
-  opacity: 0.85;
-}
-#collaboration .collaboration-image:after {
+
+#collaboration .collaboration-image::after {
   content: "";
   position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 100%;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   background-color: #485563;
   opacity: 0.5;
   z-index: -1;
 }
-#collaboration .collaboration-image img {
-  transition: 0.3s ease transform;
-}
-#collaboration .collaboration-item:hover .collaboration-image img {
-  transform: scale(1.1);
-}
+
+
 /*#collaboration .collaboration-info h1{
     font-size: 4rem;
     font-weight: 500;
@@ -978,18 +981,10 @@ p {
   /* End Services section */
 
   /* Collaborations */
-  #collaboration .collaboration-item {
-    flex-direction: row;
-  }
   #collaboration .collaboration-item:nth-child(even) {
     flex-direction: row-reverse;
   }
-  #collaboration .collaboration-item {
-    height: 400px;
-    margin: 0;
-    width: 100%;
-    border-radius: 0;
-  }
+
   #collaboration .all-collaboration .collaboration-info {
     height: 100%;
   }
@@ -1290,29 +1285,42 @@ p {
 
   #collaboration { margin-top: -20px; }
 
-  #collaboration .collaboration-item {
+#collaboration .collaboration-item {
     flex-direction: column;
+    align-items: stretch;
+    height: auto !important;
+    min-height: 50vh;
+    overflow: visible !important;
+    max-width: 400px;         /* ← dodaj širinu kao kod galerije */
+    margin: 20px auto;        /* ← centriraj */
   }
+
+
+#collaboration .collaboration-image img {
+  width: 100%;
+  height: auto !important;
+  object-fit: contain;
+  display: block;
+  max-height: none; /* Sprječava da se slučajno odreže */
+}
+
+#collaboration .collaboration-image img {
+  width: 100%;
+  height: auto !important;
+  display: block;
+}
+
+#collaboration .collaboration-button {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  z-index: 2;
+}
 
   #collaboration .collaboration-info {
-    width: 100%;
     padding: 20px;
-    box-sizing: border-box;
   }
 
-  #collaboration .collaboration-image {
-    width: 100%;
-    height: 400px;
-    display: block;
-  }
-
-  #collaboration .collaboration-image img {
-    width: 100%;
-    height: auto;
-    max-height: none;          /* sprječava skaliranje dolje */
-    object-fit: contain;       /* osigurava da se cijela slika vidi */
-    display: block;
-  }
 }
 
 /*Price note*/
