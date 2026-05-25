@@ -6,3 +6,11 @@ compatibility_date = "2024-04-18"
 binding = "DB"
 database_name = "agram-auth"
 database_id = "d6f3326b-950c-4789-91f6-428b316b9f95"
+
+[env.test]
+name = "agram-backend-test"
+
+[[env.test.d1_databases]]
+binding = "DB"
+database_name = "agram-auth-test"
+database_id = "16e4301d-2852-4eee-ad79-3ceb122787d0"

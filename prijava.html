@@ -3,105 +3,418 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Prijava</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Agram Pilates" />
+  <link rel="apple-touch-icon" href="img/logo.jpg" />
+  <title>Prijava i Registracija - Pilates Reformer Studio Agram</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
     body {
-      background-color: white;
-      font-family: 'Montserrat', sans-serif;
+      background-color: var(--dark-bg);
+      background: linear-gradient(135deg, var(--dark-bg) 0%, #2f251d 100%);
+      color: var(--text-light);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
       margin: 0;
+      padding: 40px 20px;
     }
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 20px;
+
+    .auth-container {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: row;
+      gap: 30px;
+      margin-top: 20px;
     }
+
+    .auth-card {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(197, 168, 128, 0.15);
+      border-radius: var(--radius-lg);
+      padding: 40px 30px;
+      box-shadow: var(--shadow-premium);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      transition: var(--transition-normal);
+    }
+
+    .auth-card:hover {
+      border-color: rgba(197, 168, 128, 0.35);
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateY(-4px);
+    }
+
+    .auth-logo {
+      font-size: 2.4rem;
+      text-transform: uppercase;
+      color: var(--text-light);
+      letter-spacing: 2px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .auth-logo span {
+      color: var(--primary-gold);
+      font-weight: 600;
+    }
+
+    h2 {
+      font-size: 2.2rem;
+      font-weight: 600;
+      color: var(--primary-gold);
+      margin-bottom: 25px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid rgba(197, 168, 128, 0.2);
+      padding-bottom: 10px;
+    }
+
     form {
       display: flex;
       flex-direction: column;
-      width: 300px;
     }
+
     label {
-      margin-bottom: 10px;
-      font-size: 1rem;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--primary-gold);
+      margin-bottom: 8px;
+      font-weight: 600;
     }
+
     input {
-      padding: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(197, 168, 128, 0.2);
+      padding: 12px 16px;
       margin-bottom: 20px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 1.3rem;
+      color: var(--text-light);
+      font-family: inherit;
+      outline: none;
+      transition: var(--transition-fast);
     }
+
+    input:focus {
+      border-color: var(--primary-gold);
+      box-shadow: 0 0 10px rgba(197, 168, 128, 0.25);
+      background: rgba(0, 0, 0, 0.5);
+    }
+
     button {
-      padding: 10px;
-      background-color: goldenrod;
-      color: white;
+      padding: 12px;
+      background: var(--primary-gold);
+      color: var(--dark-bg);
       border: none;
-      border-radius: 5px;
-      font-size: 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: var(--transition-normal);
+      margin-top: 10px;
     }
+
     button:hover {
-      background-color: #a97700;
+      background-color: var(--primary-gold-dark);
+      color: var(--text-light);
+      box-shadow: 0 4px 15px rgba(197, 168, 128, 0.3);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .back-home {
+      margin-top: 40px;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 1.3rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: var(--transition-fast);
+    }
+
+    .back-home:hover {
+      color: var(--primary-gold);
+      transform: translateX(-4px);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .auth-container {
+        flex-direction: column;
+        gap: 30px;
+      }
+      .auth-card {
+        padding: 30px 20px;
+      }
     }
   </style>
 </head>
 <body>
-  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
-    <h1>Prijava</h1>
-    <form id="login-form">
-      <label for="username">Korisničko ime</label>
-      <input type="text" name="username" required />
+  <div class="auth-logo">
+    Pilates-Reformer <span>studio Agram</span>
+  </div>
+
+  <div class="auth-container">
+    <!-- Prijava Form -->
+    <div class="auth-card">
+      <h2>Prijava</h2>
+      <form id="login-form">
+        <label for="username">Korisničko ime</label>
+        <input type="text" id="username" name="username" required placeholder="Unesi korisničko ime" />
+      
+        <label for="password">Lozinka</label>
+        <input type="password" id="password" name="password" required placeholder="••••••••" />
+      
+        <button type="submit">Prijava</button>
+      </form>
+    </div>
     
-      <label for="password">Lozinka</label>
-      <input type="password" name="password" required />
-    
-      <button type="submit">Prijava</button>
-    </form>
-    
-    <!-- ✅ Registracija (register) form -->
-    <form action="https://agram-backend.filip-kontek.workers.dev/register" method="POST" style="margin-top: 40px;">
+    <!-- Registracija Form -->
+    <div class="auth-card">
       <h2>Registracija</h2>
+      <form id="register-form">
+        <label for="new_username">Korisničko ime</label>
+        <input type="text" id="new_username" name="new_username" required placeholder="Odaberi korisničko ime" />
+      
+        <label for="email">E-mail adresa</label>
+        <input type="email" id="email" name="email" required placeholder="primjer@mail.com" />
+      
+        <button type="submit">Pošalji zahtjev</button>
+      </form>
+    </div>
+  </div>
 
+  <!-- Modal za promjenu lozinke -->
+  <div id="change-password-modal" style="display: none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.95); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+    <div class="auth-card" style="max-width: 450px; width: 100%; background: var(--dark-bg); border-color: var(--primary-gold);">
+      <h2>Promjena lozinke</h2>
+      <p style="font-size: 1.25rem; color: rgba(255,255,255,0.85); margin-bottom: 20px; line-height: 2rem;">
+        Prijavili ste se s privremenom lozinkom. Molimo Vas da postavite novu trajnu lozinku za Vaš račun kako biste nastavili.
+      </p>
+      <form id="change-password-form">
+        <label for="new_pass">Nova lozinka</label>
+        <input type="password" id="new_pass" required placeholder="Unesite novu lozinku" />
+        
+        <label for="confirm_pass">Potvrdite lozinku</label>
+        <input type="password" id="confirm_pass" required placeholder="Ponovite novu lozinku" />
+        
+        <button type="submit">Spremi lozinku</button>
+      </form>
+    </div>
+  </div>
 
-      <label for="new_username">Korisničko ime</label>
-      <input type="text" name="new_username" required />
-    
-      <label for="new_password">Lozinka</label>
-      <input type="password" name="new_password" required />
-    
-      <label for="email">Email</label>
-      <input type="email" name="email" required />
-    
-      <button type="submit">Registracija</button>
-    </form>
-    <script>
-      document.getElementById("login-form").addEventListener("submit", async function (e) {
-        e.preventDefault();
-  
-        const username = e.target.username.value;
-        const password = e.target.password.value;
-  
-        try {
-          const res = await fetch("https://agram-backend.filip-kontek.workers.dev/login", {
-            method: "POST",
-            body: new URLSearchParams({ username, password }),
-          });
-  
-          if (res.ok) {
-            sessionStorage.setItem("username", username);
-            window.location.href = "dashboard.html";
+  <!-- CUSTOM ALERT MODAL -->
+  <div id="custom-alert-modal" style="display: none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.95); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+    <div class="auth-card" style="max-width: 450px; width: 100%; background: var(--dark-bg); border-color: var(--primary-gold); text-align: center;">
+      <h2 style="text-align: center; border-bottom: none; margin-bottom: 10px;">Registracija Uspješna</h2>
+      <div style="margin-bottom: 20px;">
+        <p id="custom-alert-message" style="font-size: 1.35rem; margin-top: 5px; color: rgba(255,255,255,0.85); line-height: 2rem;"></p>
+        <div id="password-display-container" style="display: none; margin: 15px 0; background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: var(--radius-sm); border: 1px dashed var(--primary-gold); align-items: center; justify-content: center; gap: 10px;">
+          <code id="display-temp-password" style="font-size: 1.8rem; font-weight: 700; color: var(--text-light); letter-spacing: 1px;"></code>
+          <button type="button" onclick="copyTempPassword()" style="background: transparent; border: none; cursor: pointer; color: var(--primary-gold); padding: 4px; display: inline-flex; align-items: center;" title="Kopiraj lozinku">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+        <div id="copy-status" style="font-size: 1.15rem; color: #2e7559; font-weight: 600; min-height: 18px; margin-top: -5px; margin-bottom: 10px;"></div>
+      </div>
+      <button onclick="closeCustomAlert()" style="width: 100%; margin-top: 10px;">Zatvori</button>
+    </div>
+  </div>
+
+  <a href="index.html" class="back-home">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Povratak na početnu
+  </a>
+
+  <script>
+    const API_BASE = "https://agram-backend-test.filip-kontek.workers.dev";
+    let tempUserSession = null;
+
+    // LOGIN LOGIC
+    document.getElementById("login-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const username = e.target.username.value;
+      const password = e.target.password.value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          // Store user session temporarily
+          tempUserSession = {
+            id: data.user.id,
+            username: data.user.username,
+            email: data.user.email,
+            is_admin: data.user.is_admin,
+            password_used: password // keep old password to verify change
+          };
+
+          if (data.user.must_change_password === 1) {
+            // Force password change
+            document.getElementById("change-password-modal").style.display = "flex";
           } else {
-            alert("Neispravno korisničko ime ili lozinka.");
+            // Save to session and redirect
+            saveSessionAndRedirect(data.user);
           }
-        } catch (err) {
-          alert("Greška u komunikaciji sa serverom.");
+        } else {
+          alert(data.error || "Pogrešno korisničko ime ili lozinka.");
         }
+      } catch (err) {
+        alert("Greška u komunikaciji sa serverom.");
+      }
+    });
+
+    // CHANGE PASSWORD LOGIC
+    document.getElementById("change-password-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const newPass = document.getElementById("new_pass").value;
+      const confirmPass = document.getElementById("confirm_pass").value;
+
+      if (newPass !== confirmPass) {
+        alert("Lozinke se ne podudaraju!");
+        return;
+      }
+
+      if (newPass.length < 5) {
+        alert("Lozinka mora imati barem 5 znakova.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/change-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: tempUserSession.id,
+            old_password: tempUserSession.password_used,
+            new_password: newPass
+          })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          alert("Lozinka je uspješno promijenjena! Sada ćemo Vas prijaviti.");
+          
+          // Complete login session
+          const updatedUser = {
+            id: tempUserSession.id,
+            username: tempUserSession.username,
+            email: tempUserSession.email,
+            is_admin: tempUserSession.is_admin
+          };
+          saveSessionAndRedirect(updatedUser);
+        } else {
+          alert(data.error || "Greška pri promjeni lozinke.");
+        }
+      } catch (err) {
+        alert("Greška u komunikaciji sa serverom.");
+      }
+    });
+
+    // REGISTER LOGIC
+    document.getElementById("register-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const username = document.getElementById("new_username").value;
+      const email = document.getElementById("email").value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, email })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          // Display the temporary password in a premium visual alert
+          showCustomAlert("Registracija uspješna! Privremena lozinka je poslana na Vaš e-mail.", data.tempPassword);
+          
+          // Reset register form and prefill login
+          e.target.reset();
+          document.getElementById("username").value = username;
+          document.getElementById("password").focus();
+        } else {
+          alert(data.error || "Greška pri registraciji.");
+        }
+      } catch (err) {
+        alert("Greška u komunikaciji sa serverom.");
+      }
+    });
+
+    function saveSessionAndRedirect(user) {
+      sessionStorage.setItem("user_id", user.id);
+      sessionStorage.setItem("username", user.username);
+      sessionStorage.setItem("email", user.email);
+      sessionStorage.setItem("is_admin", user.is_admin);
+
+      if (user.is_admin === 1) {
+        window.location.href = "admin.html";
+      } else {
+        window.location.href = "dashboard.html";
+      }
+    }
+
+    // Custom Alert Modal Helpers
+    function showCustomAlert(message, tempPassword = "") {
+      document.getElementById("custom-alert-message").textContent = message;
+      const pwdContainer = document.getElementById("password-display-container");
+      const pwdEl = document.getElementById("display-temp-password");
+      const copyStatus = document.getElementById("copy-status");
+      copyStatus.textContent = "";
+      
+      if (tempPassword) {
+        pwdEl.textContent = tempPassword;
+        pwdContainer.style.display = "flex";
+      } else {
+        pwdContainer.style.display = "none";
+      }
+      document.getElementById("custom-alert-modal").style.display = "flex";
+    }
+
+    function closeCustomAlert() {
+      document.getElementById("custom-alert-modal").style.display = "none";
+    }
+
+    function copyTempPassword() {
+      const pwdText = document.getElementById("display-temp-password").textContent;
+      navigator.clipboard.writeText(pwdText).then(() => {
+        document.getElementById("copy-status").textContent = "Lozinka kopirana u međuspremnik!";
+      }).catch(err => {
+        document.getElementById("copy-status").textContent = "Greška pri kopiranju. Označite tekst za kopiranje.";
       });
-    </script>
-  </body>
-  </html>
+    }
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js")
+          .then(reg => console.log("Service Worker registered!", reg))
+          .catch(err => console.log("Service Worker registration failed!", err));
+      });
+    }
+  </script>
+</body>
+</html>

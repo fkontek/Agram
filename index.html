@@ -1,12 +1,17 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hr">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="Chrome" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
     <meta name="google-site-verification" content="MMFRcViVuRM_ZQExJQWnBsGtIaFh49VbvGgQ_ZlkyxI" />
     <link rel="stylesheet" href="style.css" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Agram Pilates" />
+    <link rel="apple-touch-icon" href="img/logo.jpg" />
     <title>Pilates reformer studio Agram</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   </head>
@@ -36,7 +41,7 @@
               <li><a href="#galerija" data-after="Galerija">Galerija</a></li>
               <li><a href="#about" data-after="O nama">O nama</a></li>
               <li><a href="#contact" data-after="Kontakt">Kontakt</a></li>
-              <li><a href="prijava.html">Prijava</a></li>
+              <!-- <li><a href="prijava.html">Prijava</a></li> -->
             </ul>
           </div>
         </div>
@@ -172,96 +177,83 @@
       <table>
         <thead>
           <tr>
-            <th>Vrsta Treninga</th>
             <th>Paket</th>
             <th>Broj Treninga</th>
             <th>Cijena</th>
           </tr>
         </thead>
         <tbody>
-<tr>
-  <td data-label="Vrsta Treninga">Privatni</td>
-  <td data-label="Paket">Paket 1</td>
-  <td data-label="Broj Treninga">1 trening</td>
-  <td data-label="Cijena">40 €</td>
-</tr>
-
-<tr>
-  <td data-label="Vrsta Treninga">Privatni</td>
-  <td data-label="Paket">Paket 4</td>
-  <td data-label="Broj Treninga">4 treninga</td>
-  <td data-label="Cijena">150 €</td>
-</tr>
-
-<tr>
-  <td data-label="Vrsta Treninga">Privatni</td>
-  <td data-label="Paket">Paket 8</td>
-  <td data-label="Broj Treninga">8 treninga</td>
-  <td data-label="Cijena">280 €</td>
-</tr>
-
-<tr>
-  <td data-label="Vrsta Treninga">Privatni</td>
-  <td data-label="Paket">Paket 12</td>
-  <td data-label="Broj Treninga">12 treninga</td>
-  <td data-label="Cijena">390 €</td>
-</tr>
-          <tr>
-            <td colspan="4" style="height: 20px; background-color: goldenrod ; border: none;"></td>
+          <tr class="category-header">
+            <td colspan="3">Privatni treninzi</td>
           </tr>
-<tr>
-  <td data-label="Vrsta Treninga">Poluindividualni</td>
-  <td data-label="Paket">Paket 1</td>
-  <td data-label="Broj Treninga">1 treninga</td>
-  <td data-label="Cijena">35 €</td>
-</tr>
-<tr>
-  <td data-label="Vrsta Treninga">Poluindividualni</td>
-  <td data-label="Paket">Paket 4</td>
-  <td data-label="Broj Treninga">4 treninga</td>
-  <td data-label="Cijena">120 €</td>
-</tr>
-<tr>
-  <td data-label="Vrsta Treninga">Poluindividualni</td>
-  <td data-label="Paket">Paket 8</td>
-  <td data-label="Broj Treninga">8 treninga</td>
-  <td data-label="Cijena">220 €</td>
-</tr>
-<tr>
-  <td data-label="Vrsta Treninga">Poluindividualni</td>
-  <td data-label="Paket">Paket 12</td>
-  <td data-label="Broj Treninga">12 treninga</td>
-  <td data-label="Cijena">300 €</td>
-</tr>
-
           <tr>
-            <td colspan="4" style="height: 20px; background-color: goldenrod ; border: none;"></td>
+            <td data-label="Paket">Paket 1</td>
+            <td data-label="Broj Treninga">1 trening</td>
+            <td data-label="Cijena" class="price-highlight">40 €</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 4</td>
+            <td data-label="Broj Treninga">4 treninga</td>
+            <td data-label="Cijena" class="price-highlight">150 €</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 8</td>
+            <td data-label="Broj Treninga">8 treninga</td>
+            <td data-label="Cijena" class="price-highlight">280 €</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 12</td>
+            <td data-label="Broj Treninga">12 treninga</td>
+            <td data-label="Cijena" class="price-highlight">390 €</td>
+          </tr>
+          
+          <tr class="category-header">
+            <td colspan="3">Poluindividualni treninzi</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 1</td>
+            <td data-label="Broj Treninga">1 trening</td>
+            <td data-label="Cijena" class="price-highlight">35 €</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 4</td>
+            <td data-label="Broj Treninga">4 treninga</td>
+            <td data-label="Cijena" class="price-highlight">120 €</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 8</td>
+            <td data-label="Broj Treninga">8 treninga</td>
+            <td data-label="Cijena" class="price-highlight">220 €</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 12</td>
+            <td data-label="Broj Treninga">12 treninga</td>
+            <td data-label="Cijena" class="price-highlight">300 €</td>
           </tr>
 
-<tr>
-  <td data-label="Vrsta Treninga">Grupni</td>
-  <td data-label="Paket">Drop-In</td>
-  <td data-label="Broj Treninga">1 trening</td>
-  <td data-label="Cijena">25 €</td>
-</tr>
-<tr>
-  <td data-label="Vrsta Treninga">Grupni</td>
-  <td data-label="Paket">Paket 4</td>
-  <td data-label="Broj Treninga">4 treninga</td>
-  <td data-label="Cijena">80 €</td>
-</tr>
-<tr>
-  <td data-label="Vrsta Treninga">Grupni</td>
-  <td data-label="Paket">Paket 8</td>
-  <td data-label="Broj Treninga">8 treninga</td>
-  <td data-label="Cijena">120 €</td>
-</tr>
-<tr>
-  <td data-label="Vrsta Treninga">Grupni</td>
-  <td data-label="Paket">Paket 12</td>
-  <td data-label="Broj Treninga">12 treninga</td>
-  <td data-label="Cijena">160 €</td>
-</tr>
+          <tr class="category-header">
+            <td colspan="3">Grupni treninzi</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Drop-In</td>
+            <td data-label="Broj Treninga">1 trening</td>
+            <td data-label="Cijena" class="price-highlight">25 €</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 4</td>
+            <td data-label="Broj Treninga">4 treninga</td>
+            <td data-label="Cijena" class="price-highlight">80 €</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 8</td>
+            <td data-label="Broj Treninga">8 treninga</td>
+            <td data-label="Cijena" class="price-highlight">120 €</td>
+          </tr>
+          <tr>
+            <td data-label="Paket">Paket 12</td>
+            <td data-label="Broj Treninga">12 treninga</td>
+            <td data-label="Cijena" class="price-highlight">160 €</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -458,11 +450,13 @@
     <script>
       const nav = document.querySelector(".main-nav");
       const username = sessionStorage.getItem("username");
+      const isAdmin = sessionStorage.getItem("is_admin");
     
       if (username) {
-        // Show username, link to dashboard, and remove "Prijava"
+        const dest = isAdmin === "1" ? "admin.html" : "dashboard.html";
+        // Show username, link to profile/admin, and remove "Prijava"
         nav.innerHTML += `
-          <li><a href="dashboard.html">👤 ${username}</a></li>
+          <li><a href="${dest}">👤 ${username}</a></li>
         `;
     
         // Remove original "Prijava" link
@@ -470,6 +464,15 @@
           li.textContent.trim().toLowerCase().includes("prijava")
         );
         if (prijavaLink) prijavaLink.remove();
+      }
+    </script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./sw.js")
+            .then(reg => console.log("Service Worker registered!", reg))
+            .catch(err => console.log("Service Worker registration failed!", err));
+        });
       }
     </script>
   </body>

@@ -2,13 +2,25 @@
 <html lang="hr">
 <head>
   <meta charset="UTF-8">
-  <title>Tvoj Profil</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Agram Pilates" />
+  <link rel="apple-touch-icon" href="img/logo.jpg" />
+  <title>Tvoj Profil - Pilates Reformer Studio Agram</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
     body {
+      background-color: var(--light-bg);
+      background: linear-gradient(to bottom, var(--dark-bg) 0%, var(--light-bg) 50%);
       font-family: 'Montserrat', sans-serif;
-      background-color: #f4f4f4;
-      padding: 40px;
+      padding: 40px 20px;
       margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
 
     body::before {
@@ -18,55 +30,355 @@
       width: 100%;
       height: 100%;
       background: url('./img/AGRAM_profilna_1.jpg') no-repeat center center/cover;
-      opacity: 0.45;
+      opacity: 0.12;
       z-index: -1;
     }
 
     .container {
-      max-width: 800px;
-      margin: auto;
-      background: white;
-      border-radius: 12px;
-      padding: 30px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 1200px;
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(197, 168, 128, 0.2);
+      min-height: auto;
+      display: flex;
+      flex-direction: column;
+      animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
+    /* Nadzorna ploča - Responzivna rešetka (Desktop: 2 stupca, Mobitel: 1 stupac) */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 25px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .dashboard-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+      min-width: 0;
+    }
+
+    .dashboard-main {
+      min-width: 0;
+    }
+
+    @media (min-width: 992px) {
+      .dashboard-grid {
+        grid-template-columns: 350px 1fr;
+        align-items: start;
+      }
+    }
+
     h1 {
-      color: goldenrod;
-      margin-bottom: 20px;
-    }
-    .info-box {
+      color: var(--text-dark);
+      font-size: 2.8rem;
+      font-weight: 300;
       margin-bottom: 30px;
-      padding: 20px;
-      background-color: #fafafa;
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
     }
+
+    h1 span {
+      color: var(--primary-gold-dark);
+      font-weight: 700;
+    }
+
+    .info-box {
+      margin-bottom: 25px;
+      padding: 25px;
+      background-color: var(--primary-gold-light);
+      border: 1px solid rgba(197, 168, 128, 0.25);
+      border-radius: var(--radius-md);
+      transition: var(--transition-fast);
+    }
+
+    .info-box:hover {
+      box-shadow: var(--shadow-sm);
+      border-color: var(--primary-gold);
+    }
+
     .info-box h2 {
       margin-top: 0;
+      font-size: 1.8rem;
+      color: var(--text-dark);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
+
+    .info-box ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    .info-box li {
+      font-size: 1.35rem;
+      padding: 12px 0;
+      border-bottom: 1px dashed rgba(197, 168, 128, 0.25);
+      color: var(--text-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .info-box li:last-child {
+      border-bottom: none;
+    }
+
+    .info-box p {
+      font-size: 1.4rem;
+      color: var(--text-dark);
+      margin: 0;
+      line-height: 2.2rem;
+    }
+
+    .info-box strong {
+      color: var(--primary-gold-dark);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-present {
+      background-color: rgba(46, 117, 89, 0.15);
+      color: #2e7559;
+      border: 1px solid rgba(46, 117, 89, 0.3);
+    }
+
+    .badge-absent {
+      background-color: rgba(178, 34, 34, 0.1);
+      color: #b22222;
+      border: 1px solid rgba(178, 34, 34, 0.2);
+    }
+
+    .badge-reserved {
+      background-color: rgba(197, 168, 128, 0.2);
+      color: var(--primary-gold-dark);
+      border: 1px solid rgba(197, 168, 128, 0.4);
+    }
+
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 30px;
+      gap: 20px;
+    }
+
+    button.btn-cancel {
+      background-color: transparent;
+      border: 1px solid #b22222;
+      color: #b22222;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 1.15rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: var(--transition-fast);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    button.btn-cancel:hover {
+      background-color: #b22222;
+      color: white;
+    }
+
+    button.btn-book {
+      background-color: var(--primary-gold);
+      border: 1px solid var(--primary-gold-dark);
+      color: var(--dark-bg);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 1.15rem;
+      cursor: pointer;
+      font-weight: 700;
+      transition: var(--transition-fast);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    button.btn-book:hover {
+      background-color: var(--primary-gold-dark);
+      color: white;
+    }
+
     .logout-btn {
       background-color: #b22222;
       color: white;
-      padding: 10px 20px;
+      padding: 12px 24px;
       border: none;
-      border-radius: 8px;
-      font-size: 1rem;
+      border-radius: 30px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
       cursor: pointer;
-      margin-top: 20px;
+      transition: var(--transition-fast);
     }
+
     .logout-btn:hover {
       background-color: #8b0000;
+      box-shadow: 0 4px 12px rgba(178, 34, 34, 0.3);
+      transform: translateY(-1px);
     }
+
     .home-btn {
-      display: inline-block;
-      margin-top: 20px;
-      color: goldenrod;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 1rem;
+      color: var(--primary-gold-dark);
+      font-weight: 600;
+      font-size: 1.4rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
     }
+
     .home-btn:hover {
-      text-decoration: underline;
+      color: var(--text-dark);
+      transform: translateX(-4px);
+    }
+
+    @media (max-width: 500px) {
+      .container {
+        padding: 25px;
+      }
+      .action-row {
+        flex-direction: column;
+        gap: 15px;
+      }
+      .logout-btn {
+        width: 100%;
+        text-align: center;
+      }
+    }
+
+    /* Tjedni raspored tabovi i kartice */
+    .schedule-tabs-container {
+      width: 100%;
+      overflow-x: auto;
+      margin-bottom: 15px;
+      padding: 5px 0;
+      scrollbar-width: none;
+    }
+    .schedule-tabs-container::-webkit-scrollbar {
+      display: none;
+    }
+    .schedule-tabs {
+      display: flex;
+      gap: 8px;
+      min-width: max-content;
+      padding: 2px;
+    }
+    .day-tab {
+      padding: 10px 16px;
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition-fast);
+      white-space: nowrap;
+      text-transform: capitalize;
+      box-shadow: var(--shadow-sm);
+    }
+    .day-tab:hover {
+      border-color: var(--primary-gold-dark);
+      color: var(--text-dark);
+      background-color: var(--primary-gold-light);
+    }
+    .day-tab.active {
+      background-color: var(--primary-gold);
+      color: var(--dark-bg);
+      border-color: var(--primary-gold-dark);
+      font-weight: 700;
+    }
+    
+    .schedule-section-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 20px 0 10px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-left: 3px solid var(--primary-gold);
+      padding-left: 8px;
+    }
+    
+    .sessions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+    
+    .session-card {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      transition: var(--transition-fast);
+      box-shadow: var(--shadow-sm);
+    }
+    .session-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary-gold);
+    }
+    
+    .session-card.user-booked {
+      border: 2px solid #2e7559;
+      background-color: rgba(46, 117, 89, 0.03);
+    }
+    
+    .session-time {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .session-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+    
+    .session-spots {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+    }
+    
+    .session-instructor {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      font-style: italic;
     }
   </style>
 </head>
@@ -74,35 +386,500 @@
   <div class="container">
     <h1>Dobrodošao, <span id="user-name"></span>!</h1>
 
-    <div class="info-box">
-      <h2>📅 Tvoj raspored</h2>
-      <ul>
-        <li>Pon 08:00 - Reformer</li>
-        <li>Uto 17:00 - Privatni trening</li>
-        <li>Čet 18:30 - Mat Pilates</li>
+    <!-- 0. OBAVIJESTI KORISNIKA -->
+    <div class="info-box" id="notifications-box" style="display: none; background-color: rgba(178, 34, 34, 0.03); border: 1px solid rgba(178, 34, 34, 0.2); margin-bottom: 25px;">
+      <h2 style="color: #b22222; margin-bottom: 10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #b22222;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Obavijesti studija
+      </h2>
+      <ul id="notifications-list" style="list-style: none; padding-left: 0; margin: 0;">
+        <!-- Dinamički ubačene obavijesti -->
       </ul>
+      <div style="text-align: right; margin-top: 15px;">
+        <button class="btn-cancel" onclick="markAllNotificationsAsRead()" style="font-size: 1.1rem; padding: 4px 12px; border-radius: 12px;">Označi sve pročitano</button>
+      </div>
     </div>
 
-    <div class="info-box">
-      <h2>💳 Status članarine</h2>
-      <p>Članarina važi do: <strong>30. travnja 2025</strong></p>
+    <!-- Nadzorna ploča - Responzivna rešetka (Desktop: 2 stupca, Mobitel: 1 stupac) -->
+    <div class="dashboard-grid">
+      <!-- Lijevi stupac: Podaci o klijentu -->
+      <div class="dashboard-sidebar">
+        <!-- 1. STATUS ČLANARINE -->
+        <div class="info-box" id="membership-box" style="margin-bottom: 0;">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Status članarine
+          </h2>
+          <p>Aktivni paket: <strong id="package-name">Učitavanje...</strong></p>
+          <p>Preostalo treninga: <strong id="remaining-credits">Učitavanje...</strong></p>
+          <p>Članarina vrijedi do: <strong id="package-expires">Učitavanje...</strong></p>
+        </div>
+
+        <!-- 2. NADOLAZEĆE REZERVACIJE -->
+        <div class="info-box" style="margin-bottom: 0;">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Moji zakazani termini
+          </h2>
+          <ul id="upcoming-list">
+            <li><span>Učitavanje rezervacija...</span></li>
+          </ul>
+        </div>
+
+        <!-- 4. POVIJEST DOLAZAKA -->
+        <div class="info-box" style="margin-bottom: 0;">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+            Povijest dolazaka
+          </h2>
+          <ul id="history-list">
+            <li><span>Učitavanje povijesti...</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Desni stupac: Rezervacija novih termina -->
+      <div class="dashboard-main">
+        <!-- 3. REZERVIRAJ NOVI TERMIN -->
+        <div class="info-box" style="padding-bottom: 25px; margin-bottom: 0;">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Rezerviraj novi termin
+          </h2>
+          
+          <!-- Day Tabs Bar -->
+          <div class="schedule-tabs-container">
+            <div class="schedule-tabs" id="schedule-day-tabs">
+              <div style="font-size: 1.25rem; color: var(--text-muted); font-style: italic;">Učitavanje rasporeda...</div>
+            </div>
+          </div>
+          
+          <!-- Schedule Grid Container -->
+          <div id="schedule-day-content" style="margin-top: 15px;">
+            <p style="color: var(--text-muted); font-style: italic; text-align: center;">Molimo pričekajte dok se učitaju slobodni termini...</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <button class="logout-btn" onclick="logout()">Odjavi se</button><br>
-    <a href="index.html" class="home-btn">← Povratak na početnu</a>
+    <div class="action-row">
+      <a href="index.html" class="home-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Povratak na početnu
+      </a>
+      <button class="logout-btn" onclick="logout()">Odjavi se</button>
+    </div>
   </div>
 
   <script>
+    const API_BASE = "https://agram-backend-test.filip-kontek.workers.dev";
+    
+    const userId = sessionStorage.getItem("user_id");
     const username = sessionStorage.getItem("username");
-    if (!username) {
+
+    // Globalne varijable za raspored
+    let allSessionsData = [];
+    let selectedDateVal = "";
+    let userCreditsVal = 0;
+    let userPackageVal = "";
+
+    if (!userId || !username) {
       window.location.href = "prijava.html";
     } else {
       document.getElementById("user-name").textContent = username;
+      loadDashboardData();
+    }
+
+    // Main fetch to load user, bookings and history
+    async function loadDashboardData() {
+      try {
+        const res = await fetch(`${API_BASE}/api/client/dashboard?user_id=${userId}`);
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          // 0. Render notifications
+          const notifBox = document.getElementById("notifications-box");
+          const notifList = document.getElementById("notifications-list");
+          
+          const unreadNotifications = (data.notifications || []).filter(n => n.is_read === 0);
+          
+          if (unreadNotifications.length > 0) {
+            notifList.innerHTML = unreadNotifications.map(notif => {
+              const relTime = formatRelativeTime(notif.created_at);
+              return `
+                <li style="border-bottom: 1px dashed rgba(178, 34, 34, 0.15); padding: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                  <div style="font-size: 1.3rem; color: var(--text-dark); line-height: 1.8rem;">
+                    ${notif.message}
+                    <div style="font-size: 1.05rem; color: var(--text-muted); margin-top: 4px;" title="${notif.created_at}">${relTime}</div>
+                  </div>
+                  <button onclick="markSingleNotificationAsRead(${notif.id})" style="background: transparent; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; padding: 5px; border-radius: 50%; transition: var(--transition-fast);" onmouseover="this.style.color='#b22222'; this.style.backgroundColor='rgba(178, 34, 34, 0.05)';" onmouseout="this.style.color='var(--text-muted)'; this.style.backgroundColor='transparent';" title="Zatvori obavijest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </li>
+              `;
+            }).join('');
+            notifBox.style.display = "block";
+          } else {
+            notifBox.style.display = "none";
+          }
+
+          // 1. Membership info
+          userCreditsVal = data.user.remaining_credits || 0;
+          userPackageVal = data.user.package_name || "Nema paketa";
+          document.getElementById("package-name").textContent = userPackageVal;
+          document.getElementById("remaining-credits").textContent = `${userCreditsVal} od ${data.user.total_credits}`;
+          document.getElementById("package-expires").textContent = data.user.package_expires ? formatDate(data.user.package_expires) : "Nema roka isteka";
+
+          // 2. Upcoming list
+          const upcomingEl = document.getElementById("upcoming-list");
+          upcomingEl.innerHTML = "";
+          if (data.upcoming.length === 0) {
+            upcomingEl.innerHTML = `<li><span>Nemate zakazanih termina.</span></li>`;
+          } else {
+            data.upcoming.forEach(booking => {
+              const li = document.createElement("li");
+              li.innerHTML = `
+                <div>
+                  <strong>${booking.title}</strong> (${booking.type})<br>
+                  <span style="font-size: 1.2rem; color: var(--text-muted);">${formatCroatianDate(booking.date)} u ${booking.time}h</span>
+                </div>
+                <button class="btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
+              `;
+              upcomingEl.appendChild(li);
+            });
+          }
+
+          // 3. History list
+          const historyEl = document.getElementById("history-list");
+          historyEl.innerHTML = "";
+          if (data.history.length === 0) {
+            historyEl.innerHTML = `<li><span>Nema zabilježenih dolazaka.</span></li>`;
+          } else {
+            data.history.forEach(item => {
+              const li = document.createElement("li");
+              let statusBadge = "";
+              if (item.status === 1) {
+                statusBadge = `<span class="badge badge-present">Odrađeno</span>`;
+              } else if (item.status === -1) {
+                statusBadge = `<span class="badge badge-absent">Nedolazak (Kasno otkazano)</span>`;
+              } else {
+                statusBadge = `<span class="badge badge-reserved">Zakazano</span>`;
+              }
+              li.innerHTML = `
+                <div>
+                  <strong>${item.title}</strong><br>
+                  <span style="font-size: 1.2rem; color: var(--text-muted);">${formatCroatianDate(item.date)} u ${item.time}h</span>
+                </div>
+                ${statusBadge}
+              `;
+              historyEl.appendChild(li);
+            });
+          }
+
+          // 4. Load available sessions for booking
+          loadAvailableSessions();
+
+        } else {
+          alert("Greška pri učitavanju podataka profila.");
+        }
+      } catch (err) {
+        console.error("Dashboard error:", err);
+      }
+    }
+
+    // Load upcoming available sessions
+    async function loadAvailableSessions() {
+      try {
+        const res = await fetch(`${API_BASE}/api/sessions?user_id=${userId}`);
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          const tabsEl = document.getElementById("schedule-day-tabs");
+          const contentEl = document.getElementById("schedule-day-content");
+          tabsEl.innerHTML = "";
+          contentEl.innerHTML = "";
+
+          // Određivanje dozvoljenog tipa treninga na temelju paketa klijenta
+          let allowedType = "grupni";
+          if (userPackageVal.toLowerCase().includes("privatni")) {
+            allowedType = "privatni";
+          } else if (userPackageVal.toLowerCase().includes("poluindividualni")) {
+            allowedType = "poluindividualni";
+          }
+
+          const hasPackage = !userPackageVal.toLowerCase().includes("nema");
+
+          // Filtriranje termina: prikaži samo tip koji odgovara članarini klijenta
+          // (ako nema članarinu, prikazujemo "grupni" ali je rezervacija onemogućena)
+          allSessionsData = data.sessions.filter(session => {
+            if (!hasPackage) {
+              return session.type === "grupni";
+            }
+            return session.type === allowedType;
+          });
+
+          // Pronalaženje jedinstvenih datuma kronološkim redom
+          const uniqueDates = [...new Set(allSessionsData.map(s => s.date))].sort();
+
+          if (uniqueDates.length === 0) {
+            tabsEl.innerHTML = `<div style="font-size: 1.25rem; color: var(--text-muted); font-style: italic;">Nema slobodnih termina za vaš tip paketa.</div>`;
+            contentEl.innerHTML = `<p style="color: var(--text-muted); text-align: center; font-style: italic;">Trenutno nema objavljenih slobodnih termina za vaš tip članarine. Molimo provjerite ponovno kasnije.</p>`;
+            return;
+          }
+
+          // Izrada horizontalnih tabova za dane u tjednu
+          uniqueDates.forEach((dateStr, index) => {
+            const btn = document.createElement("button");
+            btn.className = "day-tab";
+            btn.textContent = getShortDayLabel(dateStr);
+            btn.onclick = () => {
+              document.querySelectorAll(".day-tab").forEach(b => b.classList.remove("active"));
+              btn.classList.add("active");
+              renderDaySchedule(dateStr);
+            };
+            tabsEl.appendChild(btn);
+
+            // Postavljanje prvog dana kao aktivnog po zadanim postavkama
+            if (index === 0) {
+              btn.classList.add("active");
+              selectedDateVal = dateStr;
+            }
+          });
+
+          // Prikaz termina za prvi dan
+          renderDaySchedule(selectedDateVal);
+        }
+      } catch (err) {
+        console.error("Load sessions error:", err);
+      }
+    }
+
+    // Kratki nazivi dana na hrvatskom
+    function getShortDayLabel(dateStr) {
+      const date = new Date(dateStr);
+      const days = ["Ned", "Pon", "Uto", "Sri", "Čet", "Pet", "Sub"];
+      const dayName = days[date.getDay()];
+      const [year, month, day] = dateStr.split('-');
+      return `${dayName}, ${day}.${month}.`;
+    }
+
+    // Prikaz termina za odabrani dan u obliku jutarnjih i popodnevnih grupa
+    function renderDaySchedule(dateStr) {
+      selectedDateVal = dateStr;
+      const contentEl = document.getElementById("schedule-day-content");
+      contentEl.innerHTML = "";
+      
+      const daySessions = allSessionsData.filter(s => s.date === dateStr);
+      if (daySessions.length === 0) {
+        contentEl.innerHTML = `<p style="color: var(--text-muted); text-align: center; font-style: italic;">Nema termina za odabrani dan.</p>`;
+        return;
+      }
+      
+      // Podjela na jutarnje (prije 12h) i popodnevne/večernje (od 12h nadalje)
+      const morningSessions = daySessions.filter(s => parseInt(s.time.split(':')[0]) < 12);
+      const afternoonSessions = daySessions.filter(s => parseInt(s.time.split(':')[0]) >= 12);
+      
+      // Pomoćna funkcija za izradu kartice treninga
+      function createCardHtml(session) {
+        const freeSpots = session.capacity - session.booked_count;
+        let cardClass = "session-card";
+        let buttonHtml = "";
+        
+        if (session.user_booked > 0) {
+          cardClass += " user-booked";
+          buttonHtml = `<span class="badge badge-present" style="text-align: center; font-size: 1.15rem; width: 100%; display: block; border-radius: 20px;">Prijavljen/a</span>`;
+        } else if (freeSpots <= 0) {
+          buttonHtml = `<span class="badge badge-absent" style="text-align: center; font-size: 1.15rem; width: 100%; display: block; border-radius: 20px;">Popunjeno</span>`;
+        } else {
+          // Ako korisnik nema aktivnu članarinu, onemogući prijavu
+          const isNoPackage = userPackageVal.toLowerCase().includes("nema");
+          if (isNoPackage) {
+            buttonHtml = `<button class="btn-book" style="opacity: 0.6; cursor: not-allowed; width: 100%;" onclick="alert('Nemate aktivnu članarinu. Molimo vas da uplatite paket u studiju.')">Rezerviraj</button>`;
+          } else {
+            buttonHtml = `<button class="btn-book" style="width: 100%;" onclick="bookSession(${session.id})">Rezerviraj</button>`;
+          }
+        }
+        
+        const typeLabel = session.type === "privatni" ? "Privatni trening" : (session.type === "poluindividualni" ? "Poluindividualni" : "Grupni trening");
+        
+        return `
+          <div class="${cardClass}">
+            <div>
+              <div class="session-time">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                ${session.time}h
+              </div>
+              <div class="session-title" style="margin-top: 5px; font-weight: 600;">${typeLabel}</div>
+              <div class="session-instructor" style="margin-top: 2px;">Trener: ${session.instructor || "Adrijana"}</div>
+            </div>
+            <div>
+              <div class="session-spots" style="margin-bottom: 8px; font-size: 1.15rem; font-weight: 500; color: var(--primary-gold-dark);">
+                Slobodno: ${freeSpots} od ${session.capacity} mjesta
+              </div>
+              ${buttonHtml}
+            </div>
+          </div>
+        `;
+      }
+      
+      // Prikaz jutarnje sekcije
+      if (morningSessions.length > 0) {
+        const title = document.createElement("div");
+        title.className = "schedule-section-title";
+        title.textContent = "Jutarnji termini (07:00 - 11:00)";
+        contentEl.appendChild(title);
+        
+        const grid = document.createElement("div");
+        grid.className = "sessions-grid";
+        grid.innerHTML = morningSessions.map(createCardHtml).join('');
+        contentEl.appendChild(grid);
+      }
+      
+      // Prikaz popodnevne/večernje sekcije
+      if (afternoonSessions.length > 0) {
+        const title = document.createElement("div");
+        title.className = "schedule-section-title";
+        title.textContent = "Popodnevni / Večernji termini (16:00 - 21:00)";
+        contentEl.appendChild(title);
+        
+        const grid = document.createElement("div");
+        grid.className = "sessions-grid";
+        grid.innerHTML = afternoonSessions.map(createCardHtml).join('');
+        contentEl.appendChild(grid);
+      }
+    }
+
+    // Book action
+    async function bookSession(sessionId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/book`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, session_id: sessionId })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          alert("Rezervacija uspješna!");
+          loadDashboardData();
+        } else {
+          alert(data.error || "Greška pri rezervaciji.");
+        }
+      } catch (err) {
+        alert("Greška u komunikaciji sa serverom.");
+      }
+    }
+
+    // Cancel action
+    async function cancelBooking(sessionId) {
+      if (!confirm("Jeste li sigurni da želite otkazati ovaj trening?")) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/cancel-booking`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, session_id: sessionId })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          alert(data.message);
+          loadDashboardData();
+        } else {
+          alert(data.error || "Greška pri otkazivanju.");
+        }
+      } catch (err) {
+        alert("Greška u komunikaciji sa serverom.");
+      }
+    }
+
+    // Date formatting helper YYYY-MM-DD to DD.MM.YYYY.
+    function formatDate(dateStr) {
+      if (!dateStr) return "";
+      const [year, month, day] = dateStr.split('-');
+      return `${day}.${month}.${year}.`;
+    }
+
+    // Format to croatian day names
+    function formatCroatianDate(dateStr) {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      const days = ["Nedjelja", "Ponedjeljak", "Utorak", "Srijeda", "Četvrtak", "Petak", "Subota"];
+      const dayName = days[date.getDay()];
+      return `${dayName}, ${formatDate(dateStr)}`;
     }
 
     function logout() {
       sessionStorage.clear();
       window.location.href = "index.html";
+    }
+
+    // Obavijesti klijenta JS
+    function formatRelativeTime(dateStr) {
+      try {
+        const past = new Date(dateStr.replace(" ", "T") + "Z");
+        const now = new Date();
+        const diffMs = now.getTime() - past.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        
+        if (diffMins < 1) return "Upravo sad";
+        if (diffMins < 60) return `prije ${diffMins} min`;
+        
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) {
+          if (diffHours === 1) return "prije 1 sat";
+          if (diffHours >= 2 && diffHours <= 4) return `prije ${diffHours} sata`;
+          return `prije ${diffHours} sati`;
+        }
+        
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays === 1) return "jučer";
+        if (diffDays >= 2 && diffDays <= 4) return `prije ${diffDays} dana`;
+        return `prije ${diffDays} dana`;
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    async function markSingleNotificationAsRead(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/client/notifications/read`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: parseInt(userId), notification_ids: [id] })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          loadDashboardData();
+        }
+      } catch (err) {
+        console.error("Greška pri čitanju obavijesti:", err);
+      }
+    }
+
+    async function markAllNotificationsAsRead() {
+      try {
+        const res = await fetch(`${API_BASE}/api/client/notifications/read`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: parseInt(userId) })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          loadDashboardData();
+        }
+      } catch (err) {
+        console.error("Greška pri čitanju svih obavijesti:", err);
+      }
+    }
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js")
+          .then(reg => console.log("Service Worker registered!", reg))
+          .catch(err => console.log("Service Worker registration failed!", err));
+      });
     }
   </script>
 </body>

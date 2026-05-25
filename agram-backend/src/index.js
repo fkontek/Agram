@@ -1,108 +1,903 @@
 /**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
+ * Cloudflare Worker for Agram Pilates Reformer Studio Backend
+ * Handles booking system, user authentication, credits, and admin actions.
  */
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Content-Type": "application/json"
+};
+
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: corsHeaders
+  });
+}
+
+// Hashing utility for SHA-256
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Generate random temporary password
+function generateTempPassword() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let password = "Ag-";
+  for (let i = 0; i < 6; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
+// Log activity to database
+async function logActivity(env, details) {
+  try {
+    await env.DB.prepare("INSERT INTO ActivityLogs (details) VALUES (?)").bind(details).run();
+  } catch (e) {
+    console.error("Greška pri bilježenju aktivnosti:", e);
+  }
+}
+
+// Get current date and time in Croatia timezone (Europe/Zagreb)
+function getCroatiaNow() {
+  const d = new Date();
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Zagreb",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false
+  });
+  const parts = formatter.formatToParts(d);
+  const partVal = type => parts.find(p => p.type === type).value;
+  return new Date(`${partVal('year')}-${partVal('month')}-${partVal('day')}T${partVal('hour')}:${partVal('minute')}:${partVal('second')}`);
+}
+
+// Format Date object to YYYY-MM-DD
+function formatDate(dateObj) {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Send email using Resend API
+async function sendEmail(env, to, subject, htmlContent) {
+  const apiKey = env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY is not defined. Skipping email sending.");
+    return false;
+  }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: "Agram Pilates <onboarding@resend.dev>", // Fallback sandbox domain
+        to: [to],
+        subject: subject,
+        html: htmlContent
+      })
+    });
+    return res.ok;
+  } catch (e) {
+    console.error("Error sending email:", e);
+    return false;
+  }
+}
+
 export default {
-	async fetch(request, env) {
-	  const url = new URL(request.url);
-  
-	  // Handle CORS preflight
-	  if (request.method === "OPTIONS") {
-		return new Response(null, {
-		  status: 204,
-		  headers: {
-			"Access-Control-Allow-Origin": "*",
-			"Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-			"Access-Control-Allow-Headers": "Content-Type",
-		  }
-		});
-	  }
-  
-	  // Registration
-	  if (request.method === "POST" && url.pathname === "/register") {
-		const formData = await request.formData();
-		const username = formData.get("new_username");
-		const rawPassword = formData.get("new_password");
-		const email = formData.get("email");
-  
-		const encoder = new TextEncoder();
-		const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(rawPassword));
-		const hashedPassword = [...new Uint8Array(hashBuffer)]
-		  .map(b => b.toString(16).padStart(2, "0"))
-		  .join("");
-  
-		await env.DB.prepare(
-		  "INSERT INTO Clients (username, password, email) VALUES (?, ?, ?);"
-		).bind(username, hashedPassword, email).run();
-  
-		return new Response(
-		  `<html>
-			<body style="font-family: Montserrat, sans-serif; text-align: center; padding-top: 100px;">
-			  <h2>Uspješna registracija!</h2>
-			  <p><a href="https://pilates-reformer-agram.com" style="color: goldenrod; text-decoration: none;">← Povratak na početnu</a></p>
-			</body>
-		  </html>`,
-		  {
-			status: 200,
-			headers: {
-			  "Content-Type": "text/html; charset=UTF-8",
-			  "Access-Control-Allow-Origin": "*"
-			}
-		  }
-		);
-	  }
-  
-	  // Login
-	  if (request.method === "POST" && url.pathname === "/login") {
-		const body = await request.text();
-		const params = new URLSearchParams(body);
-		const username = params.get("username");
-		const password = params.get("password");
-  
-		const encoder = new TextEncoder();
-		const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(password));
-		const hashedPassword = [...new Uint8Array(hashBuffer)]
-		  .map(b => b.toString(16).padStart(2, "0"))
-		  .join("");
-  
-		const result = await env.DB.prepare(
-		  "SELECT * FROM Clients WHERE username = ? AND password = ?"
-		).bind(username, hashedPassword).first();
-  
-		if (result) {
-		  return new Response("Login successful", {
-			status: 200,
-			headers: {
-			  "Access-Control-Allow-Origin": "*",
-			  "Content-Type": "text/plain"
-			}
-		  });
-		} else {
-		  return new Response("Unauthorized", {
-			status: 401,
-			headers: {
-			  "Access-Control-Allow-Origin": "*",
-			  "Content-Type": "text/plain"
-			}
-		  });
-		}
-	  }
-  
-	  // Fallback
-	  return new Response("Not Found", {
-		status: 404,
-		headers: {
-		  "Access-Control-Allow-Origin": "*"
-		}
-	  });
-	}
-  };
-  
-  
-  
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    // 1. Handle CORS preflight requests
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders
+      });
+    }
+
+    try {
+      // --- PUBLIC ENDPOINTS ---
+
+      // LOGIN
+      if (request.method === "POST" && url.pathname === "/api/login") {
+        const { username, password } = await request.json();
+        if (!username || !password) {
+          return jsonResponse({ success: false, error: "Korisničko ime i lozinka su obavezni." }, 400);
+        }
+
+        const hashedPassword = await hashPassword(password);
+        const user = await env.DB.prepare(
+          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires FROM Clients WHERE username = ? AND password = ?"
+        ).bind(username, hashedPassword).first();
+
+        if (!user) {
+          return jsonResponse({ success: false, error: "Pogrešno korisničko ime ili lozinka." }, 401);
+        }
+
+        return jsonResponse({ success: true, user });
+      }
+
+      // REGISTER (Public registration, generates temp password and emails it)
+      if (request.method === "POST" && url.pathname === "/api/register") {
+        const { username, email } = await request.json();
+        
+        if (!username || !email) {
+          return jsonResponse({ success: false, error: "Korisničko ime i e-mail su obavezni." }, 400);
+        }
+
+        // Check if username/email already exists
+        const existing = await env.DB.prepare("SELECT id FROM Clients WHERE username = ? OR email = ?").bind(username, email).first();
+        if (existing) {
+          return jsonResponse({ success: false, error: "Korisnik s tim korisničkim imenom ili e-mailom već postoji." }, 400);
+        }
+
+        const tempPass = generateTempPassword();
+        const hashedTemp = await hashPassword(tempPass);
+        
+        // Insert client with 0 credits and "Nema paketa"
+        await env.DB.prepare(`
+          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires)
+          VALUES (?, ?, ?, 0, 1, 'Nema aktivnog paketa', 0, 0, NULL)
+        `).bind(username, email, hashedTemp).run();
+
+        await logActivity(env, `Novi klijent '${username}' se registrirao u sustav.`);
+
+        // Send Email via Resend
+        const emailSubject = "Pilates Reformer Agram - Registracija";
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+            <h2 style="color: #a98e65;">Dobrodošli u Pilates Reformer studio Agram!</h2>
+            <p>Vaš zahtjev za registraciju je primljen. Kreirali smo vaš račun s privremenom lozinkom:</p>
+            <table style="border-spacing: 10px;">
+              <tr><td><b>Korisničko ime:</b></td><td>${username}</td></tr>
+              <tr><td><b>Privremena lozinka:</b></td><td><code style="background-color: #eee; padding: 3px 6px; border-radius: 3px;">${tempPass}</code></td></tr>
+            </table>
+            <p style="margin-top: 20px;">
+              Molimo vas da se prijavite i postavite vlastitu lozinku. Kako biste rezervirali treninge, kontaktirajte studio radi uplate i aktivacije paketa.
+            </p>
+            <p style="margin-top: 30px;">
+              <a href="https://pilates-reformer-agram.com/prijava.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
+                Prijavi se ovdje
+              </a>
+            </p>
+          </div>
+        `;
+
+        const emailSent = await sendEmail(env, email, emailSubject, emailHtml);
+
+        return jsonResponse({
+          success: true,
+          message: "Registracija uspješna! Privremena lozinka je poslana na vaš e-mail.",
+          tempPassword: tempPass, // Return for testing/fallback
+          emailSent: emailSent
+        });
+      }
+
+      // CHANGE PASSWORD (must change temp password)
+      if (request.method === "POST" && url.pathname === "/api/change-password") {
+        const { user_id, old_password, new_password } = await request.json();
+        if (!user_id || !old_password || !new_password) {
+          return jsonResponse({ success: false, error: "Sva polja su obavezna." }, 400);
+        }
+
+        const hashedOld = await hashPassword(old_password);
+        const user = await env.DB.prepare("SELECT id FROM Clients WHERE id = ? AND password = ?").bind(user_id, hashedOld).first();
+        if (!user) {
+          return jsonResponse({ success: false, error: "Trenutna lozinka nije ispravna." }, 401);
+        }
+
+        const hashedNew = await hashPassword(new_password);
+        await env.DB.prepare("UPDATE Clients SET password = ?, must_change_password = 0 WHERE id = ?").bind(hashedNew, user_id).run();
+
+        return jsonResponse({ success: true, message: "Lozinka je uspješno promijenjena!" });
+      }
+
+      // GET NEWS FEED
+      if (request.method === "GET" && url.pathname === "/api/news") {
+        const { results } = await env.DB.prepare("SELECT * FROM News ORDER BY created_at DESC").all();
+        return jsonResponse({ success: true, news: results });
+      }
+
+
+      // --- CLIENT BOOKING ENDPOINTS ---
+
+      // GET AVAILABLE SESSIONS (with client booking status)
+      if (request.method === "GET" && url.pathname === "/api/sessions") {
+        const userId = url.searchParams.get("user_id");
+        if (!userId) {
+          return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        }
+
+        const nowCroatia = getCroatiaNow();
+        const todayStr = formatDate(nowCroatia);
+        // Calculate max date: today + 6 days (rolling 7 days total)
+        const maxDate = new Date(nowCroatia.getTime() + 6 * 24 * 60 * 60 * 1000);
+        const maxDateStr = formatDate(maxDate);
+        
+        // Fetch sessions from today up to today + 6 days
+        const { results } = await env.DB.prepare(`
+          SELECT s.*, 
+                 (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.status >= 0) as booked_count,
+                 (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.user_id = ? AND b.status >= 0) as user_booked
+          FROM Sessions s
+          WHERE s.date >= ? AND s.date <= ?
+          ORDER BY s.date ASC, s.time ASC
+        `).bind(userId, todayStr, maxDateStr).all();
+
+        return jsonResponse({ success: true, sessions: results });
+      }
+
+      // BOOK A SESSION
+      if (request.method === "POST" && url.pathname === "/api/book") {
+        const { user_id, session_id } = await request.json();
+        if (!user_id || !session_id) {
+          return jsonResponse({ success: false, error: "Svi parametri su obavezni." }, 400);
+        }
+
+        // 1. Get Client credits and check expiration
+        const client = await env.DB.prepare(
+          "SELECT username, remaining_credits, package_expires, package_name FROM Clients WHERE id = ?"
+        ).bind(user_id).first();
+
+        if (!client) {
+          return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
+        }
+
+        if (client.remaining_credits <= 0) {
+          return jsonResponse({ success: false, error: "Nemate preostalih treninga (kredita) u paketu." }, 400);
+        }
+
+        const todayStr = formatDate(getCroatiaNow());
+        if (client.package_expires && client.package_expires < todayStr) {
+          return jsonResponse({ success: false, error: `Vaš paket (${client.package_name}) je istekao dana ${client.package_expires}.` }, 400);
+        }
+
+        // 2. Check Session capacity and if user is already booked
+        const session = await env.DB.prepare("SELECT * FROM Sessions WHERE id = ?").bind(session_id).first();
+        if (!session) {
+          return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
+        }
+
+        const bookingCountObj = await env.DB.prepare(
+          "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
+        ).bind(session_id).first();
+        const bookedCount = bookingCountObj ? bookingCountObj.count : 0;
+
+        if (bookedCount >= session.capacity) {
+          return jsonResponse({ success: false, error: "Termin je već popunjen." }, 400);
+        }
+
+        const existingBooking = await env.DB.prepare(
+          "SELECT id FROM Bookings WHERE session_id = ? AND user_id = ? AND status >= 0"
+        ).bind(session_id, user_id).first();
+        if (existingBooking) {
+          return jsonResponse({ success: false, error: "Već ste prijavljeni na ovaj termin." }, 400);
+        }
+
+        // 3. Make booking & deduct credit
+        // We run these as a batch to ensure consistency
+        await env.DB.batch([
+          env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 0)").bind(session_id, user_id),
+          env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(user_id)
+        ]);
+
+        const dateStr = session.date.split('-').reverse().join('.') + '.';
+        await logActivity(env, `Klijent '${client.username}' je rezervirao termin '${session.title}' (${dateStr} u ${session.time}h).`);
+
+        return jsonResponse({ success: true, message: "Uspješna rezervacija termina!" });
+      }
+
+      // CANCEL A BOOKING (6-hour rule)
+      if (request.method === "POST" && url.pathname === "/api/cancel-booking") {
+        const { user_id, session_id } = await request.json();
+        if (!user_id || !session_id) {
+          return jsonResponse({ success: false, error: "Svi parametri su obavezni." }, 400);
+        }
+
+        // 1. Check if booking exists
+        const booking = await env.DB.prepare(
+          "SELECT id, status FROM Bookings WHERE session_id = ? AND user_id = ? AND status >= 0"
+        ).bind(session_id, user_id).first();
+        if (!booking) {
+          return jsonResponse({ success: false, error: "Rezervacija nije pronađena." }, 404);
+        }
+
+        // 2. Get session date/time to check 6h limit
+        const session = await env.DB.prepare("SELECT date, time FROM Sessions WHERE id = ?").bind(session_id).first();
+        if (!session) {
+          return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
+        }
+
+        const nowCroatia = getCroatiaNow();
+        const sessionCroatia = new Date(`${session.date}T${session.time}:00`);
+        const diffHours = (sessionCroatia.getTime() - nowCroatia.getTime()) / (1000 * 60 * 60);
+
+        let refunded = false;
+        let messageText = "";
+
+        if (diffHours >= 6) {
+          // In-time cancel: Refund credit
+          await env.DB.batch([
+            env.DB.prepare("DELETE FROM Bookings WHERE session_id = ? AND user_id = ?").bind(session_id, user_id),
+            env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id)
+          ]);
+          refunded = true;
+          messageText = "Termin je otkazan. Trening Vam je vraćen na račun. Molimo Vas da rezervirate idući slobodan termin ili nas osobno kontaktirate za dogovor.";
+        } else {
+          // Late cancel: Delete booking but do NOT refund credit
+          await env.DB.prepare("UPDATE Bookings SET status = -1 WHERE session_id = ? AND user_id = ?").bind(session_id, user_id).run();
+          refunded = false;
+          messageText = "Termin je otkazan manje od 6 sati prije treninga. Kredit se ne vraća (broji se kao iskorišten). Molimo Vas da rezervirate idući slobodan termin ili nas osobno kontaktirate za dogovor.";
+        }
+
+        const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
+        if (client) {
+          const dateStr = session.date.split('-').reverse().join('.') + '.';
+          const cancelType = refunded ? "pravovremeno" : "neopravdano (kasno)";
+          await logActivity(env, `Klijent '${client.username}' je ${cancelType} otkazao termin '${session.title}' (${dateStr} u ${session.time}h).`);
+        }
+
+        return jsonResponse({ success: true, refunded, message: messageText });
+      }
+
+      // CLIENT DASHBOARD DATA (Get current bookings and history)
+      if (request.method === "GET" && url.pathname === "/api/client/dashboard") {
+        const userId = url.searchParams.get("user_id");
+        if (!userId) {
+          return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        }
+
+        const todayStr = formatDate(getCroatiaNow());
+
+        // 1. Upcoming bookings
+        const upcomingBookings = await env.DB.prepare(`
+          SELECT b.id as booking_id, b.status, s.id as session_id, s.title, s.instructor, s.date, s.time, s.type
+          FROM Bookings b
+          JOIN Sessions s ON b.session_id = s.id
+          WHERE b.user_id = ? AND s.date >= ? AND b.status = 0
+          ORDER BY s.date ASC, s.time ASC
+        `).bind(userId, todayStr).all();
+
+        // 2. Attendance history (attended or late-cancelled)
+        const historyBookings = await env.DB.prepare(`
+          SELECT b.id as booking_id, b.status, s.title, s.instructor, s.date, s.time, s.type
+          FROM Bookings b
+          JOIN Sessions s ON b.session_id = s.id
+          WHERE b.user_id = ? AND (s.date < ? OR b.status != 0)
+          ORDER BY s.date DESC, s.time DESC
+          LIMIT 20
+        `).bind(userId, todayStr).all();
+
+        // 3. Current user details
+        const userDetails = await env.DB.prepare(
+          "SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password FROM Clients WHERE id = ?"
+        ).bind(userId).first();
+
+        // 4. Notifications
+        const notifications = await env.DB.prepare(`
+          SELECT id, message, is_read, created_at
+          FROM ClientNotifications
+          WHERE user_id = ?
+          ORDER BY id DESC
+          LIMIT 10
+        `).bind(userId).all();
+
+        return jsonResponse({
+          success: true,
+          user: userDetails,
+          upcoming: upcomingBookings.results,
+          history: historyBookings.results,
+          notifications: notifications.results
+        });
+      }
+
+      // CLIENT: MARK NOTIFICATIONS AS READ
+      if (request.method === "POST" && url.pathname === "/api/client/notifications/read") {
+        const { user_id, notification_ids } = await request.json();
+        if (!user_id) {
+          return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        }
+
+        if (notification_ids && notification_ids.length > 0) {
+          const placeholders = notification_ids.map(() => "?").join(",");
+          await env.DB.prepare(`
+            UPDATE ClientNotifications
+            SET is_read = 1
+            WHERE user_id = ? AND id IN (${placeholders})
+          `).bind(user_id, ...notification_ids).run();
+        } else {
+          await env.DB.prepare("UPDATE ClientNotifications SET is_read = 1 WHERE user_id = ?").bind(user_id).run();
+        }
+
+        return jsonResponse({ success: true });
+      }
+
+      // QR CODE CHECK-IN
+      if (request.method === "POST" && url.pathname === "/api/check-in") {
+        const { user_id } = await request.json();
+        if (!user_id) {
+          return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        }
+
+        const nowCroatia = getCroatiaNow();
+        const todayStr = formatDate(nowCroatia);
+        const currentHour = nowCroatia.getHours();
+        const currentMin = nowCroatia.getMinutes();
+
+        // Load username for activity log
+        const clientObj = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
+        const clientName = clientObj ? clientObj.username : `Korisnik ID ${user_id}`;
+
+        // 1. Look for a booking for today
+        const bookingsToday = await env.DB.prepare(`
+          SELECT b.id as booking_id, b.status, s.id as session_id, s.time, s.title
+          FROM Bookings b
+          JOIN Sessions s ON b.session_id = s.id
+          WHERE b.user_id = ? AND s.date = ? AND b.status = 0
+        `).bind(user_id, todayStr).all();
+
+        for (const booking of bookingsToday.results) {
+          const [sHour, sMin] = booking.time.split(':').map(Number);
+          // Check if session starts within +/- 60 minutes of now
+          const diffMinutes = Math.abs((sHour * 60 + sMin) - (currentHour * 60 + currentMin));
+          if (diffMinutes <= 60) {
+            // Confirm attendance
+            await env.DB.prepare("UPDATE Bookings SET status = 1 WHERE id = ?").bind(booking.booking_id).run();
+            await logActivity(env, `Klijent '${clientName}' se prijavio (check-in) na termin '${booking.title}' u ${booking.time}h.`);
+            return jsonResponse({ 
+              success: true, 
+              message: `Uspješna prijava (check-in) na termin: ${booking.title} u ${booking.time}. Dobrodošli u studio Agram!` 
+            });
+          }
+        }
+
+        // 2. If no booking exists, check if there is an active session running now that has spots
+        const sessionsToday = await env.DB.prepare(
+          "SELECT id, title, time, capacity, type FROM Sessions WHERE date = ?"
+        ).bind(todayStr).all();
+
+        for (const session of sessionsToday.results) {
+          const [sHour, sMin] = session.time.split(':').map(Number);
+          const diffMinutes = Math.abs((sHour * 60 + sMin) - (currentHour * 60 + currentMin));
+          
+          if (diffMinutes <= 45) { // If starts within 45 min
+            // Check capacity
+            const countObj = await env.DB.prepare(
+              "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
+            ).bind(session.id).first();
+            const booked = countObj ? countObj.count : 0;
+
+            if (booked < session.capacity) {
+              // Check client credits
+              const client = await env.DB.prepare("SELECT remaining_credits, package_expires FROM Clients WHERE id = ?").bind(user_id).first();
+              if (client && client.remaining_credits > 0 && (!client.package_expires || client.package_expires >= todayStr)) {
+                // Book dynamically and check-in
+                await env.DB.batch([
+                  env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 1)").bind(session.id, user_id),
+                  env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(user_id)
+                ]);
+                await logActivity(env, `Klijent '${clientName}' se automatski prijavio na slobodni termin '${session.title}' u ${session.time}h.`);
+                return jsonResponse({
+                  success: true,
+                  message: `Automatski ste prijavljeni na slobodni termin: ${session.title} u ${session.time}. Skinut vam je 1 trening.`
+                });
+              }
+            }
+          }
+        }
+
+        return jsonResponse({
+          success: false,
+          error: "Nemate rezerviran termin u ovom satu, niti ima trenutno slobodnih grupa za automatsku prijavu."
+        }, 400);
+      }
+
+
+      // --- ADMIN ONLY ENDPOINTS (Wife's dashboard) ---
+
+      // ADMIN: GET LIST OF CLIENTS
+      if (request.method === "GET" && url.pathname === "/api/admin/clients") {
+        const { results } = await env.DB.prepare(`
+          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at,
+                 (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 1) as attended_count
+          FROM Clients
+          WHERE is_admin = 0
+          ORDER BY username ASC
+        `).all();
+
+        return jsonResponse({ success: true, clients: results });
+      }
+
+      // ADMIN: GET ACTIVITY LOGS
+      if (request.method === "GET" && url.pathname === "/api/admin/activity-logs") {
+        const { results } = await env.DB.prepare(
+          "SELECT id, details, created_at FROM ActivityLogs ORDER BY id DESC LIMIT 30"
+        ).all();
+        return jsonResponse({ success: true, logs: results });
+      }
+
+      // ADMIN: CREATE CLIENT (with auto email & temp password)
+      if (request.method === "POST" && url.pathname === "/api/admin/create-client") {
+        const { username, email, package_name, total_credits, expiration_days } = await request.json();
+        
+        if (!username || !email) {
+          return jsonResponse({ success: false, error: "Korisničko ime i e-mail su obavezni." }, 400);
+        }
+
+        // Check if username/email already exists
+        const existing = await env.DB.prepare("SELECT id FROM Clients WHERE username = ? OR email = ?").bind(username, email).first();
+        if (existing) {
+          return jsonResponse({ success: false, error: "Korisnik s tim korisničkim imenom ili e-mailom već postoji." }, 400);
+        }
+
+        const tempPass = generateTempPassword();
+        const hashedTemp = await hashPassword(tempPass);
+        
+        // Calculate expiration date
+        let expiresStr = null;
+        if (expiration_days) {
+          const expiresDate = new Date(getCroatiaNow().getTime() + parseInt(expiration_days) * 24 * 60 * 60 * 1000);
+          expiresStr = formatDate(expiresDate);
+        }
+
+        // Insert client
+        const result = await env.DB.prepare(`
+          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires)
+          VALUES (?, ?, ?, 0, 1, ?, ?, ?, ?)
+        `).bind(
+          username, 
+          email, 
+          hashedTemp, 
+          package_name || "Nema paketa", 
+          parseInt(total_credits) || 0, 
+          parseInt(total_credits) || 0, 
+          expiresStr
+        ).run();
+
+        // Send Email via Resend
+        const emailSubject = "Pilates Reformer Agram - Podaci za prijavu";
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+            <h2 style="color: #a98e65;">Dobrodošli u Pilates Reformer studio Agram!</h2>
+            <p>Vaš korisnički račun je kreiran. Možete se prijaviti u aplikaciju koristeći sljedeće podatke:</p>
+            <table style="border-spacing: 10px;">
+              <tr><td><b>Korisničko ime:</b></td><td>${username}</td></tr>
+              <tr><td><b>Privremena lozinka:</b></td><td><code style="background-color: #eee; padding: 3px 6px; border-radius: 3px;">${tempPass}</code></td></tr>
+            </table>
+            <p style="margin-top: 20px;">
+              Pri prvoj prijavi od vas će se tražiti da postavite novu, vlastitu lozinku.
+            </p>
+            <p style="margin-top: 30px;">
+              <a href="https://pilates-reformer-agram.com/prijava.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
+                Prijavi se ovdje
+              </a>
+            </p>
+            <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+            <p style="font-size: 11px; color: #7c7267;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
+          </div>
+        `;
+
+        const emailSent = await sendEmail(env, email, emailSubject, emailHtml);
+
+        return jsonResponse({
+          success: true,
+          message: "Klijent je uspješno kreiran!",
+          tempPassword: tempPass,
+          emailSent: emailSent
+        });
+      }
+
+      // ADMIN: UPDATE CLIENT PACKAGE / CREDITS
+      if (request.method === "POST" && url.pathname === "/api/admin/update-client-credits") {
+        const { client_id, package_name, total_credits, remaining_credits, package_expires } = await request.json();
+        
+        if (!client_id) {
+          return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        }
+
+        await env.DB.prepare(`
+          UPDATE Clients 
+          SET package_name = ?, total_credits = ?, remaining_credits = ?, package_expires = ?
+          WHERE id = ?
+        `).bind(
+          package_name,
+          parseInt(total_credits) || 0,
+          parseInt(remaining_credits) || 0,
+          package_expires || null,
+          client_id
+        ).run();
+
+        return jsonResponse({ success: true, message: "Članarina klijenta je uspješno ažurirana!" });
+      }
+
+      // ADMIN: MANUAL CHECK-IN (Forgot to scan QR)
+      if (request.method === "POST" && url.pathname === "/api/admin/check-in") {
+        const { booking_id } = await request.json();
+        if (!booking_id) {
+          return jsonResponse({ success: false, error: "Booking ID je obavezan." }, 400);
+        }
+
+        // Fetch details for logging
+        const details = await env.DB.prepare(`
+          SELECT c.username, s.title, s.date, s.time
+          FROM Bookings b
+          JOIN Clients c ON b.user_id = c.id
+          JOIN Sessions s ON b.session_id = s.id
+          WHERE b.id = ?
+        `).bind(booking_id).first();
+
+        // Set status to 1 (attended)
+        await env.DB.prepare("UPDATE Bookings SET status = 1 WHERE id = ?").bind(booking_id).run();
+
+        if (details) {
+          const dateStr = details.date.split('-').reverse().join('.') + '.';
+          await logActivity(env, `Admin je ručno upisao dolazak klijentu '${details.username}' na termin '${details.title}' (${dateStr} u ${details.time}h).`);
+        }
+
+        return jsonResponse({ success: true, message: "Dolazak klijenta je uspješno upisan!" });
+      }
+
+      // ADMIN: CANCEL BOOKING (with or without refund)
+      if (request.method === "POST" && url.pathname === "/api/admin/cancel-booking") {
+        const { booking_id, refund } = await request.json();
+        if (!booking_id) {
+          return jsonResponse({ success: false, error: "Booking ID je obavezan." }, 400);
+        }
+
+        // 1. Get booking details to find user_id
+        const booking = await env.DB.prepare(
+          "SELECT user_id, session_id FROM Bookings WHERE id = ?"
+        ).bind(booking_id).first();
+        
+        if (!booking) {
+          return jsonResponse({ success: false, error: "Rezervacija nije pronađena." }, 404);
+        }
+
+        // Fetch details for logging before deleting/updating
+        const details = await env.DB.prepare(`
+          SELECT c.username, s.title, s.date, s.time
+          FROM Bookings b
+          JOIN Clients c ON b.user_id = c.id
+          JOIN Sessions s ON b.session_id = s.id
+          WHERE b.id = ?
+        `).bind(booking_id).first();
+
+        const dateStr = details ? details.date.split('-').reverse().join('.') + '.' : '';
+
+        if (refund) {
+          const msg = details 
+            ? `Studio je otkazao Vašu rezervaciju za termin '${details.title}' (${dateStr} u ${details.time}h). Trening Vam je vraćen na račun te možete odabrati novi termin.`
+            : `Studio je otkazao Vašu rezervaciju. Trening Vam je vraćen na račun.`;
+
+          // Refund credit: delete booking, add 1 credit, and add client notification
+          await env.DB.batch([
+            env.DB.prepare("DELETE FROM Bookings WHERE id = ?").bind(booking_id),
+            env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(booking.user_id),
+            env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(booking.user_id, msg)
+          ]);
+          
+          if (details) {
+            await logActivity(env, `Admin je otkazao termin klijentu '${details.username}' za '${details.title}' (${dateStr} u ${details.time}h) - uz povrat.`);
+          }
+
+          return jsonResponse({ success: true, message: "Rezervacija je uspješno otkazana, a klijentu je vraćen 1 trening na račun!" });
+        } else {
+          const msg = details
+            ? `Studio je otkazao Vašu rezervaciju za termin '${details.title}' (${dateStr} u ${details.time}h) bez povrata treninga na račun.`
+            : `Studio je otkazao Vašu rezervaciju bez povrata treninga na račun.`;
+
+          // No refund: set status to -1 (absent) and add client notification
+          await env.DB.batch([
+            env.DB.prepare("UPDATE Bookings SET status = -1 WHERE id = ?").bind(booking_id),
+            env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(booking.user_id, msg)
+          ]);
+          
+          if (details) {
+            await logActivity(env, `Admin je otkazao termin klijentu '${details.username}' za '${details.title}' (${dateStr} u ${details.time}h) - bez povrata.`);
+          }
+
+          return jsonResponse({ success: true, message: "Rezervacija je otkazana bez povrata kredita (označeno kao nedolazak)." });
+        }
+      }
+
+      // ADMIN: GET LIST OF SESSIONS & ATTENDEES FOR A DATE
+      if (request.method === "GET" && url.pathname === "/api/admin/sessions-overview") {
+        const dateStr = url.searchParams.get("date") || formatDate(getCroatiaNow());
+        
+        // 1. Get all sessions for this date
+        const sessions = await env.DB.prepare(`
+          SELECT s.*, 
+                 (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.status >= 0) as booked_count
+          FROM Sessions s
+          WHERE s.date = ?
+          ORDER BY s.time ASC
+        `).bind(dateStr).all();
+
+        // 2. Get attendees list for all sessions of this date
+        const attendees = await env.DB.prepare(`
+          SELECT b.id as booking_id, b.session_id, b.status, c.username, c.email, c.remaining_credits
+          FROM Bookings b
+          JOIN Clients c ON b.user_id = c.id
+          JOIN Sessions s ON b.session_id = s.id
+          WHERE s.date = ?
+        `).bind(dateStr).all();
+
+        return jsonResponse({
+          success: true,
+          sessions: sessions.results,
+          attendees: attendees.results
+        });
+      }
+
+      // ADMIN: CREATE SESSION (Termin)
+      if (request.method === "POST" && url.pathname === "/api/admin/create-session") {
+        const { title, instructor, date, time, capacity, type } = await request.json();
+        
+        if (!title || !date || !time) {
+          return jsonResponse({ success: false, error: "Naziv, datum i vrijeme su obavezni." }, 400);
+        }
+
+        await env.DB.prepare(`
+          INSERT INTO Sessions (title, instructor, date, time, capacity, type)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).bind(
+          title,
+          instructor || "Adrijana",
+          date,
+          time,
+          parseInt(capacity) || 4,
+          type || "grupni"
+        ).run();
+
+        return jsonResponse({ success: true, message: "Novi termin je uspješno dodan u raspored!" });
+      }
+
+      // ADMIN: GENERATE WEEKLY SCHEDULE TEMPLATE
+      if (request.method === "POST" && url.pathname === "/api/admin/generate-weekly-schedule") {
+        const { monday_date } = await request.json();
+        if (!monday_date) {
+          return jsonResponse({ success: false, error: "Datum ponedjeljka je obavezan." }, 400);
+        }
+
+        const start = new Date(monday_date);
+        if (isNaN(start.getTime())) {
+          return jsonResponse({ success: false, error: "Neispravan format datuma." }, 400);
+        }
+
+        const queries = [];
+        const instructorName = "Adrijana";
+
+        for (let i = 0; i < 5; i++) {
+          const currentDay = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
+          const dateStr = formatDate(currentDay);
+          const dayOfWeek = currentDay.getDay(); // 1 = Mon, 2 = Tue, ..., 5 = Fri
+
+          const morningHours = ["07:00", "08:00", "09:00", "10:00"];
+          const afternoonHours = ["16:00", "17:00", "18:00", "19:00", "20:00"];
+          const allHours = [...morningHours, ...afternoonHours];
+
+          allHours.forEach(time => {
+            let type = "grupni";
+            let capacity = 4;
+            let title = "Grupni trening";
+
+            // Rules:
+            // Ponedjeljak (1) 07:00 i 10:00 su privatni
+            if (dayOfWeek === 1 && (time === "07:00" || time === "10:00")) {
+              type = "privatni";
+              capacity = 1;
+              title = "Privatni trening";
+            }
+            // Petak (5) 16:00 i 17:00 su privatni
+            else if (dayOfWeek === 5 && (time === "16:00" || time === "17:00")) {
+              type = "privatni";
+              capacity = 1;
+              title = "Privatni trening";
+            }
+
+            queries.push(
+              env.DB.prepare(`
+                INSERT INTO Sessions (title, instructor, date, time, capacity, type)
+                SELECT ?, ?, ?, ?, ?, ?
+                WHERE NOT EXISTS (
+                  SELECT 1 FROM Sessions WHERE date = ? AND time = ?
+                )
+              `).bind(title, instructorName, dateStr, time, capacity, type, dateStr, time)
+            );
+          });
+        }
+
+        await env.DB.batch(queries);
+        return jsonResponse({ success: true, message: "Tjedni raspored je uspješno generiran!" });
+      }
+
+      // ADMIN: DELETE SESSION (Refunds credits if cancelled by admin)
+      if (request.method === "POST" && url.pathname === "/api/admin/delete-session") {
+        const { session_id } = await request.json();
+        if (!session_id) {
+          return jsonResponse({ success: false, error: "ID termina je obavezan." }, 400);
+        }
+
+        // Fetch active bookings for this session to notify clients
+        const activeBookings = await env.DB.prepare(`
+          SELECT b.user_id, s.title, s.date, s.time
+          FROM Bookings b
+          JOIN Sessions s ON b.session_id = s.id
+          WHERE b.session_id = ? AND b.status >= 0
+        `).bind(session_id).all();
+
+        const queries = [];
+
+        // 1. Refund credits to all users registered for this session (status = 0 or 1, not absent -1)
+        queries.push(
+          env.DB.prepare(`
+            UPDATE Clients 
+            SET remaining_credits = remaining_credits + 1 
+            WHERE id IN (SELECT user_id FROM Bookings WHERE session_id = ? AND status >= 0)
+          `).bind(session_id)
+        );
+
+        // 2. Insert notifications for each user
+        if (activeBookings.results && activeBookings.results.length > 0) {
+          activeBookings.results.forEach(booking => {
+            const dateStr = booking.date.split('-').reverse().join('.') + '.';
+            const msg = `Termin '${booking.title}' (${dateStr} u ${booking.time}h) je otkazan od strane studija. Trening Vam je vraćen na račun te možete odabrati novi termin.`;
+            queries.push(
+              env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(booking.user_id, msg)
+            );
+          });
+        }
+
+        // 3. Delete the session (which will cascade delete bookings)
+        queries.push(
+          env.DB.prepare("DELETE FROM Sessions WHERE id = ?").bind(session_id)
+        );
+
+        await env.DB.batch(queries);
+
+        return jsonResponse({ success: true, message: "Termin je uspješno otkazan i izbrisan, a krediti su vraćeni prijavljenim korisnicima!" });
+      }
+
+      // ADMIN: CREATE NEWS OR WORKSHOP
+      if (request.method === "POST" && url.pathname === "/api/admin/create-news") {
+        const { title, content, image_url, is_workshop } = await request.json();
+        
+        if (!title || !content) {
+          return jsonResponse({ success: false, error: "Naslov i sadržaj su obavezni." }, 400);
+        }
+
+        await env.DB.prepare(`
+          INSERT INTO News (title, content, image_url, is_workshop)
+          VALUES (?, ?, ?, ?)
+        `).bind(
+          title,
+          content,
+          image_url || null,
+          parseInt(is_workshop) || 0
+        ).run();
+
+        return jsonResponse({ success: true, message: "Obavijest/radionica je uspješno objavljena!" });
+      }
+
+      // Fallback
+      return jsonResponse({ success: false, error: "Stranica nije pronađena (404)." }, 404);
+
+    } catch (e) {
+      console.error("Worker error:", e);
+      return jsonResponse({ success: false, error: "Interna pogreška poslužitelja: " + e.message }, 500);
+    }
+  }
+};

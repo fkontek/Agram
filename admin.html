@@ -2,100 +2,1479 @@
 <html lang="hr">
 <head>
   <meta charset="UTF-8">
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Agram Pilates" />
+  <link rel="apple-touch-icon" href="img/logo.jpg" />
   <title>Admin Panel – Agram Pilates</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
     body {
+      background-color: var(--light-bg);
+      background: linear-gradient(to bottom, var(--dark-bg) 0%, var(--light-bg) 50%);
       font-family: 'Montserrat', sans-serif;
-      background-color: #f8f8f8;
-      padding: 40px;
+      padding: 40px 20px;
       margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
     }
+
     .container {
-      max-width: 1000px;
-      margin: auto;
-      background: white;
-      border-radius: 12px;
-      padding: 30px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 1200px;
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(197, 168, 128, 0.2);
+      min-height: auto;
+      display: flex;
+      flex-direction: column;
+      animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     h1 {
-      color: goldenrod;
+      color: var(--text-dark);
+      font-size: 2.8rem;
+      font-weight: 300;
+      margin-bottom: 25px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 15px;
+    }
+
+    h1 span {
+      color: var(--primary-gold-dark);
+      font-weight: 700;
+    }
+
+    /* Tabs styling */
+    .admin-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 20px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition-fast);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-dark);
+      background-color: rgba(197, 168, 128, 0.1);
+    }
+
+    .tab-btn.active {
+      background-color: var(--primary-gold);
+      color: var(--dark-bg);
+      border-color: var(--primary-gold-dark);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Admin forms styles */
+    .admin-card {
+      background: var(--primary-gold-light);
+      border: 1px solid rgba(197, 168, 128, 0.25);
+      border-radius: var(--radius-md);
+      padding: 30px;
       margin-bottom: 30px;
     }
+
+    .admin-card h2 {
+      margin-top: 0;
+      font-size: 1.8rem;
+      color: var(--text-dark);
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input, .form-group select {
+      background: white;
+      border: 1px solid var(--border-color);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 1.3rem;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--primary-gold-dark);
+    }
+
+    /* Buttons styling */
+    .btn-submit {
+      padding: 12px 24px;
+      background: var(--primary-gold);
+      color: var(--dark-bg);
+      border: 1px solid var(--primary-gold-dark);
+      border-radius: var(--radius-sm);
+      font-size: 1.3rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      align-self: flex-start;
+    }
+
+    .btn-submit:hover {
+      background-color: var(--primary-gold-dark);
+      color: white;
+    }
+
+    button.btn-action {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 1.15rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    button.btn-checkin {
+      background-color: #2e7559;
+      color: white;
+      border: 1px solid #235c44;
+    }
+
+    button.btn-checkin:hover {
+      background-color: #235c44;
+    }
+
+    button.btn-edit {
+      background-color: transparent;
+      color: var(--text-dark);
+      border: 1px solid var(--primary-gold-dark);
+    }
+
+    button.btn-edit:hover {
+      background-color: var(--primary-gold);
+      color: var(--dark-bg);
+    }
+
+    button.btn-delete {
+      background-color: transparent;
+      color: #b22222;
+      border: 1px solid #b22222;
+    }
+
+    button.btn-delete:hover {
+      background-color: #b22222;
+      color: white;
+    }
+
+    /* Table styling */
     table {
       width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 40px;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-bottom: 30px;
+      font-size: 1.35rem;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid rgba(197, 168, 128, 0.15);
+      box-shadow: var(--shadow-sm);
+      background-color: white;
     }
-    table, th, td {
-      border: 1px solid #ddd;
-    }
+
     th, td {
-      padding: 12px;
+      padding: 12px 14px;
       text-align: left;
+      border-bottom: 1px solid var(--border-color);
     }
+
     th {
-      background-color: #f0f0f0;
+      background-color: var(--primary-gold-light);
+      color: var(--text-dark);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 1.2rem;
+      letter-spacing: 0.5px;
     }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background-color: rgba(197, 168, 128, 0.05);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-present { background-color: rgba(46, 117, 89, 0.15); color: #2e7559; }
+    .badge-absent { background-color: rgba(178, 34, 34, 0.1); color: #b22222; }
+    .badge-reserved { background-color: rgba(197, 168, 128, 0.2); color: var(--primary-gold-dark); }
+
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      gap: 20px;
+    }
+
     .logout-btn {
       background-color: #b22222;
       color: white;
-      padding: 10px 20px;
+      padding: 12px 24px;
       border: none;
-      border-radius: 8px;
-      font-size: 1rem;
+      border-radius: 30px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
       cursor: pointer;
-      margin-top: 20px;
+      transition: var(--transition-fast);
     }
+
     .logout-btn:hover {
       background-color: #8b0000;
+      box-shadow: 0 4px 12px rgba(178, 34, 34, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .home-btn {
+      color: var(--primary-gold-dark);
+      font-weight: 600;
+      font-size: 1.4rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .home-btn:hover {
+      color: var(--text-dark);
+      transform: translateX(-4px);
+    }
+
+    /* Modal dialog */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 21, 16, 0.8);
+      backdrop-filter: blur(5px);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--primary-gold);
+      padding: 35px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      color: var(--primary-gold-dark);
+      font-size: 1.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .close-btn {
+      font-size: 2.4rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .close-btn:hover {
+      color: #b22222;
+    }
+
+    @media (max-width: 768px) {
+      .container { padding: 25px; }
+      table { display: block; overflow-x: auto; }
+      .action-row { flex-direction: column; gap: 15px; }
+      .logout-btn { width: 100%; text-align: center; }
+    }
+
+    /* Zapisnik aktivnosti - Zvonac i Badge */
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+      width: 100%;
+    }
+
+    .notification-bell-container {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .bell-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dark);
+      cursor: pointer;
+      position: relative;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition-fast);
+      border-radius: 50%;
+    }
+
+    .bell-btn:hover {
+      background-color: rgba(197, 168, 128, 0.15);
+      color: var(--primary-gold-dark);
+    }
+
+    .bell-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background-color: #b22222;
+      color: white;
+      font-size: 1rem;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      border: 2px solid var(--card-bg);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(178, 34, 34, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 6px rgba(178, 34, 34, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(178, 34, 34, 0);
+      }
+    }
+
+    /* Zapisnik aktivnosti - Sidebar Bočna ladica */
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 400px;
+      max-width: 100%;
+      height: 100vh;
+      background-color: white;
+      box-shadow: -5px 0 25px rgba(26, 21, 16, 0.15);
+      z-index: 10000;
+      transition: right var(--transition-normal);
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border-color);
+    }
+
+    .drawer.open {
+      right: 0;
+    }
+
+    .drawer-header {
+      padding: 20px;
+      background-color: var(--primary-gold-light);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .drawer-header h3 {
+      margin: 0;
+      color: var(--primary-gold-dark);
+      font-size: 1.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .drawer-close {
+      font-size: 2.4rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition-fast);
+    }
+
+    .drawer-close:hover {
+      color: #b22222;
+      transform: scale(1.1);
+    }
+
+    .drawer-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .log-item {
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      background-color: var(--light-bg);
+      border: 1px solid rgba(197, 168, 128, 0.15);
+      font-size: 1.25rem;
+      line-height: 1.8rem;
+      color: var(--text-dark);
+      transition: var(--transition-fast);
+      position: relative;
+      padding-left: 18px;
+    }
+
+    .log-item::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 16px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--primary-gold);
+    }
+
+    .log-item.new-log {
+      border-color: var(--primary-gold);
+      background-color: var(--primary-gold-light);
+    }
+
+    .log-item.new-log::before {
+      background-color: #b22222;
+    }
+
+    .log-time {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .drawer-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 21, 16, 0.4);
+      backdrop-filter: blur(2px);
+      z-index: 9999;
+    }
+
+    .drawer-overlay.active {
+      display: block;
+    }
+
+    @media (max-width: 480px) {
+      .drawer {
+        width: 100%;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>👩‍💼 Admin Panel</h1>
+    <div class="header-container">
+      <h1 style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Admin Panel <span> studio Agram</span>
+      </h1>
+      <div class="notification-bell-container" onclick="toggleActivityDrawer()">
+        <button class="bell-btn" aria-label="Aktivnosti">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="bell-badge" id="bell-badge-count">0</span>
+        </button>
+      </div>
+    </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Korisničko ime</th>
-          <th>Email</th>
-          <th>Status članarine</th>
-          <th>Raspored</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>ivana123</td>
-          <td>ivana@mail.com</td>
-          <td>Važi do: 30. travnja 2025</td>
-          <td>Pon 08:00, Uto 17:00</td>
-        </tr>
-        <tr>
-          <td>marko456</td>
-          <td>marko@gmail.com</td>
-          <td>Važi do: 15. svibnja 2025</td>
-          <td>Sri 18:30, Pet 08:00</td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- Tabs header -->
+    <div class="admin-tabs">
+      <button class="tab-btn active" onclick="switchTab('evidencija')">Dnevna Evidencija</button>
+      <button class="tab-btn" onclick="switchTab('klijenti')">Klijenti & Paketi</button>
+      <button class="tab-btn" onclick="switchTab('raspored')">Raspored Termina</button>
+    </div>
 
-    <button class="logout-btn" onclick="logout()">Odjavi se</button>
+    <!-- TAB 1: DNEVNA EVIDENCIJA -->
+    <div id="tab-evidencija" class="tab-content active">
+      <div class="admin-card">
+        <h2>Odaberi datum evidencije</h2>
+        <div class="form-grid">
+          <div class="form-group" style="max-width: 250px;">
+            <label for="overview-date">Datum</label>
+            <input type="date" id="overview-date" onchange="loadDailyOverview()" />
+          </div>
+        </div>
+      </div>
+
+      <h2>Termini i dolasci na odabrani dan</h2>
+      <div id="overview-container">
+        <p>Učitavanje podataka...</p>
+      </div>
+    </div>
+
+    <!-- TAB 2: KLIJENTI & PAKETI -->
+    <div id="tab-klijenti" class="tab-content">
+      <!-- Dodaj klijenta -->
+      <div class="admin-card">
+        <h2>Dodaj novog klijenta</h2>
+        <form id="add-client-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="new-client-user">Korisničko ime</label>
+              <input type="text" id="new-client-user" required placeholder="Npr. ivana_k" />
+            </div>
+            <div class="form-group">
+              <label for="new-client-email">E-mail adresa</label>
+              <input type="email" id="new-client-email" required placeholder="Npr. ivana@mail.com" />
+            </div>
+            <div class="form-group">
+              <label for="new-client-package">Paket</label>
+              <select id="new-client-package" onchange="handleNewClientPackageChange()">
+                <option value="Grupni 8 treninga">Grupni (8 treninga)</option>
+                <option value="Grupni 12 treninga">Grupni (12 treninga)</option>
+                <option value="Poluindividualni 8 treninga">Poluindividualni (8 treninga)</option>
+                <option value="Privatni 8 treninga">Privatni (8 treninga)</option>
+                <option value="Nema paketa">Bez paketa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="new-client-credits">Broj treninga</label>
+              <input type="number" id="new-client-credits" value="8" min="0" />
+            </div>
+            <div class="form-group">
+              <label for="new-client-expires">Trajanje paketa (dana)</label>
+              <input type="number" id="new-client-expires" value="30" min="0" />
+            </div>
+          </div>
+          <button type="submit" class="btn-submit">Spremi klijenta</button>
+        </form>
+      </div>
+
+      <h2>Popis klijenata i članarina</h2>
+      <table id="clients-table">
+        <thead>
+          <tr>
+            <th>Korisničko ime</th>
+            <th>Email</th>
+            <th>Paket</th>
+            <th>Preostalo</th>
+            <th>Istječe</th>
+            <th>Odrađeno</th>
+            <th>Akcije</th>
+          </tr>
+        </thead>
+        <tbody id="clients-tbody">
+          <tr><td colspan="7">Učitavanje klijenata...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB 3: RASPORED TERMINA -->
+    <div id="tab-raspored" class="tab-content">
+      <!-- Dodaj termin -->
+      <div class="admin-card">
+        <h2>Dodaj novi termin u raspored</h2>
+        <form id="add-session-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="session-title">Naziv treninga</label>
+              <input type="text" id="session-title" value="Pilates Reformer" required />
+            </div>
+            <div class="form-group">
+              <label for="session-instructor">Trener</label>
+              <input type="text" id="session-instructor" value="Adrijana" required />
+            </div>
+            <div class="form-group">
+              <label for="session-type">Tip treninga</label>
+              <select id="session-type" onchange="adjustCapacity()">
+                <option value="grupni">Grupni (Max 4)</option>
+                <option value="poluindividualni">Poluindividualni (Max 2)</option>
+                <option value="privatni">Privatni (Max 1)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="session-capacity">Kapacitet (Reformera)</label>
+              <input type="number" id="session-capacity" value="4" min="1" max="4" required />
+            </div>
+            <div class="form-group">
+              <label for="session-date">Datum</label>
+              <input type="date" id="session-date" required />
+            </div>
+            <div class="form-group">
+              <label for="session-time">Vrijeme (sati:minute)</label>
+              <input type="time" id="session-time" required />
+            </div>
+          </div>
+          <button type="submit" class="btn-submit">Kreiraj termin</button>
+        </form>
+      </div>
+
+      <!-- Brzo generiranje tjednog rasporeda -->
+      <div class="admin-card">
+        <h2>Brzo generiranje tjednog rasporeda</h2>
+        <p style="margin-bottom: 15px; color: var(--text-muted); font-size: 1.25rem;">
+          Ova akcija će automatski kreirati raspored treninga za cijeli radni tjedan (od ponedjeljka do petka) s grupnim i privatnim terminima prema predefiniranom šablonu.
+        </p>
+        <form id="generate-schedule-form">
+          <div class="form-grid">
+            <div class="form-group" style="max-width: 300px;">
+              <label for="generate-monday-date">Datum ponedjeljka</label>
+              <input type="date" id="generate-monday-date" required />
+            </div>
+          </div>
+          <button type="submit" class="btn-submit">Generiraj raspored</button>
+        </form>
+      </div>
+
+      <h2>Raspored i otkazivanje termina</h2>
+      <p style="margin-bottom: 15px; color: var(--text-muted);">
+        Ovdje možete vidjeti listu termina za odabrani dan u Dnevnoj Evidenciji te ih otkazati po potrebi.
+      </p>
+    </div>
+
+    <!-- Bottom Actions -->
+    <div class="action-row">
+      <a href="index.html" class="home-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Povratak na početnu
+      </a>
+      <button class="logout-btn" onclick="logout()">Odjavi se</button>
+    </div>
+  </div>
+
+  <!-- UREDI ČLANARINU MODAL -->
+  <div id="edit-credits-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Uredi članarinu</h3>
+        <button class="close-btn" onclick="closeCreditsModal()">&times;</button>
+      </div>
+      <form id="edit-credits-form">
+        <input type="hidden" id="edit-client-id" />
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="edit-package-name">Naziv paketa</label>
+          <select id="edit-package-name" onchange="handleEditClientPackageChange()">
+            <option value="Grupni 8 treninga">Grupni (8 treninga)</option>
+            <option value="Grupni 12 treninga">Grupni (12 treninga)</option>
+            <option value="Poluindividualni 8 treninga">Poluindividualni (8 treninga)</option>
+            <option value="Privatni 8 treninga">Privatni (8 treninga)</option>
+            <option value="Nema paketa">Bez paketa</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="edit-total-credits">Ukupno treninga</label>
+          <input type="number" id="edit-total-credits" min="0" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="edit-remaining-credits">Preostalo treninga</label>
+          <input type="number" id="edit-remaining-credits" min="0" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="edit-package-expires">Datum isteka (YYYY-MM-DD)</label>
+          <input type="date" id="edit-package-expires" />
+        </div>
+        <button type="submit" class="btn-submit" style="width: 100%;">Spremi izmjene</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- CUSTOM ALERT MODAL -->
+  <div id="custom-alert-modal" class="modal">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <div class="modal-header" style="justify-content: center; border-bottom: none; margin-bottom: 10px;">
+        <h3 id="custom-alert-title" style="color: var(--primary-gold-dark);">Uspješno!</h3>
+      </div>
+      <div style="margin-bottom: 20px;">
+        <p id="custom-alert-message" style="font-size: 1.35rem; margin-top: 5px; color: var(--text-dark); line-height: 2rem;"></p>
+        <div id="password-display-container" style="display: none; margin: 15px 0; background: var(--primary-gold-light); padding: 12px; border-radius: var(--radius-sm); border: 1px dashed var(--primary-gold); align-items: center; justify-content: center; gap: 10px;">
+          <code id="display-temp-password" style="font-size: 1.8rem; font-weight: 700; color: var(--text-dark); letter-spacing: 1px;"></code>
+          <button type="button" onclick="copyTempPassword()" style="background: transparent; border: none; cursor: pointer; color: var(--primary-gold-dark); padding: 4px; display: inline-flex; align-items: center;" title="Kopiraj lozinku">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+        <div id="copy-status" style="font-size: 1.15rem; color: #2e7559; font-weight: 600; min-height: 18px; margin-top: -5px; margin-bottom: 10px;"></div>
+      </div>
+      <button onclick="closeCustomAlert()" class="btn-submit" style="width: 100%; align-self: center; justify-content: center; display: flex;">Zatvori</button>
+    </div>
+  </div>
+
+  <!-- ADMIN OTKAZIVANJE REZERVACIJE MODAL -->
+  <div id="admin-cancel-modal" class="modal">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <div class="modal-header" style="justify-content: center; border-bottom: none; margin-bottom: 10px;">
+        <h3 style="color: var(--primary-gold-dark);">Otkazivanje treninga za klijenta</h3>
+      </div>
+      <p style="font-size: 1.35rem; color: var(--text-dark); line-height: 2.2rem; margin-bottom: 20px;">
+        Želite li klijentu vratiti trening (kredit) na račun kako bi mu taj termin ostao slobodan za iskoristiti drugi put?
+      </p>
+      <input type="hidden" id="cancel-booking-id" />
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+        <button onclick="submitAdminCancel(true)" class="btn-submit" style="background-color: #2e7559; border-color: #235c44; color: white; width: 100%;">
+          Da, vrati trening (ostaje mu slobodan termin)
+        </button>
+        <button onclick="submitAdminCancel(false)" class="btn-submit" style="background-color: #b22222; border-color: #8b0000; color: white; width: 100%;">
+          Ne, naplati trening (gubi ovaj termin)
+        </button>
+      </div>
+      <button onclick="closeAdminCancelModal()" class="btn-action btn-edit" style="width: 100%; border-radius: var(--radius-sm); padding: 10px;">
+        Odustani
+      </button>
+    </div>
+  </div>
+
+  <!-- Zapisnik aktivnosti (Bočni panel) -->
+  <div id="drawer-overlay" class="drawer-overlay" onclick="toggleActivityDrawer()"></div>
+  <div id="activity-drawer" class="drawer">
+    <div class="drawer-header">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Zapisnik aktivnosti
+      </h3>
+      <button class="drawer-close" onclick="toggleActivityDrawer()">&times;</button>
+    </div>
+    <div class="drawer-content" id="drawer-content-list">
+      <p style="text-align: center; color: var(--text-muted); font-style: italic; margin-top: 20px;">Učitavanje...</p>
+    </div>
   </div>
 
   <script>
+    const API_BASE = "https://agram-backend-test.filip-kontek.workers.dev";
+    
+    // Auth check
     const username = sessionStorage.getItem("username");
-    const role = sessionStorage.getItem("role");
+    const isAdmin = sessionStorage.getItem("is_admin");
 
-    if (!username || role !== "admin") {
-      // Kick out if not admin
+    if (!username || isAdmin !== "1") {
       window.location.href = "prijava.html";
+    }
+
+    // Set today as default date on inputs
+    window.addEventListener("DOMContentLoaded", () => {
+      const today = new Date().toISOString().split("T")[0];
+      document.getElementById("overview-date").value = today;
+      document.getElementById("session-date").value = today;
+      const mondayInput = document.getElementById("generate-monday-date");
+      if (mondayInput) {
+        mondayInput.value = getNextMondayDate();
+      }
+      loadDailyOverview();
+      loadClientsList();
+      fetchActivityLogs(true);
+      // Osvježi badge zapisnika svakih 30 sekundi
+      setInterval(() => fetchActivityLogs(true), 30000);
+    });
+
+    // Tab switcher
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
+      
+      const activeBtn = Array.from(document.querySelectorAll(".tab-btn")).find(btn => btn.textContent.toLowerCase().includes(tabId.substring(0, 4)));
+      if (activeBtn) activeBtn.classList.add("active");
+      
+      document.getElementById(`tab-${tabId}`).classList.add("active");
+
+      // Load data if switching
+      if (tabId === "evidencija") loadDailyOverview();
+      if (tabId === "klijenti") loadClientsList();
+    }
+
+    // Adjust capacity when session type changes
+    function adjustCapacity() {
+      const type = document.getElementById("session-type").value;
+      const capInput = document.getElementById("session-capacity");
+      if (type === "grupni") capInput.value = 4;
+      else if (type === "poluindividualni") capInput.value = 2;
+      else if (type === "privatni") capInput.value = 1;
+    }
+
+    // TAB 1: DNEVNA EVIDENCIJA & DOLASCI
+    async function loadDailyOverview() {
+      const date = document.getElementById("overview-date").value;
+      if (!date) return;
+
+      const container = document.getElementById("overview-container");
+      container.innerHTML = "<p>Učitavanje...</p>";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/sessions-overview?date=${date}`);
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          container.innerHTML = "";
+          
+          if (data.sessions.length === 0) {
+            container.innerHTML = `<p style="color: var(--text-muted); font-style: italic;">Nema kreiranih termina za ovaj dan.</p>`;
+            return;
+          }
+
+          data.sessions.forEach(session => {
+            const sessionDiv = document.createElement("div");
+            sessionDiv.className = "admin-card";
+            sessionDiv.style.backgroundColor = "white";
+            sessionDiv.style.border = "1px solid var(--border-color)";
+
+            // Filter attendees for this session
+            const sessionAttendees = data.attendees.filter(a => a.session_id === session.id);
+
+            let attendeesTableHtml = "";
+            if (sessionAttendees.length === 0) {
+              attendeesTableHtml = `<p style="font-size: 1.3rem; color: var(--text-muted); font-style: italic; margin-top: 10px;">Nema prijavljenih korisnika za ovaj termin.</p>`;
+            } else {
+              attendeesTableHtml = `
+                <table style="margin-top: 15px; margin-bottom: 0;">
+                  <thead>
+                    <tr>
+                      <th>Klijent</th>
+                      <th>Preostalo treninga</th>
+                      <th>Status dolaska</th>
+                      <th>Akcija</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${sessionAttendees.map(att => {
+                      let statusBadge = "";
+                      let actionButton = "";
+
+                      if (att.status === 1) {
+                        statusBadge = `<span class="badge badge-present">Odradio</span>`;
+                        actionButton = `<span style="color: var(--text-muted); font-style: italic; font-size: 1.2rem;">Upisano</span>`;
+                      } else if (att.status === -1) {
+                        statusBadge = `<span class="badge badge-absent">Nedolazak</span>`;
+                        actionButton = `<span style="color: #b22222; font-size: 1.2rem;">Kasno otkazano</span>`;
+                      } else {
+                        statusBadge = `<span class="badge badge-reserved">Rezervirano</span>`;
+                        actionButton = `
+                          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn-action btn-checkin" onclick="manualCheckIn(${att.booking_id})">Upiši dolazak</button>
+                            <button class="btn-action btn-delete" onclick="adminCancelBooking(${att.booking_id})">Otkaži klijentu</button>
+                          </div>
+                        `;
+                      }
+
+                      return `
+                        <tr>
+                          <td><strong>${att.username}</strong><br><span style="font-size: 1.15rem; color: var(--text-muted);">${att.email}</span></td>
+                          <td>${att.remaining_credits}</td>
+                          <td>${statusBadge}</td>
+                          <td>${actionButton}</td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              `;
+            }
+
+            sessionDiv.innerHTML = `
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                  <h3 style="margin: 0; color: var(--primary-gold-dark); font-size: 1.7rem;">${session.title}</h3>
+                  <span style="font-size: 1.25rem; font-weight: 600; color: var(--text-dark);">${session.time}h | Tip: ${session.type} | Popunjenost: ${session.booked_count} od ${session.capacity}</span>
+                </div>
+                <button class="btn-action btn-delete" onclick="deleteSession(${session.id})">Otkaži termin</button>
+              </div>
+              ${attendeesTableHtml}
+            `;
+            container.appendChild(sessionDiv);
+          });
+        }
+      } catch (err) {
+        console.error("Overview error:", err);
+      }
+    }
+
+    // Manual checkin click
+    async function manualCheckIn(bookingId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/check-in`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ booking_id: bookingId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert("Dolazak je uspješno upisan!");
+          fetchActivityLogs(true);
+          loadDailyOverview();
+        } else {
+          alert(data.error || "Greška pri upisu dolaska.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    }
+
+    // Cancel / Delete training session
+    async function deleteSession(sessionId) {
+      if (!confirm("Jeste li sigurni da želite otkazati ovaj termin? Svi prijavljeni klijenti će dobiti povrat kredita natrag na svoj račun.")) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/delete-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message);
+          fetchActivityLogs(true);
+          loadDailyOverview();
+        } else {
+          alert(data.error || "Greška pri brisanju termina.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    }
+
+    // TAB 2: KLIJENTI & PAKETI
+    async function loadClientsList() {
+      const tbody = document.getElementById("clients-tbody");
+      tbody.innerHTML = "<tr><td colspan='7'>Učitavanje...</td></tr>";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/clients`);
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          tbody.innerHTML = "";
+          if (data.clients.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='7' style='text-align: center; color: var(--text-muted);'>Nema registriranih klijenata.</td></tr>";
+            return;
+          }
+
+          data.clients.forEach(client => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><strong>${client.username}</strong></td>
+              <td>${client.email}</td>
+              <td>${client.package_name || "Nema"}</td>
+              <td><span style="font-weight: 700; color: var(--primary-gold-dark);">${client.remaining_credits}</span> / ${client.total_credits}</td>
+              <td>${client.package_expires ? formatDateStr(client.package_expires) : "Nema"}</td>
+              <td><span class="badge badge-present">${client.attended_count} dolazaka</span></td>
+              <td>
+                <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        console.error("Clients error:", err);
+      }
+    }
+
+    // Add client submit
+    document.getElementById("add-client-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const usernameVal = document.getElementById("new-client-user").value;
+      const emailVal = document.getElementById("new-client-email").value;
+      const packageVal = document.getElementById("new-client-package").value;
+      const creditsVal = document.getElementById("new-client-credits").value;
+      const expiresDaysVal = document.getElementById("new-client-expires").value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/create-client`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: usernameVal,
+            email: emailVal,
+            package_name: packageVal,
+            total_credits: creditsVal,
+            expiration_days: expiresDaysVal
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showCustomAlert(`Klijent je kreiran! Privremena lozinka je poslana na e-mail: ${emailVal}.`, data.tempPassword);
+          fetchActivityLogs(true);
+          e.target.reset();
+          loadClientsList();
+        } else {
+          alert(data.error || "Greška pri kreiranju klijenta.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    });
+
+    // Edit Client Modal controls
+    function openCreditsModal(client) {
+      document.getElementById("edit-client-id").value = client.id;
+      
+      const selectEl = document.getElementById("edit-package-name");
+      const packageVal = client.package_name || "Nema paketa";
+      
+      // Check if value exists in options
+      let exists = false;
+      for (let i = 0; i < selectEl.options.length; i++) {
+        if (selectEl.options[i].value === packageVal) {
+          exists = true;
+          break;
+        }
+      }
+      
+      // If it doesn't exist, dynamically add it
+      if (!exists) {
+        const opt = document.createElement("option");
+        opt.value = packageVal;
+        opt.textContent = packageVal;
+        selectEl.appendChild(opt);
+      }
+      
+      selectEl.value = packageVal;
+      document.getElementById("edit-total-credits").value = client.total_credits || 0;
+      document.getElementById("edit-remaining-credits").value = client.remaining_credits || 0;
+      document.getElementById("edit-package-expires").value = client.package_expires || "";
+      
+      document.getElementById("edit-credits-modal").style.display = "flex";
+    }
+
+    // Auto-fill logic for new client form
+    function handleNewClientPackageChange() {
+      const packageVal = document.getElementById("new-client-package").value;
+      const creditsInput = document.getElementById("new-client-credits");
+      const expiresInput = document.getElementById("new-client-expires");
+
+      if (packageVal.includes("8")) {
+        creditsInput.value = 8;
+        expiresInput.value = 30;
+      } else if (packageVal.includes("12")) {
+        creditsInput.value = 12;
+        expiresInput.value = 30;
+      } else {
+        creditsInput.value = 0;
+        expiresInput.value = 0;
+      }
+    }
+
+    // Auto-fill logic for edit client modal
+    function handleEditClientPackageChange() {
+      const packageVal = document.getElementById("edit-package-name").value;
+      const totalInput = document.getElementById("edit-total-credits");
+      const remainingInput = document.getElementById("edit-remaining-credits");
+      const expiresInput = document.getElementById("edit-package-expires");
+
+      if (packageVal.includes("8")) {
+        totalInput.value = 8;
+        remainingInput.value = 8;
+        const expiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        expiresInput.value = expiresDate.toISOString().split("T")[0];
+      } else if (packageVal.includes("12")) {
+        totalInput.value = 12;
+        remainingInput.value = 12;
+        const expiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        expiresInput.value = expiresDate.toISOString().split("T")[0];
+      } else {
+        totalInput.value = 0;
+        remainingInput.value = 0;
+        expiresInput.value = "";
+      }
+    }
+
+    // Calculate next Monday date YYYY-MM-DD
+    function getNextMondayDate() {
+      const d = new Date();
+      const day = d.getDay();
+      const daysUntilMonday = day === 0 ? 1 : (8 - day);
+      const nextMonday = new Date(d.getTime() + daysUntilMonday * 24 * 60 * 60 * 1000);
+      return nextMonday.toISOString().split("T")[0];
+    }
+
+    // Generate weekly schedule form submit handler
+    window.addEventListener("DOMContentLoaded", () => {
+      const genForm = document.getElementById("generate-schedule-form");
+      if (genForm) {
+        genForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const mondayDate = document.getElementById("generate-monday-date").value;
+          if (!mondayDate) return;
+
+          const d = new Date(mondayDate);
+          if (d.getDay() !== 1) { // 1 is Monday
+            alert("Molimo odaberite datum koji je ponedjeljak!");
+            return;
+          }
+
+          if (!confirm("Jeste li sigurni da želite generirati raspored za tjedan od " + formatDateStr(mondayDate) + "? Već postojeći termini za te dane neće biti izbrisani.")) return;
+
+          try {
+            const res = await fetch(`${API_BASE}/api/admin/generate-weekly-schedule`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ monday_date: mondayDate })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              alert("Tjedni raspored je uspješno generiran!");
+              fetchActivityLogs(true);
+              loadDailyOverview();
+            } else {
+              alert(data.error || "Greška pri generiranju rasporeda.");
+            }
+          } catch (err) {
+            alert("Greška na poslužitelju.");
+          }
+        });
+      }
+    });
+
+    function closeCreditsModal() {
+      document.getElementById("edit-credits-modal").style.display = "none";
+    }
+
+    // Save edited credits
+    document.getElementById("edit-credits-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const clientId = document.getElementById("edit-client-id").value;
+      const packageName = document.getElementById("edit-package-name").value;
+      const totalCredits = document.getElementById("edit-total-credits").value;
+      const remainingCredits = document.getElementById("edit-remaining-credits").value;
+      const packageExpires = document.getElementById("edit-package-expires").value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/update-client-credits`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_id: clientId,
+            package_name: packageName,
+            total_credits: totalCredits,
+            remaining_credits: remainingCredits,
+            package_expires: packageExpires || null
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert("Članarina je uspješno izmijenjena!");
+          closeCreditsModal();
+          loadClientsList();
+        } else {
+          alert(data.error || "Greška pri ažuriranju članarine.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    });
+
+    // TAB 3: RASPORED TERMINA (CREATING SESSIONS)
+    document.getElementById("add-session-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("session-title").value;
+      const instructor = document.getElementById("session-instructor").value;
+      const type = document.getElementById("session-type").value;
+      const capacity = document.getElementById("session-capacity").value;
+      const date = document.getElementById("session-date").value;
+      const time = document.getElementById("session-time").value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/create-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, instructor, type, capacity, date, time })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert("Novi termin je kreiran!");
+          fetchActivityLogs(true);
+          // Reset form to today and default time
+          document.getElementById("add-session-form").reset();
+          const today = new Date().toISOString().split("T")[0];
+          document.getElementById("session-date").value = today;
+          adjustCapacity();
+          loadDailyOverview();
+        } else {
+          alert(data.error || "Greška pri kreiranju termina.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    });
+
+    // Format helper YYYY-MM-DD to DD.MM.YYYY.
+    function formatDateStr(dateStr) {
+      if (!dateStr) return "";
+      const [year, month, day] = dateStr.split('-');
+      return `${day}.${month}.${year}.`;
     }
 
     function logout() {
       sessionStorage.clear();
       window.location.href = "index.html";
+    }
+
+    // Custom Alert Modal Helpers
+    function showCustomAlert(message, tempPassword = "") {
+      document.getElementById("custom-alert-message").textContent = message;
+      const pwdContainer = document.getElementById("password-display-container");
+      const pwdEl = document.getElementById("display-temp-password");
+      const copyStatus = document.getElementById("copy-status");
+      copyStatus.textContent = "";
+      
+      if (tempPassword) {
+        pwdEl.textContent = tempPassword;
+        pwdContainer.style.display = "flex";
+      } else {
+        pwdContainer.style.display = "none";
+      }
+      document.getElementById("custom-alert-modal").style.display = "flex";
+    }
+
+    function closeCustomAlert() {
+      document.getElementById("custom-alert-modal").style.display = "none";
+    }
+
+    function copyTempPassword() {
+      const pwdText = document.getElementById("display-temp-password").textContent;
+      navigator.clipboard.writeText(pwdText).then(() => {
+        document.getElementById("copy-status").textContent = "Lozinka kopirana u međuspremnik!";
+      }).catch(err => {
+        document.getElementById("copy-status").textContent = "Greška pri kopiranju. Označite tekst za kopiranje.";
+      });
+    }
+
+    // Pomoćne funkcije za otkazivanje pojedinačne rezervacije klijenta
+    function adminCancelBooking(bookingId) {
+      document.getElementById("cancel-booking-id").value = bookingId;
+      document.getElementById("admin-cancel-modal").style.display = "flex";
+    }
+
+    function closeAdminCancelModal() {
+      document.getElementById("admin-cancel-modal").style.display = "none";
+    }
+
+    async function submitAdminCancel(refund) {
+      const bookingId = document.getElementById("cancel-booking-id").value;
+      if (!bookingId) return;
+      
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/cancel-booking`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ booking_id: parseInt(bookingId), refund: refund })
+        });
+        
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message);
+          closeAdminCancelModal();
+          fetchActivityLogs(true);
+          loadDailyOverview();
+        } else {
+          alert(data.error || "Greška pri otkazivanju rezervacije.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    }
+
+    // Zapisnik aktivnosti (Drawer) JS
+    let drawerOpen = false;
+
+    function toggleActivityDrawer() {
+      const drawer = document.getElementById("activity-drawer");
+      const overlay = document.getElementById("drawer-overlay");
+      
+      drawerOpen = !drawerOpen;
+      if (drawerOpen) {
+        drawer.classList.add("open");
+        overlay.classList.add("active");
+        fetchActivityLogs(false);
+      } else {
+        drawer.classList.remove("open");
+        overlay.classList.remove("active");
+      }
+    }
+
+    function formatRelativeTime(dateStr) {
+      try {
+        // SQLite created_at uses UTC format "YYYY-MM-DD HH:MM:SS"
+        const past = new Date(dateStr.replace(" ", "T") + "Z");
+        const now = new Date();
+        const diffMs = now.getTime() - past.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        
+        if (diffMins < 1) return "Upravo sad";
+        if (diffMins < 60) return `prije ${diffMins} min`;
+        
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) {
+          if (diffHours === 1) return "prije 1 sat";
+          if (diffHours >= 2 && diffHours <= 4) return `prije ${diffHours} sata`;
+          return `prije ${diffHours} sati`;
+        }
+        
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays === 1) return "jučer";
+        if (diffDays >= 2 && diffDays <= 4) return `prije ${diffDays} dana`;
+        return `prije ${diffDays} dana`;
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    async function fetchActivityLogs(silent = false) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/activity-logs`);
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+          const logs = data.logs || [];
+          const lastReadId = parseInt(localStorage.getItem("agram_last_read_log_id") || "0");
+          
+          let unreadCount = 0;
+          let maxId = lastReadId;
+          
+          logs.forEach(log => {
+            if (log.id > lastReadId) {
+              unreadCount++;
+            }
+            if (log.id > maxId) {
+              maxId = log.id;
+            }
+          });
+
+          const badge = document.getElementById("bell-badge-count");
+          if (unreadCount > 0) {
+            badge.textContent = unreadCount;
+            badge.style.display = "flex";
+          } else {
+            badge.style.display = "none";
+          }
+
+          if (drawerOpen && !silent) {
+            const listContainer = document.getElementById("drawer-content-list");
+            if (logs.length === 0) {
+              listContainer.innerHTML = `<p style="text-align: center; color: var(--text-muted); font-style: italic; margin-top: 20px;">Nema zabilježenih aktivnosti.</p>`;
+            } else {
+              listContainer.innerHTML = logs.map(log => {
+                const isNew = log.id > lastReadId;
+                const relativeTime = formatRelativeTime(log.created_at);
+                return `
+                  <div class="log-item ${isNew ? 'new-log' : ''}">
+                    <div>${log.details}</div>
+                    <div class="log-time" title="${log.created_at}">${relativeTime}</div>
+                  </div>
+                `;
+              }).join('');
+            }
+            
+            if (maxId > lastReadId) {
+              localStorage.setItem("agram_last_read_log_id", maxId);
+              setTimeout(() => {
+                badge.style.display = "none";
+              }, 1000);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Greška pri dohvaćanju zapisnika:", err);
+      }
+    }
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js")
+          .then(reg => console.log("Service Worker registered!", reg))
+          .catch(err => console.log("Service Worker registration failed!", err));
+      });
     }
   </script>
 </body>

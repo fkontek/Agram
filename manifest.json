@@ -1,0 +1,23 @@
+{
+  "name": "Agram Pilates Reformer",
+  "short_name": "Agram Pilates",
+  "description": "Studio za Pilates Reformer Agram - Rezervacije i Evidencija",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1510",
+  "theme_color": "#c5a880",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./agram.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "./img/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
