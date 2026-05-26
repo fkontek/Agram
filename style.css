@@ -1642,3 +1642,16 @@ p {
     gap: 20px;
   }
 }
+
+/* Fix CTA button readability on light Instagram section background */
+#instagram-feed .cta {
+  color: var(--text-dark);
+  border-color: var(--primary-gold-dark);
+}
+
+#instagram-feed .cta:hover {
+  color: var(--text-light);
+  background-color: var(--primary-gold-dark);
+  border-color: var(--primary-gold-dark);
+  box-shadow: 0 4px 15px rgba(169, 142, 101, 0.4);
+}
