@@ -439,21 +439,22 @@
     .drawer {
       position: fixed;
       top: 0;
-      right: -400px;
+      right: 0;
       width: 400px;
       max-width: 100%;
       height: 100vh;
       background-color: white;
       box-shadow: -5px 0 25px rgba(26, 21, 16, 0.15);
       z-index: 10000;
-      transition: right var(--transition-normal);
+      transform: translateX(100%);
+      transition: transform var(--transition-normal);
       display: flex;
       flex-direction: column;
       border-left: 1px solid var(--border-color);
     }
 
     .drawer.open {
-      right: 0;
+      transform: translateX(0);
     }
 
     .drawer-header {
@@ -568,6 +569,12 @@
     .mobile-app { display: none; width: 100%; }
 
     @media (max-width: 768px) {
+      html, body {
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100%;
+      }
+
       body {
         padding: 0;
         margin: 0;
