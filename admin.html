@@ -737,28 +737,31 @@
         border-top: 1px solid rgba(197,168,128,0.12);
         flex-shrink: 0;
         padding-bottom: env(safe-area-inset-bottom, 0px);
+        overflow: hidden;
+        width: 100%;
       }
       .mobile-nav-btn {
         flex: 1;
+        min-width: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 3px;
-        padding: 10px 8px 12px;
+        gap: 2px;
+        padding: 8px 2px 10px;
         background: none;
         border: none;
         cursor: pointer;
         color: rgba(255,255,255,0.35);
-        font-size: 0.95rem;
         font-family: 'Montserrat', sans-serif;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: 0;
         transition: color 0.2s;
+        overflow: hidden;
       }
       .mobile-nav-btn.active { color: var(--primary-gold); }
-      .mobile-nav-btn svg { width: 22px; height: 22px; }
-      .mobile-nav-btn span { font-size: 0.9rem; }
+      .mobile-nav-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+      .mobile-nav-btn span { font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     }
   </style>
 </head>
@@ -1213,7 +1216,7 @@
     <nav class="mobile-bottom-nav">
       <button class="mobile-nav-btn active" id="mobile-nav-evidencija" onclick="switchMobileTab('evidencija')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        <span>Evidencija</span>
+        <span>Evidenc.</span>
       </button>
       <button class="mobile-nav-btn" id="mobile-nav-klijenti" onclick="switchMobileTab('klijenti')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
