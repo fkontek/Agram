@@ -115,16 +115,16 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/login") {
         const { username, password } = await request.json();
         if (!username || !password) {
-          return jsonResponse({ success: false, error: "Korisničko ime i lozinka su obavezni." }, 400);
+          return jsonResponse({ success: false, error: "Korisničko ime/e-mail i lozinka su obavezni." }, 400);
         }
 
         const hashedPassword = await hashPassword(password);
         const user = await env.DB.prepare(
-          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire FROM Clients WHERE username = ? AND password = ?"
-        ).bind(username, hashedPassword).first();
+          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire FROM Clients WHERE (username = ? OR email = ?) AND password = ?"
+        ).bind(username, username, hashedPassword).first();
 
         if (!user) {
-          return jsonResponse({ success: false, error: "Pogrešno korisničko ime ili lozinka." }, 401);
+          return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401);
         }
 
         if (user.status === "pending") {
@@ -179,6 +179,59 @@ export default {
         await env.DB.prepare("UPDATE Clients SET password = ?, must_change_password = 0 WHERE id = ?").bind(hashedNew, user_id).run();
 
         return jsonResponse({ success: true, message: "Lozinka je uspješno promijenjena!" });
+      }
+
+      // FORGOT PASSWORD (reset via email)
+      if (request.method === "POST" && url.pathname === "/api/forgot-password") {
+        const { email } = await request.json();
+        if (!email) {
+          return jsonResponse({ success: false, error: "E-mail adresa je obavezna." }, 400);
+        }
+
+        const client = await env.DB.prepare(
+          "SELECT id, username, email, status FROM Clients WHERE email = ?"
+        ).bind(email).first();
+
+        if (!client) {
+          return jsonResponse({ success: false, error: "Korisnik s tom e-mail adresom nije pronađen." }, 404);
+        }
+
+        if (client.status === "pending") {
+          return jsonResponse({ success: false, error: "Vaš profil još nije odobren. Molimo pričekajte odobrenje administratora." }, 403);
+        }
+
+        const tempPass = generateTempPassword();
+        const hashedTemp = await hashPassword(tempPass);
+
+        await env.DB.prepare(
+          "UPDATE Clients SET password = ?, must_change_password = 1 WHERE id = ?"
+        ).bind(hashedTemp, client.id).run();
+
+        await logActivity(env, `Klijent '${client.username}' je zatražio ponovno postavljanje lozinke (zaboravljena lozinka).`);
+
+        // Slanje maila s novom privremenom lozinkom
+        const emailSubject = "Pilates Reformer Agram - Reset lozinke";
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+            <h2 style="color: #a98e65;">Ponovno postavljanje lozinke</h2>
+            <p>Zatražili ste ponovno postavljanje lozinke za Vaš račun u Pilates Reformer studiju Agram. Vaša nova privremena lozinka je:</p>
+            <table style="border-spacing: 10px;">
+              <tr><td><b>Korisničko ime:</b></td><td>${client.username}</td></tr>
+              <tr><td><b>Privremena lozinka:</b></td><td><code style="background-color: #eee; padding: 3px 6px; border-radius: 3px;">${tempPass}</code></td></tr>
+            </table>
+            <p style="margin-top: 20px;">
+              Molimo Vas da se prijavite koristeći ove podatke, a sustav će Vas odmah zatražiti da postavite novu trajnu lozinku.
+            </p>
+            <p style="margin-top: 30px;">
+              <a href="https://pilates-reformer-agram.com/prijava.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
+                Prijavi se ovdje
+              </a>
+            </p>
+          </div>
+        `;
+        const emailSent = await sendEmail(env, client.email, emailSubject, emailHtml);
+
+        return jsonResponse({ success: true, message: "Nova privremena lozinka je poslana na Vaš e-mail.", emailSent });
       }
 
       // GET NEWS FEED

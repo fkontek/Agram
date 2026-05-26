@@ -174,13 +174,14 @@
     <div class="auth-card">
       <h2>Prijava</h2>
       <form id="login-form">
-        <label for="username">Korisničko ime</label>
-        <input type="text" id="username" name="username" required placeholder="Unesi korisničko ime" />
+        <label for="username">Korisničko ime ili E-mail</label>
+        <input type="text" id="username" name="username" required placeholder="Unesi korisničko ime ili e-mail" />
       
         <label for="password">Lozinka</label>
         <input type="password" id="password" name="password" required placeholder="••••••••" />
       
         <button type="submit">Prijava</button>
+        <a href="#" onclick="openForgotPasswordModal(event)" style="color: var(--primary-gold); font-size: 1.15rem; margin-top: 15px; text-align: center; text-decoration: none; display: block;">Zaboravio/la sam lozinku</a>
       </form>
     </div>
     
@@ -214,6 +215,25 @@
         <input type="password" id="confirm_pass" required placeholder="Ponovite novu lozinku" />
         
         <button type="submit">Spremi lozinku</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal za zaboravljenu lozinku -->
+  <div id="forgot-password-modal" style="display: none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.95); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+    <div class="auth-card" style="max-width: 450px; width: 100%; background: var(--dark-bg); border-color: var(--primary-gold);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(197, 168, 128, 0.2); padding-bottom: 10px; margin-bottom: 20px;">
+        <h2 style="margin: 0; border: none; padding: 0;">Zaboravljena lozinka</h2>
+        <button onclick="closeForgotPasswordModal()" style="background: none; border: none; font-size: 2.4rem; cursor: pointer; color: var(--text-light); padding: 0; margin: 0; line-height: 1;">&times;</button>
+      </div>
+      <p style="font-size: 1.25rem; color: rgba(255,255,255,0.85); margin-bottom: 20px; line-height: 2rem;">
+        Unesite Vašu e-mail adresu i poslat ćemo Vam novu privremenu lozinku za prijavu.
+      </p>
+      <form id="forgot-password-form">
+        <label for="reset-email">E-mail adresa</label>
+        <input type="email" id="reset-email" required placeholder="primjer@mail.com" />
+        
+        <button type="submit">Pošalji lozinku</button>
       </form>
     </div>
   </div>
@@ -406,6 +426,41 @@
         document.getElementById("copy-status").textContent = "Greška pri kopiranju. Označite tekst za kopiranje.";
       });
     }
+
+    // Forgot password modal controls
+    function openForgotPasswordModal(e) {
+      if (e) e.preventDefault();
+      document.getElementById("forgot-password-modal").style.display = "flex";
+    }
+
+    function closeForgotPasswordModal() {
+      document.getElementById("forgot-password-modal").style.display = "none";
+      document.getElementById("forgot-password-form").reset();
+    }
+
+    // Forgot password form handler
+    document.getElementById("forgot-password-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const email = document.getElementById("reset-email").value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/forgot-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          alert("Nova privremena lozinka je uspješno poslana na Vaš e-mail!");
+          closeForgotPasswordModal();
+        } else {
+          alert(data.error || "Greška pri slanju zahtjeva.");
+        }
+      } catch (err) {
+        alert("Greška u komunikaciji sa serverom.");
+      }
+    });
   </script>
   <script>
     if ("serviceWorker" in navigator) {
