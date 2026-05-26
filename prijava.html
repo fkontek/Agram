@@ -221,7 +221,7 @@
   <!-- CUSTOM ALERT MODAL -->
   <div id="custom-alert-modal" style="display: none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.95); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
     <div class="auth-card" style="max-width: 450px; width: 100%; background: var(--dark-bg); border-color: var(--primary-gold); text-align: center;">
-      <h2 style="text-align: center; border-bottom: none; margin-bottom: 10px;">Registracija Uspješna</h2>
+      <h2 style="text-align: center; border-bottom: none; margin-bottom: 10px;">Zahtjev Poslan</h2>
       <div style="margin-bottom: 20px;">
         <p id="custom-alert-message" style="font-size: 1.35rem; margin-top: 5px; color: rgba(255,255,255,0.85); line-height: 2rem;"></p>
         <div id="password-display-container" style="display: none; margin: 15px 0; background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: var(--radius-sm); border: 1px dashed var(--primary-gold); align-items: center; justify-content: center; gap: 10px;">
@@ -349,10 +349,10 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
-          // Display the temporary password in a premium visual alert
-          showCustomAlert("Registracija uspješna! Privremena lozinka je poslana na Vaš e-mail.", data.tempPassword);
+          // Display the success message about approval
+          showCustomAlert("Zahtjev za registraciju je uspješno poslan! Nakon što administrator odobri Vaš profil, dobit ćete e-mail s privremenom lozinkom za prijavu.");
           
-          // Reset register form and prefill login
+          // Reset register form and prefill login username
           e.target.reset();
           document.getElementById("username").value = username;
           document.getElementById("password").focus();

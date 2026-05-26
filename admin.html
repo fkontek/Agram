@@ -804,6 +804,23 @@
 
     <!-- TAB 2: KLIJENTI & PAKETI -->
     <div id="tab-klijenti" class="tab-content">
+      <!-- Zahtjevi za registraciju (Klijenti na čekanju) -->
+      <div id="pending-clients-section" class="admin-card" style="display: none; border-color: #b22222; background-color: rgba(178, 34, 34, 0.02);">
+        <h2 style="color: #b22222;">Zahtjevi za registraciju (Klijenti na čekanju)</h2>
+        <table id="pending-clients-table">
+          <thead>
+            <tr>
+              <th>Korisničko ime</th>
+              <th>Email</th>
+              <th>Akcije</th>
+            </tr>
+          </thead>
+          <tbody id="pending-clients-tbody">
+            <tr><td colspan="3">Učitavanje...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- Dodaj klijenta -->
       <div class="admin-card">
         <h2>Dodaj novog klijenta</h2>
@@ -1018,6 +1035,14 @@
           </form>
         </div>
 
+        <!-- Mobile Pending Clients Section -->
+        <div id="mobile-pending-clients-section" style="display: none; margin-bottom: 20px;">
+          <div class="mobile-section-title" style="color: #b22222; border-left-color: #b22222;">Zahtjevi na čekanju</div>
+          <div id="mobile-pending-clients-list" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="mobile-empty">Učitavanje...</div>
+          </div>
+        </div>
+
         <div class="mobile-section-title">Popis klijenata</div>
         <div id="mobile-clients-list" style="display: flex; flex-direction: column; gap: 10px;">
           <div class="mobile-empty">Učitavanje klijenata...</div>
@@ -1190,6 +1215,26 @@
       <button onclick="closeAdminCancelModal()" class="btn-action btn-edit" style="width: 100%; border-radius: var(--radius-sm); padding: 10px;">
         Odustani
       </button>
+    </div>
+  </div>
+
+  <!-- UPITNIK PREGLED MODAL -->
+  <div id="view-questionnaire-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>Zdravstveni upitnik klijenta</h3>
+        <button class="close-btn" onclick="closeQuestionnaireModal()">&times;</button>
+      </div>
+      <div style="max-height: 400px; overflow-y: auto; padding-right: 5px; text-align: left;">
+        <div style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+          <p style="margin: 0; font-size: 1.35rem; color: var(--text-dark);">Klijent: <strong id="q-modal-username" style="color: var(--primary-gold-dark);"></strong></p>
+          <p style="margin: 5px 0 0 0; font-size: 1.2rem; color: var(--text-muted);">Email: <span id="q-modal-email"></span></p>
+        </div>
+        <div id="q-answers-container" style="display: flex; flex-direction: column; gap: 15px; font-size: 1.3rem; line-height: 1.8rem; color: var(--text-dark);">
+          <!-- Dynamic answers -->
+        </div>
+      </div>
+      <button onclick="closeQuestionnaireModal()" class="btn-submit" style="width: 100%; margin-top: 20px; display: flex; justify-content: center;">Zatvori</button>
     </div>
   </div>
 
@@ -1540,6 +1585,9 @@
       const mobileList = document.getElementById("mobile-clients-list");
       mobileList.innerHTML = "<div class='mobile-empty'>Učitavanje klijenata...</div>";
 
+      // Također učitaj klijente na čekanju
+      loadPendingClients();
+
       try {
         const res = await fetch(`${API_BASE}/api/admin/clients`);
         const data = await res.json();
@@ -1564,7 +1612,10 @@
               <td>${client.package_expires ? formatDateStr(client.package_expires) : "Nema"}</td>
               <td><span class="badge badge-present">${client.attended_count} dolazaka</span></td>
               <td>
-                <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
+                <div style="display: flex; gap: 6px;">
+                  <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
+                  <button class="btn-action btn-edit" style="border-color: var(--primary-gold-dark);" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})">Karton</button>
+                </div>
               </td>
             `;
             tbody.appendChild(tr);
@@ -1592,15 +1643,18 @@
               <div class="mobile-client-username">${client.username}</div>
               <div class="mobile-client-email">${client.email}</div>
             </div>
-            <button class="mobile-btn-action" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="background: transparent; color: var(--primary-gold-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Uredi</button>
           </div>
           <div class="mobile-client-package-info">
             <div>Paket: <strong>${client.package_name || 'Nema'}</strong></div>
             <div>Treninga: <strong>${client.remaining_credits} / ${client.total_credits}</strong></div>
           </div>
-          <div style="display: flex; justify-content: space-between; font-size: 1.1rem; color: var(--text-muted); margin-top: 4px;">
+          <div style="display: flex; justify-content: space-between; font-size: 1.15rem; color: var(--text-muted); margin-top: 4px;">
             <div>Istječe: ${client.package_expires ? formatDateStr(client.package_expires) : 'Nema'}</div>
             <div>Ukupno odrađeno: <strong>${client.attended_count}</strong></div>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(197,168,128,0.1); padding-top: 8px;">
+            <button class="mobile-btn-action" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Uredi</button>
+            <button class="mobile-btn-action" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Karton</button>
           </div>
         `;
         container.appendChild(card);
@@ -2172,6 +2226,176 @@
         });
       }
     });
+
+    // --- REGISTRATIONS AND QUESTIONNAIRE FUNCTIONS ---
+    async function loadPendingClients() {
+      const tbody = document.getElementById("pending-clients-tbody");
+      const mobileList = document.getElementById("mobile-pending-clients-list");
+      const desktopSection = document.getElementById("pending-clients-section");
+      const mobileSection = document.getElementById("mobile-pending-clients-section");
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/pending-clients`);
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          const pending = data.clients || [];
+
+          if (pending.length === 0) {
+            if (desktopSection) desktopSection.style.display = "none";
+            if (mobileSection) mobileSection.style.display = "none";
+            return;
+          }
+
+          // Show sections
+          if (desktopSection) desktopSection.style.display = "block";
+          if (mobileSection) mobileSection.style.display = "block";
+
+          // Render Desktop Table
+          if (tbody) {
+            tbody.innerHTML = "";
+            pending.forEach(client => {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                <td><strong>${client.username}</strong></td>
+                <td>${client.email}</td>
+                <td>
+                  <button class="btn-action btn-checkin" onclick="approveClient(${client.id}, '${client.username}')">Odobri</button>
+                  <button class="btn-action btn-delete" style="margin-left: 8px;" onclick="rejectClient(${client.id}, '${client.username}')">Odbaci</button>
+                </td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+
+          // Render Mobile List
+          if (mobileList) {
+            mobileList.innerHTML = "";
+            pending.forEach(client => {
+              const card = document.createElement("div");
+              card.className = "mobile-client-card";
+              card.style.borderColor = "#b22222";
+              card.style.background = "rgba(178, 34, 34, 0.01)";
+              card.innerHTML = `
+                <div class="mobile-client-header">
+                  <div>
+                    <div class="mobile-client-username">${client.username}</div>
+                    <div class="mobile-client-email">${client.email}</div>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(178,34,34,0.1); padding-top: 8px;">
+                  <button class="mobile-btn-action mobile-btn-checkin" style="flex: 1;" onclick="approveClient(${client.id}, '${client.username}')">Odobri</button>
+                  <button class="mobile-btn-action mobile-btn-cancel-att" style="flex: 1;" onclick="rejectClient(${client.id}, '${client.username}')">Odbaci</button>
+                </div>
+              `;
+              mobileList.appendChild(card);
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Greška pri dohvaćanju klijenata na čekanju:", err);
+      }
+    }
+
+    async function approveClient(clientId, username) {
+      if (!confirm(`Odobriti registraciju za korisnika '${username}'? Korisniku će se generirati i poslati privremena lozinka na e-mail.`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/approve-client`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_id: clientId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showCustomAlert(`Zahtjev odobren! Privremena lozinka je poslana na e-mail korisnika.`, data.tempPassword);
+          fetchActivityLogs(true);
+          loadClientsList();
+        } else {
+          alert(data.error || "Greška pri odobrenju klijenta.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    }
+
+    async function rejectClient(clientId, username) {
+      if (!confirm(`Jeste li sigurni da želite ODBACITI i obrisati zahtjev za registraciju korisnika '${username}'?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/reject-client`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_id: clientId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert("Zahtjev je odbijen i klijent je obrisan.");
+          fetchActivityLogs(true);
+          loadClientsList();
+        } else {
+          alert(data.error || "Greška pri odbijanju klijenta.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    }
+
+    function viewClientQuestionnaire(client) {
+      if (!client.questionnaire) {
+        alert("Klijent još nije ispunio zdravstveni upitnik.");
+        return;
+      }
+
+      let answers = null;
+      try {
+        answers = typeof client.questionnaire === "string" ? JSON.parse(client.questionnaire) : client.questionnaire;
+      } catch (e) {
+        console.error("Greška pri parsiranju upitnika:", e);
+        alert("Greška pri učitavanju zdravstvenog kartona.");
+        return;
+      }
+
+      if (!answers) {
+        alert("Zdravstveni karton je prazan.");
+        return;
+      }
+
+      document.getElementById("q-modal-username").textContent = client.username;
+      document.getElementById("q-modal-email").textContent = client.email;
+
+      const container = document.getElementById("q-answers-container");
+      container.innerHTML = "";
+
+      const questions = [
+        { key: "age", label: "Godine" },
+        { key: "gender", label: "Spol" },
+        { key: "activity", label: "Stupanj tjelesne aktivnosti" },
+        { key: "experience", label: "Iskustvo s pilatesom / reformerom" },
+        { key: "injuries_current", label: "Trenutne ozljede, bolove ili zdravstvene tegobe" },
+        { key: "injuries_past", label: "Prijašnje ozljede, kronični problemi ili operacije" },
+        { key: "pregnancy", label: "Trudnoća (samo za žene)" }
+      ];
+
+      questions.forEach(q => {
+        const itemDiv = document.createElement("div");
+        itemDiv.style.borderBottom = "1px solid var(--border-color)";
+        itemDiv.style.paddingBottom = "10px";
+
+        const val = answers[q.key] !== undefined && answers[q.key] !== null ? answers[q.key] : "—";
+        itemDiv.innerHTML = `
+          <div style="font-weight: 700; color: var(--text-dark); font-size: 1.15rem; text-transform: uppercase; margin-bottom: 4px;">${q.label}</div>
+          <div style="font-size: 1.35rem; color: #2c251e; word-wrap: break-word; white-space: pre-line;">${val}</div>
+        `;
+        container.appendChild(itemDiv);
+      });
+
+      document.getElementById("view-questionnaire-modal").style.display = "flex";
+    }
+
+    function closeQuestionnaireModal() {
+      document.getElementById("view-questionnaire-modal").style.display = "none";
+    }
   </script>
   <script>
     if ("serviceWorker" in navigator) {

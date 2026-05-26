@@ -120,17 +120,21 @@ export default {
 
         const hashedPassword = await hashPassword(password);
         const user = await env.DB.prepare(
-          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires FROM Clients WHERE username = ? AND password = ?"
+          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire FROM Clients WHERE username = ? AND password = ?"
         ).bind(username, hashedPassword).first();
 
         if (!user) {
           return jsonResponse({ success: false, error: "Pogrešno korisničko ime ili lozinka." }, 401);
         }
 
+        if (user.status === "pending") {
+          return jsonResponse({ success: false, error: "Vaš profil još nije odobren od strane administratora." }, 403);
+        }
+
         return jsonResponse({ success: true, user });
       }
 
-      // REGISTER (Public registration, generates temp password and emails it)
+      // REGISTER (Public registration, status 'pending' awaiting admin approval)
       if (request.method === "POST" && url.pathname === "/api/register") {
         const { username, email } = await request.json();
         
@@ -144,45 +148,17 @@ export default {
           return jsonResponse({ success: false, error: "Korisnik s tim korisničkim imenom ili e-mailom već postoji." }, 400);
         }
 
-        const tempPass = generateTempPassword();
-        const hashedTemp = await hashPassword(tempPass);
-        
-        // Insert client with 0 credits and "Nema paketa"
+        // Insert client with 'pending' status, 'PENDING' password, and null questionnaire
         await env.DB.prepare(`
-          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires)
-          VALUES (?, ?, ?, 0, 1, 'Nema aktivnog paketa', 0, 0, NULL)
-        `).bind(username, email, hashedTemp).run();
+          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire)
+          VALUES (?, ?, 'PENDING', 0, 1, 'Nema aktivnog paketa', 0, 0, NULL, 'pending', NULL)
+        `).bind(username, email).run();
 
-        await logActivity(env, `Novi klijent '${username}' se registrirao u sustav.`);
-
-        // Send Email via Resend
-        const emailSubject = "Pilates Reformer Agram - Registracija";
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
-            <h2 style="color: #a98e65;">Dobrodošli u Pilates Reformer studio Agram!</h2>
-            <p>Vaš zahtjev za registraciju je primljen. Kreirali smo vaš račun s privremenom lozinkom:</p>
-            <table style="border-spacing: 10px;">
-              <tr><td><b>Korisničko ime:</b></td><td>${username}</td></tr>
-              <tr><td><b>Privremena lozinka:</b></td><td><code style="background-color: #eee; padding: 3px 6px; border-radius: 3px;">${tempPass}</code></td></tr>
-            </table>
-            <p style="margin-top: 20px;">
-              Molimo vas da se prijavite i postavite vlastitu lozinku. Kako biste rezervirali treninge, kontaktirajte studio radi uplate i aktivacije paketa.
-            </p>
-            <p style="margin-top: 30px;">
-              <a href="https://pilates-reformer-agram.com/prijava.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
-                Prijavi se ovdje
-              </a>
-            </p>
-          </div>
-        `;
-
-        const emailSent = await sendEmail(env, email, emailSubject, emailHtml);
+        await logActivity(env, `Novi klijent '${username}' je poslao zahtjev za registraciju.`);
 
         return jsonResponse({
           success: true,
-          message: "Registracija uspješna! Privremena lozinka je poslana na vaš e-mail.",
-          tempPassword: tempPass, // Return for testing/fallback
-          emailSent: emailSent
+          message: "Zahtjev za registraciju je poslan! Nakon što administrator odobri Vaš profil, dobit ćete e-mail s privremenom lozinkom za prijavu."
         });
       }
 
@@ -387,7 +363,7 @@ export default {
 
         // 3. Current user details
         const userDetails = await env.DB.prepare(
-          "SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password FROM Clients WHERE id = ?"
+          "SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire FROM Clients WHERE id = ?"
         ).bind(userId).first();
 
         // 4. Notifications
@@ -510,15 +486,104 @@ export default {
       }
 
 
+      // CLIENT: SAVE HEALTH QUESTIONNAIRE
+      if (request.method === "POST" && url.pathname === "/api/client/questionnaire") {
+        const { user_id, answers } = await request.json();
+        if (!user_id || !answers) {
+          return jsonResponse({ success: false, error: "Nedostaju parametri." }, 400);
+        }
+
+        const answersStr = JSON.stringify(answers);
+        await env.DB.prepare("UPDATE Clients SET questionnaire = ? WHERE id = ?").bind(answersStr, user_id).run();
+        
+        // Log activity
+        const user = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
+        if (user) {
+          await logActivity(env, `Klijent '${user.username}' je ispunio zdravstveni upitnik.`);
+        }
+        
+        return jsonResponse({ success: true, message: "Upitnik uspješno spremljen." });
+      }
+
+
       // --- ADMIN ONLY ENDPOINTS (Wife's dashboard) ---
 
-      // ADMIN: GET LIST OF CLIENTS
+      // ADMIN: GET PENDING CLIENTS
+      if (request.method === "GET" && url.pathname === "/api/admin/pending-clients") {
+        const { results } = await env.DB.prepare(
+          "SELECT id, username, email, created_at FROM Clients WHERE status = 'pending' ORDER BY created_at DESC"
+        ).all();
+        return jsonResponse({ success: true, clients: results });
+      }
+
+      // ADMIN: APPROVE CLIENT
+      if (request.method === "POST" && url.pathname === "/api/admin/approve-client") {
+        const { client_id } = await request.json();
+        if (!client_id) {
+          return jsonResponse({ success: false, error: "ID klijenta je obavezan." }, 400);
+        }
+
+        const client = await env.DB.prepare("SELECT username, email FROM Clients WHERE id = ? AND status = 'pending'").bind(client_id).first();
+        if (!client) {
+          return jsonResponse({ success: false, error: "Klijent na čekanju nije pronađen." }, 404);
+        }
+
+        const tempPass = generateTempPassword();
+        const hashedTemp = await hashPassword(tempPass);
+
+        await env.DB.prepare("UPDATE Clients SET status = 'approved', password = ?, must_change_password = 1 WHERE id = ?").bind(hashedTemp, client_id).run();
+        await logActivity(env, `Admin je odobrio registraciju klijentu '${client.username}' i poslao mu privremenu lozinku.`);
+
+        // Slanje maila s privremenom lozinkom
+        const emailSubject = "Pilates Reformer Agram - Profil odobren";
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+            <h2 style="color: #a98e65;">Vaš profil je odobren!</h2>
+            <p>Dobrodošli u Pilates Reformer studio Agram! Vaš zahtjev za registraciju je odobren. Možete se prijaviti sa sljedećim podacima:</p>
+            <table style="border-spacing: 10px;">
+              <tr><td><b>Korisničko ime:</b></td><td>${client.username}</td></tr>
+              <tr><td><b>Privremena lozinka:</b></td><td><code style="background-color: #eee; padding: 3px 6px; border-radius: 3px;">${tempPass}</code></td></tr>
+            </table>
+            <p style="margin-top: 20px;">
+              Pri prvoj prijavi morat ćete postaviti novu trajnu lozinku i ispuniti kratki zdravstveni upitnik.
+            </p>
+            <p style="margin-top: 30px;">
+              <a href="https://pilates-reformer-agram.com/prijava.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
+                Prijavi se ovdje
+              </a>
+            </p>
+          </div>
+        `;
+        const emailSent = await sendEmail(env, client.email, emailSubject, emailHtml);
+
+        return jsonResponse({ success: true, message: "Klijent je odobren i poslan mu je e-mail s lozinkom.", tempPassword: tempPass, emailSent });
+      }
+
+      // ADMIN: REJECT CLIENT
+      if (request.method === "POST" && url.pathname === "/api/admin/reject-client") {
+        const { client_id } = await request.json();
+        if (!client_id) {
+          return jsonResponse({ success: false, error: "ID klijenta je obavezan." }, 400);
+        }
+
+        const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ? AND status = 'pending'").bind(client_id).first();
+        if (!client) {
+          return jsonResponse({ success: false, error: "Klijent na čekanju nije pronađen." }, 404);
+        }
+
+        await env.DB.prepare("DELETE FROM Clients WHERE id = ?").bind(client_id).run();
+        await logActivity(env, `Admin je odbio zahtjev za registraciju klijenta '${client.username}'.`);
+
+        return jsonResponse({ success: true, message: "Zahtjev za registraciju je odbačen." });
+      }
+
+      // ADMIN: GET LIST OF APPROVED CLIENTS
       if (request.method === "GET" && url.pathname === "/api/admin/clients") {
         const { results } = await env.DB.prepare(`
-          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at,
+          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, questionnaire,
                  (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 1) as attended_count
           FROM Clients
-          WHERE is_admin = 0
+          WHERE is_admin = 0 AND status = 'approved'
           ORDER BY username ASC
         `).all();
 

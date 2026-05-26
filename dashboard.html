@@ -819,6 +819,14 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
+          // Provjera zdravstvenog upitnika (onboarding)
+          if (!data.user.questionnaire) {
+            document.getElementById("questionnaire-modal").style.display = "flex";
+            document.body.style.overflow = "hidden";
+          } else {
+            document.getElementById("questionnaire-modal").style.display = "none";
+            document.body.style.overflow = "auto";
+          }
 
           // 0. Notifications — desktop
           const notifBox  = document.getElementById("notifications-box");
@@ -1282,7 +1290,126 @@
         if (res.ok && data.success) loadDashboardData();
       } catch (err) { console.error("Greška pri čitanju svih obavijesti:", err); }
     }
+
+    // Questionnaire form submit handler
+    window.addEventListener("DOMContentLoaded", () => {
+      const qForm = document.getElementById("questionnaire-form");
+      if (qForm) {
+        qForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const age = document.getElementById("q-age").value;
+          const gender = document.getElementById("q-gender").value;
+          const activity = document.getElementById("q-activity").value;
+          const experience = document.getElementById("q-pilates").value;
+          const injuriesCurr = document.getElementById("q-injuries-curr").value;
+          const injuriesPast = document.getElementById("q-injuries-past").value;
+          const pregnancy = document.getElementById("q-pregnancy").value;
+
+          const answers = {
+            age: parseInt(age),
+            gender,
+            activity,
+            experience,
+            injuries_current: injuriesCurr,
+            injuries_past: injuriesPast,
+            pregnancy
+          };
+
+          try {
+            const res = await fetch(`${API_BASE}/api/client/questionnaire`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ user_id: parseInt(userId), answers })
+            });
+
+            const resData = await res.json();
+            if (res.ok && resData.success) {
+              alert("Hvala Vam! Upitnik je uspješno spremljen.");
+              document.getElementById("questionnaire-modal").style.display = "none";
+              document.body.style.overflow = "auto";
+              loadDashboardData();
+            } else {
+              alert(resData.error || "Greška pri spremanju upitnika.");
+            }
+          } catch (err) {
+            alert("Greška na poslužitelju.");
+          }
+        });
+      }
+    });
   </script>
+
+  <!-- UPITNIK O ZDRAVLJU (Onboarding Modal) -->
+  <div id="questionnaire-modal" style="display: none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.98); backdrop-filter: blur(8px); z-index: 10000; justify-content: center; align-items: center; padding: 20px; overflow-y: auto;">
+    <div class="info-box" style="max-width: 600px; width: 100%; background: white; border: 1.5px solid var(--primary-gold); padding: 30px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); margin-top: auto; margin-bottom: auto; animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);">
+      <h2 style="color: var(--primary-gold-dark); border-bottom: 2px solid var(--primary-gold-light); padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px; font-size: 2.0rem; text-align: center;">
+        Zdravstveni & Fitness Upitnik
+      </h2>
+      <p style="font-size: 1.25rem; color: var(--text-dark); margin-bottom: 20px; line-height: 1.9rem; text-align: center;">
+        Dobrodošli u studio Agram! Molimo Vas da prije prvog treninga ispunite ovaj kratki upitnik kako bismo treninge mogli prilagoditi Vašim potrebama i zdravstvenom stanju.
+      </p>
+      <form id="questionnaire-form">
+        <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
+          
+          <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
+              <label for="q-age" style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 4px;">Godine</label>
+              <input type="number" id="q-age" required min="10" max="99" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; font-size: 1.3rem;" />
+            </div>
+            <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
+              <label for="q-gender" style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 4px;">Spol</label>
+              <select id="q-gender" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; background: white; font-size: 1.3rem;">
+                <option value="Žensko">Žensko</option>
+                <option value="Muško">Muško</option>
+                <option value="Drugo">Drugo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="display: flex; flex-direction: column;">
+            <label for="q-activity" style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 4px;">Stupanj tjelesne aktivnosti</label>
+            <select id="q-activity" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; background: white; font-size: 1.3rem;">
+              <option value="Nizak (neredovita aktivnost)">Nizak (neredovita aktivnost)</option>
+              <option value="Umjeren (1-2 puta tjedno)">Umjeren (1-2 puta tjedno)</option>
+              <option value="Visok (3 ili više puta tjedno)">Visok (3 ili više puta tjedno)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="display: flex; flex-direction: column;">
+            <label for="q-pilates" style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 4px;">Iskustvo s pilatesom / reformerom</label>
+            <select id="q-pilates" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; background: white; font-size: 1.3rem;">
+              <option value="Nikada">Nikada</option>
+              <option value="Imam iskustva s klasičnim pilatesom (na prostirci)">Imam iskustva s klasičnim pilatesom (na prostirci)</option>
+              <option value="Imam iskustva s Pilates Reformerom">Imam iskustva s Pilates Reformerom</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="display: flex; flex-direction: column;">
+            <label for="q-injuries-curr" style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 4px;">Imate li trenutne ozljede, bolove ili zdravstvene tegobe?</label>
+            <textarea id="q-injuries-curr" required placeholder="Npr. bolovi u leđima, problemi s koljenom... (Napišite 'Ne' ako nemate)" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; font-size: 1.3rem; min-height: 80px; resize: vertical;"></textarea>
+          </div>
+
+          <div class="form-group" style="display: flex; flex-direction: column;">
+            <label for="q-injuries-past" style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 4px;">Imate li prijašnjih ozljeda, kroničnih problema ili operacija?</label>
+            <textarea id="q-injuries-past" required placeholder="Npr. stara ozljeda ramena, operacija... (Napišite 'Ne' ako nemate)" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; font-size: 1.3rem; min-height: 80px; resize: vertical;"></textarea>
+          </div>
+
+          <div class="form-group" style="display: flex; flex-direction: column;">
+            <label for="q-pregnancy" style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 4px;">Trudnoća (samo za žene)</label>
+            <select id="q-pregnancy" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; background: white; font-size: 1.3rem;">
+              <option value="Ne">Ne</option>
+              <option value="Da">Da</option>
+              <option value="Nije primjenjivo">Nije primjenjivo</option>
+            </select>
+          </div>
+
+          <button type="submit" style="width: 100%; margin-top: 15px; background: var(--primary-gold); border: 1px solid var(--primary-gold-dark); color: var(--dark-bg); font-weight: 700; padding: 12px; border-radius: var(--radius-sm); text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; font-family: inherit; font-size: 1.3rem;">
+            Spremi i nastavi
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script>
     if ("serviceWorker" in navigator) {
