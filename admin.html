@@ -739,6 +739,8 @@
         padding-bottom: env(safe-area-inset-bottom, 0px);
         overflow: hidden;
         width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
       }
       .mobile-nav-btn {
         flex: 1;
@@ -1233,7 +1235,7 @@
       <button class="mobile-nav-btn" id="mobile-nav-aktivnosti" onclick="switchMobileTab('aktivnosti')" style="position: relative;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="bell-badge" id="mobile-bell-badge-count" style="top: 3px; right: 25%; min-width: 14px; height: 14px; font-size: 0.8rem; border-radius: 7px; display: none; align-items: center; justify-content: center;">0</span>
-        <span>Aktivnosti</span>
+        <span>Aktiv.</span>
       </button>
     </nav>
 
