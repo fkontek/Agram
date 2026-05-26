@@ -2,6 +2,7 @@
 <html lang="hr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -10,6 +11,7 @@
   <title>Tvoj Profil - Pilates Reformer Studio Agram</title>
   <link rel="stylesheet" href="style.css" />
   <style>
+    /* ==================== DESKTOP STYLES ==================== */
     body {
       background-color: var(--light-bg);
       background: linear-gradient(to bottom, var(--dark-bg) 0%, var(--light-bg) 50%);
@@ -34,7 +36,7 @@
       z-index: -1;
     }
 
-    .container {
+    #desktop-container {
       max-width: 1200px;
       width: 100%;
       background: var(--card-bg);
@@ -42,13 +44,11 @@
       padding: 40px;
       box-shadow: var(--shadow-lg);
       border: 1px solid rgba(197, 168, 128, 0.2);
-      min-height: auto;
       display: flex;
       flex-direction: column;
       animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* Nadzorna ploča - Responzivna rešetka (Desktop: 2 stupca, Mobitel: 1 stupac) */
     .dashboard-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -64,9 +64,7 @@
       min-width: 0;
     }
 
-    .dashboard-main {
-      min-width: 0;
-    }
+    .dashboard-main { min-width: 0; }
 
     @media (min-width: 992px) {
       .dashboard-grid {
@@ -84,11 +82,7 @@
       letter-spacing: 1px;
       text-align: center;
     }
-
-    h1 span {
-      color: var(--primary-gold-dark);
-      font-weight: 700;
-    }
+    h1 span { color: var(--primary-gold-dark); font-weight: 700; }
 
     .info-box {
       margin-bottom: 25px;
@@ -98,12 +92,7 @@
       border-radius: var(--radius-md);
       transition: var(--transition-fast);
     }
-
-    .info-box:hover {
-      box-shadow: var(--shadow-sm);
-      border-color: var(--primary-gold);
-    }
-
+    .info-box:hover { box-shadow: var(--shadow-sm); border-color: var(--primary-gold); }
     .info-box h2 {
       margin-top: 0;
       font-size: 1.8rem;
@@ -116,13 +105,7 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-
-    .info-box ul {
-      list-style: none;
-      padding-left: 0;
-      margin: 0;
-    }
-
+    .info-box ul { list-style: none; padding-left: 0; margin: 0; }
     .info-box li {
       font-size: 1.35rem;
       padding: 12px 0;
@@ -133,21 +116,9 @@
       align-items: center;
       gap: 10px;
     }
-
-    .info-box li:last-child {
-      border-bottom: none;
-    }
-
-    .info-box p {
-      font-size: 1.4rem;
-      color: var(--text-dark);
-      margin: 0;
-      line-height: 2.2rem;
-    }
-
-    .info-box strong {
-      color: var(--primary-gold-dark);
-    }
+    .info-box li:last-child { border-bottom: none; }
+    .info-box p { font-size: 1.4rem; color: var(--text-dark); margin: 0; line-height: 2.2rem; }
+    .info-box strong { color: var(--primary-gold-dark); }
 
     .badge {
       display: inline-block;
@@ -158,24 +129,9 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-
-    .badge-present {
-      background-color: rgba(46, 117, 89, 0.15);
-      color: #2e7559;
-      border: 1px solid rgba(46, 117, 89, 0.3);
-    }
-
-    .badge-absent {
-      background-color: rgba(178, 34, 34, 0.1);
-      color: #b22222;
-      border: 1px solid rgba(178, 34, 34, 0.2);
-    }
-
-    .badge-reserved {
-      background-color: rgba(197, 168, 128, 0.2);
-      color: var(--primary-gold-dark);
-      border: 1px solid rgba(197, 168, 128, 0.4);
-    }
+    .badge-present { background-color: rgba(46,117,89,0.15); color: #2e7559; border: 1px solid rgba(46,117,89,0.3); }
+    .badge-absent  { background-color: rgba(178,34,34,0.1);  color: #b22222; border: 1px solid rgba(178,34,34,0.2); }
+    .badge-reserved{ background-color: rgba(197,168,128,0.2); color: var(--primary-gold-dark); border: 1px solid rgba(197,168,128,0.4); }
 
     .action-row {
       display: flex;
@@ -198,11 +154,7 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-
-    button.btn-cancel:hover {
-      background-color: #b22222;
-      color: white;
-    }
+    button.btn-cancel:hover { background-color: #b22222; color: white; }
 
     button.btn-book {
       background-color: var(--primary-gold);
@@ -217,11 +169,7 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-
-    button.btn-book:hover {
-      background-color: var(--primary-gold-dark);
-      color: white;
-    }
+    button.btn-book:hover { background-color: var(--primary-gold-dark); color: white; }
 
     .logout-btn {
       background-color: #b22222;
@@ -236,12 +184,7 @@
       cursor: pointer;
       transition: var(--transition-fast);
     }
-
-    .logout-btn:hover {
-      background-color: #8b0000;
-      box-shadow: 0 4px 12px rgba(178, 34, 34, 0.3);
-      transform: translateY(-1px);
-    }
+    .logout-btn:hover { background-color: #8b0000; box-shadow: 0 4px 12px rgba(178,34,34,0.3); transform: translateY(-1px); }
 
     .home-btn {
       color: var(--primary-gold-dark);
@@ -251,43 +194,12 @@
       align-items: center;
       gap: 8px;
     }
+    .home-btn:hover { color: var(--text-dark); transform: translateX(-4px); }
 
-    .home-btn:hover {
-      color: var(--text-dark);
-      transform: translateX(-4px);
-    }
-
-    @media (max-width: 500px) {
-      .container {
-        padding: 25px;
-      }
-      .action-row {
-        flex-direction: column;
-        gap: 15px;
-      }
-      .logout-btn {
-        width: 100%;
-        text-align: center;
-      }
-    }
-
-    /* Tjedni raspored tabovi i kartice */
-    .schedule-tabs-container {
-      width: 100%;
-      overflow-x: auto;
-      margin-bottom: 15px;
-      padding: 5px 0;
-      scrollbar-width: none;
-    }
-    .schedule-tabs-container::-webkit-scrollbar {
-      display: none;
-    }
-    .schedule-tabs {
-      display: flex;
-      gap: 8px;
-      min-width: max-content;
-      padding: 2px;
-    }
+    /* Schedule tabs & cards */
+    .schedule-tabs-container { width: 100%; overflow-x: auto; margin-bottom: 15px; padding: 5px 0; scrollbar-width: none; }
+    .schedule-tabs-container::-webkit-scrollbar { display: none; }
+    .schedule-tabs { display: flex; gap: 8px; min-width: max-content; padding: 2px; }
     .day-tab {
       padding: 10px 16px;
       background: white;
@@ -302,36 +214,15 @@
       text-transform: capitalize;
       box-shadow: var(--shadow-sm);
     }
-    .day-tab:hover {
-      border-color: var(--primary-gold-dark);
-      color: var(--text-dark);
-      background-color: var(--primary-gold-light);
-    }
-    .day-tab.active {
-      background-color: var(--primary-gold);
-      color: var(--dark-bg);
-      border-color: var(--primary-gold-dark);
-      font-weight: 700;
-    }
-    
+    .day-tab:hover { border-color: var(--primary-gold-dark); color: var(--text-dark); background-color: var(--primary-gold-light); }
+    .day-tab.active { background-color: var(--primary-gold); color: var(--dark-bg); border-color: var(--primary-gold-dark); font-weight: 700; }
+
     .schedule-section-title {
-      font-size: 1.35rem;
-      font-weight: 700;
-      color: var(--text-dark);
-      margin: 20px 0 10px 0;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-left: 3px solid var(--primary-gold);
-      padding-left: 8px;
+      font-size: 1.35rem; font-weight: 700; color: var(--text-dark);
+      margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 0.5px;
+      border-left: 3px solid var(--primary-gold); padding-left: 8px;
     }
-    
-    .sessions-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 12px;
-      margin-bottom: 15px;
-    }
-    
+    .sessions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px; }
     .session-card {
       background: white;
       border: 1px solid var(--border-color);
@@ -344,68 +235,400 @@
       transition: var(--transition-fast);
       box-shadow: var(--shadow-sm);
     }
-    .session-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--primary-gold);
-    }
-    
-    .session-card.user-booked {
-      border: 2px solid #2e7559;
-      background-color: rgba(46, 117, 89, 0.03);
-    }
-    
-    .session-time {
-      font-size: 1.7rem;
-      font-weight: 700;
-      color: var(--text-dark);
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    
-    .session-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-dark);
-    }
-    
-    .session-spots {
-      font-size: 1.15rem;
-      color: var(--text-muted);
-    }
-    
-    .session-instructor {
-      font-size: 1.1rem;
-      color: var(--text-muted);
-      font-style: italic;
+    .session-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--primary-gold); }
+    .session-card.user-booked { border: 2px solid #2e7559; background-color: rgba(46,117,89,0.03); }
+    .session-time { font-size: 1.7rem; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 5px; }
+    .session-title { font-size: 1.25rem; font-weight: 600; color: var(--text-dark); }
+    .session-spots { font-size: 1.15rem; color: var(--text-muted); }
+    .session-instructor { font-size: 1.1rem; color: var(--text-muted); font-style: italic; }
+
+    /* ==================== MOBILE APP ==================== */
+    .mobile-app { display: none; width: 100%; }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 0;
+        margin: 0;
+        align-items: stretch;
+        justify-content: flex-start;
+        background: #1a1612;
+      }
+      body::before { opacity: 0.06; }
+
+      #desktop-container { display: none !important; }
+
+      .mobile-app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+        width: 100%;
+      }
+
+      /* ---- Header ---- */
+      .mobile-header {
+        background: var(--dark-bg);
+        padding: 14px 18px 13px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-shrink: 0;
+        border-bottom: 1px solid rgba(197,168,128,0.12);
+      }
+      .mobile-header-center { flex: 1; text-align: center; }
+      .mobile-greeting { font-size: 1.0rem; color: rgba(255,255,255,0.45); font-weight: 400; line-height: 1.2; }
+      .mobile-username { font-size: 1.5rem; color: var(--primary-gold); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
+
+      .mobile-back-btn {
+        color: rgba(255,255,255,0.45);
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+        padding: 6px;
+        border-radius: 50%;
+        transition: color 0.2s;
+      }
+      .mobile-back-btn:hover { color: var(--primary-gold); }
+
+      .mobile-logout-small {
+        background: none;
+        border: 1px solid rgba(255,255,255,0.2);
+        color: rgba(255,255,255,0.5);
+        font-family: 'Montserrat', sans-serif;
+        font-size: 0.95rem;
+        padding: 6px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+
+      /* ---- Credits strip ---- */
+      .mobile-credits-strip {
+        background: rgba(197,168,128,0.08);
+        border-bottom: 1px solid rgba(197,168,128,0.15);
+        padding: 9px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+      .mobile-credits-text { font-size: 1.2rem; color: #2c251e; font-weight: 600; }
+      .mobile-credits-text span { color: var(--primary-gold-dark); font-weight: 800; }
+      .mobile-package-chip { font-size: 1.05rem; color: var(--text-muted); font-weight: 500; max-width: 55%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      /* ---- Notifications bar ---- */
+      .mobile-notif-bar {
+        background: rgba(178,34,34,0.06);
+        border-bottom: 1px solid rgba(178,34,34,0.15);
+        padding: 12px 18px;
+        flex-shrink: 0;
+        display: none;
+      }
+      .mobile-notif-bar.visible { display: block; }
+      .mobile-notif-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #b22222;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+      #mobile-notifications-list li {
+        font-size: 1.2rem;
+        color: #2c251e;
+        padding: 8px 0;
+        border-bottom: 1px dashed rgba(178,34,34,0.15);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      #mobile-notifications-list li:last-child { border-bottom: none; }
+
+      /* ---- Panels ---- */
+      .mobile-panels {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        background: #f7f4f0;
+      }
+      .mobile-panel { display: none; padding: 16px 16px 24px; min-height: 100%; }
+      .mobile-panel.active { display: block; }
+
+      /* ---- Section titles ---- */
+      .mobile-section-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #2c251e;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 20px 0 10px;
+        border-left: 3px solid var(--primary-gold);
+        padding-left: 10px;
+      }
+      .mobile-section-title:first-child { margin-top: 4px; }
+
+      /* ---- Membership card ---- */
+      .mobile-membership-card {
+        background: var(--dark-bg);
+        border-radius: 18px;
+        padding: 22px 20px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(197,168,128,0.18);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+      }
+      .mobile-membership-card .m-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+      }
+      .mobile-membership-card .m-row:last-child { border-bottom: none; padding-bottom: 0; }
+      .mobile-membership-card .m-row:first-child { padding-top: 0; }
+      .mobile-membership-card .m-label { font-size: 1.05rem; color: rgba(255,255,255,0.45); font-weight: 500; }
+      .mobile-membership-card .m-value { font-size: 1.3rem; color: var(--primary-gold); font-weight: 700; text-align: right; max-width: 60%; }
+
+      /* ---- Upcoming items ---- */
+      .mobile-upcoming-item {
+        background: white;
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 10px;
+        border: 1px solid rgba(197,168,128,0.18);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      }
+      .mobile-upcoming-info { font-size: 1.3rem; color: #2c251e; font-weight: 700; }
+      .mobile-upcoming-type { font-size: 1.05rem; color: var(--text-muted); margin-top: 1px; }
+      .mobile-upcoming-date { font-size: 1.1rem; color: var(--text-muted); margin-top: 3px; font-weight: 400; }
+
+      /* ---- History items ---- */
+      .mobile-history-item {
+        background: white;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        border: 1px solid rgba(197,168,128,0.15);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+      }
+      .mobile-history-info { font-size: 1.2rem; color: #2c251e; font-weight: 600; }
+      .mobile-history-date { font-size: 1.05rem; color: var(--text-muted); margin-top: 2px; }
+
+      /* ---- Day selector ---- */
+      .mobile-day-selector {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 4px 0 14px;
+        margin: 0 -16px;
+        padding-left: 16px;
+        padding-right: 16px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .mobile-day-selector::-webkit-scrollbar { display: none; }
+      .mobile-day-btn {
+        flex-shrink: 0;
+        padding: 11px 18px;
+        background: white;
+        border: 1.5px solid rgba(197,168,128,0.3);
+        border-radius: 30px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        font-family: 'Montserrat', sans-serif;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+      }
+      .mobile-day-btn.active {
+        background: var(--primary-gold);
+        color: var(--dark-bg);
+        border-color: var(--primary-gold-dark);
+        font-weight: 700;
+        box-shadow: 0 3px 12px rgba(197,168,128,0.35);
+      }
+
+      /* ---- Session cards (mobile) ---- */
+      .mobile-session-card {
+        background: white;
+        border-radius: 18px;
+        padding: 18px 20px;
+        margin-bottom: 12px;
+        border: 1.5px solid rgba(197,168,128,0.18);
+        box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        transition: box-shadow 0.2s;
+      }
+      .mobile-session-card.user-booked {
+        border-color: #2e7559;
+        border-width: 2px;
+        background: rgba(46,117,89,0.03);
+      }
+      .mobile-session-left { flex: 1; min-width: 0; }
+      .mobile-session-time { font-size: 2.2rem; font-weight: 800; color: #2c251e; line-height: 1; }
+      .mobile-session-type { font-size: 1.25rem; font-weight: 700; color: #2c251e; margin-top: 5px; }
+      .mobile-session-instructor { font-size: 1.05rem; color: var(--text-muted); margin-top: 2px; font-style: italic; }
+      .mobile-session-spots { font-size: 1.1rem; color: var(--primary-gold-dark); font-weight: 600; margin-top: 6px; }
+      .mobile-session-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 95px; }
+
+      /* ---- Mobile action buttons ---- */
+      button.mobile-btn-book {
+        background: var(--primary-gold);
+        border: none;
+        color: var(--dark-bg);
+        padding: 13px 16px;
+        border-radius: 30px;
+        font-size: 1.15rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.18s;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        width: 100%;
+        min-height: 46px;
+        font-family: 'Montserrat', sans-serif;
+      }
+      button.mobile-btn-book:active { transform: scale(0.96); background: var(--primary-gold-dark); }
+
+      button.mobile-btn-cancel {
+        background: transparent;
+        border: 1.5px solid #b22222;
+        color: #b22222;
+        padding: 11px 14px;
+        border-radius: 30px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.18s;
+        text-transform: uppercase;
+        width: 100%;
+        min-height: 44px;
+        font-family: 'Montserrat', sans-serif;
+      }
+      button.mobile-btn-cancel:active { background: #b22222; color: white; }
+
+      .mobile-badge-full {
+        background: rgba(178,34,34,0.08);
+        color: #b22222;
+        border: 1.5px solid rgba(178,34,34,0.25);
+        border-radius: 30px;
+        padding: 10px 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        text-align: center;
+        font-family: 'Montserrat', sans-serif;
+        text-transform: uppercase;
+      }
+      .mobile-badge-booked {
+        background: rgba(46,117,89,0.1);
+        color: #2e7559;
+        border: 1.5px solid rgba(46,117,89,0.25);
+        border-radius: 30px;
+        padding: 10px 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        text-align: center;
+        font-family: 'Montserrat', sans-serif;
+        text-transform: uppercase;
+      }
+
+      /* ---- Empty state ---- */
+      .mobile-empty {
+        text-align: center;
+        padding: 30px 20px;
+        color: var(--text-muted);
+        font-size: 1.3rem;
+        font-style: italic;
+      }
+
+      /* ---- Mobile section subtitle ---- */
+      .mobile-time-group-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 16px 0 8px;
+        padding-left: 4px;
+      }
+
+      /* ---- Bottom Navigation ---- */
+      .mobile-bottom-nav {
+        display: flex;
+        background: var(--dark-bg);
+        border-top: 1px solid rgba(197,168,128,0.12);
+        flex-shrink: 0;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .mobile-nav-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        padding: 10px 8px 12px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: rgba(255,255,255,0.35);
+        font-size: 0.95rem;
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        transition: color 0.2s;
+      }
+      .mobile-nav-btn.active { color: var(--primary-gold); }
+      .mobile-nav-btn svg { width: 22px; height: 22px; }
+      .mobile-nav-btn span { font-size: 0.9rem; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
+
+  <!-- ============================= -->
+  <!--        DESKTOP LAYOUT         -->
+  <!-- ============================= -->
+  <div id="desktop-container">
     <h1>Dobrodošao, <span id="user-name"></span>!</h1>
 
-    <!-- 0. OBAVIJESTI KORISNIKA -->
-    <div class="info-box" id="notifications-box" style="display: none; background-color: rgba(178, 34, 34, 0.03); border: 1px solid rgba(178, 34, 34, 0.2); margin-bottom: 25px;">
-      <h2 style="color: #b22222; margin-bottom: 10px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #b22222;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <!-- Obavijesti -->
+    <div class="info-box" id="notifications-box" style="display:none; background-color:rgba(178,34,34,0.03); border:1px solid rgba(178,34,34,0.2); margin-bottom:25px;">
+      <h2 style="color:#b22222; margin-bottom:10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Obavijesti studija
       </h2>
-      <ul id="notifications-list" style="list-style: none; padding-left: 0; margin: 0;">
-        <!-- Dinamički ubačene obavijesti -->
-      </ul>
-      <div style="text-align: right; margin-top: 15px;">
-        <button class="btn-cancel" onclick="markAllNotificationsAsRead()" style="font-size: 1.1rem; padding: 4px 12px; border-radius: 12px;">Označi sve pročitano</button>
+      <ul id="notifications-list" style="list-style:none; padding-left:0; margin:0;"></ul>
+      <div style="text-align:right; margin-top:15px;">
+        <button class="btn-cancel" onclick="markAllNotificationsAsRead()" style="font-size:1.1rem; padding:4px 12px; border-radius:12px;">Označi sve pročitano</button>
       </div>
     </div>
 
-    <!-- Nadzorna ploča - Responzivna rešetka (Desktop: 2 stupca, Mobitel: 1 stupac) -->
     <div class="dashboard-grid">
-      <!-- Lijevi stupac: Podaci o klijentu -->
       <div class="dashboard-sidebar">
-        <!-- 1. STATUS ČLANARINE -->
-        <div class="info-box" id="membership-box" style="margin-bottom: 0;">
+        <!-- Status članarine -->
+        <div class="info-box" id="membership-box" style="margin-bottom:0;">
           <h2>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             Status članarine
@@ -415,48 +638,39 @@
           <p>Članarina vrijedi do: <strong id="package-expires">Učitavanje...</strong></p>
         </div>
 
-        <!-- 2. NADOLAZEĆE REZERVACIJE -->
-        <div class="info-box" style="margin-bottom: 0;">
+        <!-- Zakazani termini -->
+        <div class="info-box" style="margin-bottom:0;">
           <h2>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Moji zakazani termini
           </h2>
-          <ul id="upcoming-list">
-            <li><span>Učitavanje rezervacija...</span></li>
-          </ul>
+          <ul id="upcoming-list"><li><span>Učitavanje rezervacija...</span></li></ul>
         </div>
 
-        <!-- 4. POVIJEST DOLAZAKA -->
-        <div class="info-box" style="margin-bottom: 0;">
+        <!-- Povijest -->
+        <div class="info-box" style="margin-bottom:0;">
           <h2>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
             Povijest dolazaka
           </h2>
-          <ul id="history-list">
-            <li><span>Učitavanje povijesti...</span></li>
-          </ul>
+          <ul id="history-list"><li><span>Učitavanje povijesti...</span></li></ul>
         </div>
       </div>
 
-      <!-- Desni stupac: Rezervacija novih termina -->
+      <!-- Rezervacija -->
       <div class="dashboard-main">
-        <!-- 3. REZERVIRAJ NOVI TERMIN -->
-        <div class="info-box" style="padding-bottom: 25px; margin-bottom: 0;">
+        <div class="info-box" style="padding-bottom:25px; margin-bottom:0;">
           <h2>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             Rezerviraj novi termin
           </h2>
-          
-          <!-- Day Tabs Bar -->
           <div class="schedule-tabs-container">
             <div class="schedule-tabs" id="schedule-day-tabs">
-              <div style="font-size: 1.25rem; color: var(--text-muted); font-style: italic;">Učitavanje rasporeda...</div>
+              <div style="font-size:1.25rem; color:var(--text-muted); font-style:italic;">Učitavanje rasporeda...</div>
             </div>
           </div>
-          
-          <!-- Schedule Grid Container -->
-          <div id="schedule-day-content" style="margin-top: 15px;">
-            <p style="color: var(--text-muted); font-style: italic; text-align: center;">Molimo pričekajte dok se učitaju slobodni termini...</p>
+          <div id="schedule-day-content" style="margin-top:15px;">
+            <p style="color:var(--text-muted); font-style:italic; text-align:center;">Molimo pričekajte dok se učitaju slobodni termini...</p>
           </div>
         </div>
       </div>
@@ -471,66 +685,196 @@
     </div>
   </div>
 
+  <!-- ============================= -->
+  <!--         MOBILE APP            -->
+  <!-- ============================= -->
+  <div class="mobile-app" id="mobile-app">
+
+    <!-- Header -->
+    <header class="mobile-header">
+      <a href="index.html" class="mobile-back-btn" title="Povratak">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </a>
+      <div class="mobile-header-center">
+        <div class="mobile-greeting">Dobrodošao</div>
+        <div class="mobile-username" id="user-name-mobile">—</div>
+      </div>
+      <button class="mobile-logout-small" onclick="logout()">Odjava</button>
+    </header>
+
+    <!-- Credits strip -->
+    <div class="mobile-credits-strip">
+      <div class="mobile-credits-text">Preostalo: <span id="mobile-remaining-credits">—</span> treninga</div>
+      <div class="mobile-package-chip" id="mobile-package-name-chip">—</div>
+    </div>
+
+    <!-- Notifications bar -->
+    <div class="mobile-notif-bar" id="mobile-notif-bar">
+      <div class="mobile-notif-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Obavijesti studija
+      </div>
+      <ul id="mobile-notifications-list" style="list-style:none; padding:0; margin:0;"></ul>
+      <div style="margin-top:10px; text-align:right;">
+        <button onclick="markAllNotificationsAsRead()" style="background:none; border:1px solid #b22222; color:#b22222; border-radius:20px; padding:5px 14px; font-size:1.05rem; font-family:'Montserrat',sans-serif; font-weight:600; cursor:pointer;">Označi pročitano</button>
+      </div>
+    </div>
+
+    <!-- Panels -->
+    <div class="mobile-panels">
+
+      <!-- Panel 1: Termini (default active) -->
+      <div class="mobile-panel active" id="mobile-panel-termini">
+        <div class="mobile-day-selector" id="mobile-schedule-day-tabs">
+          <div class="mobile-empty" style="padding:10px 0;">Učitavanje...</div>
+        </div>
+        <div id="mobile-schedule-day-content">
+          <div class="mobile-empty">Učitavanje termina...</div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Profil -->
+      <div class="mobile-panel" id="mobile-panel-profil">
+        <div class="mobile-membership-card" id="mobile-membership-card">
+          <div class="m-row">
+            <span class="m-label">Aktivni paket</span>
+            <span class="m-value" id="mobile-package-name">—</span>
+          </div>
+          <div class="m-row">
+            <span class="m-label">Preostalo treninga</span>
+            <span class="m-value" id="mobile-credits-profil">—</span>
+          </div>
+          <div class="m-row">
+            <span class="m-label">Vrijedi do</span>
+            <span class="m-value" id="mobile-package-expires">—</span>
+          </div>
+        </div>
+        <div class="mobile-section-title">Moji zakazani termini</div>
+        <div id="mobile-upcoming-list">
+          <div class="mobile-empty">Učitavanje...</div>
+        </div>
+      </div>
+
+      <!-- Panel 3: Prošlost -->
+      <div class="mobile-panel" id="mobile-panel-povijest">
+        <div class="mobile-section-title">Povijest dolazaka</div>
+        <div id="mobile-history-list">
+          <div class="mobile-empty">Učitavanje...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="mobile-bottom-nav">
+      <button class="mobile-nav-btn active" id="mobile-nav-termini" onclick="switchMobileTab('termini')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Termini</span>
+      </button>
+      <button class="mobile-nav-btn" id="mobile-nav-profil" onclick="switchMobileTab('profil')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Profil</span>
+      </button>
+      <button class="mobile-nav-btn" id="mobile-nav-povijest" onclick="switchMobileTab('povijest')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+        <span>Prošlost</span>
+      </button>
+    </nav>
+
+  </div><!-- end mobile-app -->
+
   <script>
     const API_BASE = "https://agram-backend-test.filip-kontek.workers.dev";
-    
-    const userId = sessionStorage.getItem("user_id");
+
+    const userId   = sessionStorage.getItem("user_id");
     const username = sessionStorage.getItem("username");
 
     // Globalne varijable za raspored
     let allSessionsData = [];
     let selectedDateVal = "";
-    let userCreditsVal = 0;
-    let userPackageVal = "";
+    let userCreditsVal  = 0;
+    let userPackageVal  = "";
+    let mobileDateVal   = "";
 
     if (!userId || !username) {
       window.location.href = "prijava.html";
     } else {
       document.getElementById("user-name").textContent = username;
+      document.getElementById("user-name-mobile").textContent = username;
       loadDashboardData();
     }
 
-    // Main fetch to load user, bookings and history
+    // ---- Mobile tab switching ----
+    function switchMobileTab(tab) {
+      document.querySelectorAll('.mobile-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`mobile-panel-${tab}`).classList.add('active');
+      document.getElementById(`mobile-nav-${tab}`).classList.add('active');
+    }
+
+    // ---- Main data load ----
     async function loadDashboardData() {
       try {
-        const res = await fetch(`${API_BASE}/api/client/dashboard?user_id=${userId}`);
+        const res  = await fetch(`${API_BASE}/api/client/dashboard?user_id=${userId}`);
         const data = await res.json();
 
         if (res.ok && data.success) {
-          // 0. Render notifications
-          const notifBox = document.getElementById("notifications-box");
+
+          // 0. Notifications — desktop
+          const notifBox  = document.getElementById("notifications-box");
           const notifList = document.getElementById("notifications-list");
-          
-          const unreadNotifications = (data.notifications || []).filter(n => n.is_read === 0);
-          
-          if (unreadNotifications.length > 0) {
-            notifList.innerHTML = unreadNotifications.map(notif => {
+          // Notifications — mobile
+          const mNotifBar  = document.getElementById("mobile-notif-bar");
+          const mNotifList = document.getElementById("mobile-notifications-list");
+
+          const unread = (data.notifications || []).filter(n => n.is_read === 0);
+
+          if (unread.length > 0) {
+            const notifHtml = unread.map(notif => {
               const relTime = formatRelativeTime(notif.created_at);
               return `
-                <li style="border-bottom: 1px dashed rgba(178, 34, 34, 0.15); padding: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                  <div style="font-size: 1.3rem; color: var(--text-dark); line-height: 1.8rem;">
+                <li style="border-bottom:1px dashed rgba(178,34,34,0.15); padding:10px 0; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                  <div style="font-size:1.3rem; color:var(--text-dark); line-height:1.8rem;">
                     ${notif.message}
-                    <div style="font-size: 1.05rem; color: var(--text-muted); margin-top: 4px;" title="${notif.created_at}">${relTime}</div>
+                    <div style="font-size:1.05rem; color:var(--text-muted); margin-top:4px;" title="${notif.created_at}">${relTime}</div>
                   </div>
-                  <button onclick="markSingleNotificationAsRead(${notif.id})" style="background: transparent; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; padding: 5px; border-radius: 50%; transition: var(--transition-fast);" onmouseover="this.style.color='#b22222'; this.style.backgroundColor='rgba(178, 34, 34, 0.05)';" onmouseout="this.style.color='var(--text-muted)'; this.style.backgroundColor='transparent';" title="Zatvori obavijest">
+                  <button onclick="markSingleNotificationAsRead(${notif.id})"
+                    style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; padding:5px; border-radius:50%; transition:var(--transition-fast);"
+                    onmouseover="this.style.color='#b22222';" onmouseout="this.style.color='var(--text-muted)';" title="Zatvori">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
-                </li>
-              `;
+                </li>`;
             }).join('');
+
+            notifList.innerHTML = notifHtml;
             notifBox.style.display = "block";
+
+            // Mobile notifications
+            mNotifList.innerHTML = notifHtml;
+            mNotifBar.classList.add('visible');
           } else {
             notifBox.style.display = "none";
+            mNotifBar.classList.remove('visible');
           }
 
-          // 1. Membership info
+          // 1. Membership info — desktop
           userCreditsVal = data.user.remaining_credits || 0;
           userPackageVal = data.user.package_name || "Nema paketa";
-          document.getElementById("package-name").textContent = userPackageVal;
-          document.getElementById("remaining-credits").textContent = `${userCreditsVal} od ${data.user.total_credits}`;
-          document.getElementById("package-expires").textContent = data.user.package_expires ? formatDate(data.user.package_expires) : "Nema roka isteka";
+          const expiresFormatted = data.user.package_expires ? formatDate(data.user.package_expires) : "Nema roka isteka";
+          const creditsFormatted = `${userCreditsVal} od ${data.user.total_credits}`;
 
-          // 2. Upcoming list
+          document.getElementById("package-name").textContent      = userPackageVal;
+          document.getElementById("remaining-credits").textContent  = creditsFormatted;
+          document.getElementById("package-expires").textContent    = expiresFormatted;
+
+          // Membership info — mobile
+          document.getElementById("mobile-remaining-credits").textContent  = userCreditsVal;
+          document.getElementById("mobile-package-name-chip").textContent  = userPackageVal;
+          document.getElementById("mobile-package-name").textContent       = userPackageVal;
+          document.getElementById("mobile-credits-profil").textContent     = creditsFormatted;
+          document.getElementById("mobile-package-expires").textContent    = expiresFormatted;
+
+          // 2. Upcoming bookings — desktop
           const upcomingEl = document.getElementById("upcoming-list");
           upcomingEl.innerHTML = "";
           if (data.upcoming.length === 0) {
@@ -541,15 +885,30 @@
               li.innerHTML = `
                 <div>
                   <strong>${booking.title}</strong> (${booking.type})<br>
-                  <span style="font-size: 1.2rem; color: var(--text-muted);">${formatCroatianDate(booking.date)} u ${booking.time}h</span>
+                  <span style="font-size:1.2rem; color:var(--text-muted);">${formatCroatianDate(booking.date)} u ${booking.time}h</span>
                 </div>
-                <button class="btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
-              `;
+                <button class="btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>`;
               upcomingEl.appendChild(li);
             });
           }
 
-          // 3. History list
+          // Upcoming bookings — mobile
+          const mUpcoming = document.getElementById("mobile-upcoming-list");
+          if (data.upcoming.length === 0) {
+            mUpcoming.innerHTML = `<div class="mobile-empty">Nemate zakazanih termina.</div>`;
+          } else {
+            mUpcoming.innerHTML = data.upcoming.map(booking => `
+              <div class="mobile-upcoming-item">
+                <div>
+                  <div class="mobile-upcoming-info">${booking.title}</div>
+                  <div class="mobile-upcoming-type">${booking.type}</div>
+                  <div class="mobile-upcoming-date">${formatCroatianDate(booking.date)} u ${booking.time}h</div>
+                </div>
+                <button class="mobile-btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
+              </div>`).join('');
+          }
+
+          // 3. History — desktop
           const historyEl = document.getElementById("history-list");
           historyEl.innerHTML = "";
           if (data.history.length === 0) {
@@ -557,26 +916,42 @@
           } else {
             data.history.forEach(item => {
               const li = document.createElement("li");
-              let statusBadge = "";
-              if (item.status === 1) {
-                statusBadge = `<span class="badge badge-present">Odrađeno</span>`;
-              } else if (item.status === -1) {
-                statusBadge = `<span class="badge badge-absent">Nedolazak (Kasno otkazano)</span>`;
-              } else {
-                statusBadge = `<span class="badge badge-reserved">Zakazano</span>`;
-              }
+              let badge = "";
+              if (item.status === 1)       badge = `<span class="badge badge-present">Odrađeno</span>`;
+              else if (item.status === -1) badge = `<span class="badge badge-absent">Nedolazak (Kasno)</span>`;
+              else                         badge = `<span class="badge badge-reserved">Zakazano</span>`;
               li.innerHTML = `
                 <div>
                   <strong>${item.title}</strong><br>
-                  <span style="font-size: 1.2rem; color: var(--text-muted);">${formatCroatianDate(item.date)} u ${item.time}h</span>
+                  <span style="font-size:1.2rem; color:var(--text-muted);">${formatCroatianDate(item.date)} u ${item.time}h</span>
                 </div>
-                ${statusBadge}
-              `;
+                ${badge}`;
               historyEl.appendChild(li);
             });
           }
 
-          // 4. Load available sessions for booking
+          // History — mobile
+          const mHistory = document.getElementById("mobile-history-list");
+          if (data.history.length === 0) {
+            mHistory.innerHTML = `<div class="mobile-empty">Nema zabilježenih dolazaka.</div>`;
+          } else {
+            mHistory.innerHTML = data.history.map(item => {
+              let badge = "";
+              if (item.status === 1)       badge = `<span class="badge badge-present">Odrađeno</span>`;
+              else if (item.status === -1) badge = `<span class="badge badge-absent">Nedolazak</span>`;
+              else                         badge = `<span class="badge badge-reserved">Zakazano</span>`;
+              return `
+                <div class="mobile-history-item">
+                  <div>
+                    <div class="mobile-history-info">${item.title}</div>
+                    <div class="mobile-history-date">${formatCroatianDate(item.date)} u ${item.time}h</div>
+                  </div>
+                  ${badge}
+                </div>`;
+            }).join('');
+          }
+
+          // 4. Load sessions for booking
           loadAvailableSessions();
 
         } else {
@@ -587,47 +962,45 @@
       }
     }
 
-    // Load upcoming available sessions
+    // ---- Load sessions (desktop + mobile) ----
     async function loadAvailableSessions() {
       try {
-        const res = await fetch(`${API_BASE}/api/sessions?user_id=${userId}`);
+        const res  = await fetch(`${API_BASE}/api/sessions?user_id=${userId}`);
         const data = await res.json();
 
         if (res.ok && data.success) {
-          const tabsEl = document.getElementById("schedule-day-tabs");
+          const tabsEl    = document.getElementById("schedule-day-tabs");
           const contentEl = document.getElementById("schedule-day-content");
+          const mTabsEl   = document.getElementById("mobile-schedule-day-tabs");
+          const mContentEl= document.getElementById("mobile-schedule-day-content");
           tabsEl.innerHTML = "";
           contentEl.innerHTML = "";
+          mTabsEl.innerHTML = "";
+          mContentEl.innerHTML = "";
 
-          // Određivanje dozvoljenog tipa treninga na temelju paketa klijenta
+          // Determine allowed session type
           let allowedType = "grupni";
-          if (userPackageVal.toLowerCase().includes("privatni")) {
-            allowedType = "privatni";
-          } else if (userPackageVal.toLowerCase().includes("poluindividualni")) {
-            allowedType = "poluindividualni";
-          }
+          if (userPackageVal.toLowerCase().includes("privatni"))            allowedType = "privatni";
+          else if (userPackageVal.toLowerCase().includes("poluindividualni")) allowedType = "poluindividualni";
 
           const hasPackage = !userPackageVal.toLowerCase().includes("nema");
 
-          // Filtriranje termina: prikaži samo tip koji odgovara članarini klijenta
-          // (ako nema članarinu, prikazujemo "grupni" ali je rezervacija onemogućena)
           allSessionsData = data.sessions.filter(session => {
-            if (!hasPackage) {
-              return session.type === "grupni";
-            }
+            if (!hasPackage) return session.type === "grupni";
             return session.type === allowedType;
           });
 
-          // Pronalaženje jedinstvenih datuma kronološkim redom
           const uniqueDates = [...new Set(allSessionsData.map(s => s.date))].sort();
 
           if (uniqueDates.length === 0) {
-            tabsEl.innerHTML = `<div style="font-size: 1.25rem; color: var(--text-muted); font-style: italic;">Nema slobodnih termina za vaš tip paketa.</div>`;
-            contentEl.innerHTML = `<p style="color: var(--text-muted); text-align: center; font-style: italic;">Trenutno nema objavljenih slobodnih termina za vaš tip članarine. Molimo provjerite ponovno kasnije.</p>`;
+            const msg = `<div style="font-size:1.25rem; color:var(--text-muted); font-style:italic;">Nema slobodnih termina za vaš tip paketa.</div>`;
+            tabsEl.innerHTML = msg;
+            contentEl.innerHTML = `<p style="color:var(--text-muted); text-align:center; font-style:italic;">Trenutno nema objavljenih slobodnih termina za vaš tip članarine.</p>`;
+            mTabsEl.innerHTML = `<div class="mobile-empty">Nema slobodnih termina.</div>`;
             return;
           }
 
-          // Izrada horizontalnih tabova za dane u tjednu
+          // Build desktop tabs
           uniqueDates.forEach((dateStr, index) => {
             const btn = document.createElement("button");
             btn.className = "day-tab";
@@ -638,70 +1011,70 @@
               renderDaySchedule(dateStr);
             };
             tabsEl.appendChild(btn);
-
-            // Postavljanje prvog dana kao aktivnog po zadanim postavkama
             if (index === 0) {
               btn.classList.add("active");
               selectedDateVal = dateStr;
             }
           });
 
-          // Prikaz termina za prvi dan
+          // Build mobile day selector
+          uniqueDates.forEach((dateStr, index) => {
+            const btn = document.createElement("button");
+            btn.className = "mobile-day-btn";
+            btn.textContent = getShortDayLabel(dateStr);
+            btn.onclick = () => {
+              document.querySelectorAll(".mobile-day-btn").forEach(b => b.classList.remove("active"));
+              btn.classList.add("active");
+              renderMobileDaySchedule(dateStr);
+            };
+            mTabsEl.appendChild(btn);
+            if (index === 0) {
+              btn.classList.add("active");
+              mobileDateVal = dateStr;
+            }
+          });
+
           renderDaySchedule(selectedDateVal);
+          renderMobileDaySchedule(mobileDateVal);
         }
       } catch (err) {
         console.error("Load sessions error:", err);
       }
     }
 
-    // Kratki nazivi dana na hrvatskom
-    function getShortDayLabel(dateStr) {
-      const date = new Date(dateStr);
-      const days = ["Ned", "Pon", "Uto", "Sri", "Čet", "Pet", "Sub"];
-      const dayName = days[date.getDay()];
-      const [year, month, day] = dateStr.split('-');
-      return `${dayName}, ${day}.${month}.`;
-    }
-
-    // Prikaz termina za odabrani dan u obliku jutarnjih i popodnevnih grupa
+    // ---- Render desktop schedule ----
     function renderDaySchedule(dateStr) {
       selectedDateVal = dateStr;
       const contentEl = document.getElementById("schedule-day-content");
       contentEl.innerHTML = "";
-      
+
       const daySessions = allSessionsData.filter(s => s.date === dateStr);
       if (daySessions.length === 0) {
-        contentEl.innerHTML = `<p style="color: var(--text-muted); text-align: center; font-style: italic;">Nema termina za odabrani dan.</p>`;
+        contentEl.innerHTML = `<p style="color:var(--text-muted); text-align:center; font-style:italic;">Nema termina za odabrani dan.</p>`;
         return;
       }
-      
-      // Podjela na jutarnje (prije 12h) i popodnevne/večernje (od 12h nadalje)
-      const morningSessions = daySessions.filter(s => parseInt(s.time.split(':')[0]) < 12);
-      const afternoonSessions = daySessions.filter(s => parseInt(s.time.split(':')[0]) >= 12);
-      
-      // Pomoćna funkcija za izradu kartice treninga
+
+      const morning   = daySessions.filter(s => parseInt(s.time.split(':')[0]) < 12);
+      const afternoon = daySessions.filter(s => parseInt(s.time.split(':')[0]) >= 12);
+
       function createCardHtml(session) {
         const freeSpots = session.capacity - session.booked_count;
         let cardClass = "session-card";
         let buttonHtml = "";
-        
+        const typeLabel = session.type === "privatni" ? "Privatni trening" : (session.type === "poluindividualni" ? "Poluindividualni" : "Grupni trening");
+
         if (session.user_booked > 0) {
           cardClass += " user-booked";
-          buttonHtml = `<span class="badge badge-present" style="text-align: center; font-size: 1.15rem; width: 100%; display: block; border-radius: 20px;">Prijavljen/a</span>`;
+          buttonHtml = `<span class="badge badge-present" style="text-align:center; font-size:1.15rem; width:100%; display:block; border-radius:20px;">Prijavljen/a</span>`;
         } else if (freeSpots <= 0) {
-          buttonHtml = `<span class="badge badge-absent" style="text-align: center; font-size: 1.15rem; width: 100%; display: block; border-radius: 20px;">Popunjeno</span>`;
+          buttonHtml = `<span class="badge badge-absent" style="text-align:center; font-size:1.15rem; width:100%; display:block; border-radius:20px;">Popunjeno</span>`;
         } else {
-          // Ako korisnik nema aktivnu članarinu, onemogući prijavu
           const isNoPackage = userPackageVal.toLowerCase().includes("nema");
-          if (isNoPackage) {
-            buttonHtml = `<button class="btn-book" style="opacity: 0.6; cursor: not-allowed; width: 100%;" onclick="alert('Nemate aktivnu članarinu. Molimo vas da uplatite paket u studiju.')">Rezerviraj</button>`;
-          } else {
-            buttonHtml = `<button class="btn-book" style="width: 100%;" onclick="bookSession(${session.id})">Rezerviraj</button>`;
-          }
+          buttonHtml = isNoPackage
+            ? `<button class="btn-book" style="opacity:0.6; cursor:not-allowed; width:100%;" onclick="alert('Nemate aktivnu članarinu.')">Rezerviraj</button>`
+            : `<button class="btn-book" style="width:100%;" onclick="bookSession(${session.id})">Rezerviraj</button>`;
         }
-        
-        const typeLabel = session.type === "privatni" ? "Privatni trening" : (session.type === "poluindividualni" ? "Poluindividualni" : "Grupni trening");
-        
+
         return `
           <div class="${cardClass}">
             <div>
@@ -709,56 +1082,110 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 ${session.time}h
               </div>
-              <div class="session-title" style="margin-top: 5px; font-weight: 600;">${typeLabel}</div>
-              <div class="session-instructor" style="margin-top: 2px;">Trener: ${session.instructor || "Adrijana"}</div>
+              <div class="session-title" style="margin-top:5px; font-weight:600;">${typeLabel}</div>
+              <div class="session-instructor" style="margin-top:2px;">Trener: ${session.instructor || "Adrijana"}</div>
             </div>
             <div>
-              <div class="session-spots" style="margin-bottom: 8px; font-size: 1.15rem; font-weight: 500; color: var(--primary-gold-dark);">
-                Slobodno: ${freeSpots} od ${session.capacity} mjesta
-              </div>
+              <div class="session-spots" style="margin-bottom:8px; font-size:1.15rem; font-weight:500; color:var(--primary-gold-dark);">Slobodno: ${freeSpots} od ${session.capacity}</div>
               ${buttonHtml}
             </div>
-          </div>
-        `;
+          </div>`;
       }
-      
-      // Prikaz jutarnje sekcije
-      if (morningSessions.length > 0) {
+
+      if (morning.length > 0) {
         const title = document.createElement("div");
         title.className = "schedule-section-title";
-        title.textContent = "Jutarnji termini (07:00 - 11:00)";
+        title.textContent = "Jutarnji termini (07:00 – 11:00)";
         contentEl.appendChild(title);
-        
         const grid = document.createElement("div");
         grid.className = "sessions-grid";
-        grid.innerHTML = morningSessions.map(createCardHtml).join('');
+        grid.innerHTML = morning.map(createCardHtml).join('');
         contentEl.appendChild(grid);
       }
-      
-      // Prikaz popodnevne/večernje sekcije
-      if (afternoonSessions.length > 0) {
+
+      if (afternoon.length > 0) {
         const title = document.createElement("div");
         title.className = "schedule-section-title";
-        title.textContent = "Popodnevni / Večernji termini (16:00 - 21:00)";
+        title.textContent = "Popodnevni / Večernji termini (16:00 – 21:00)";
         contentEl.appendChild(title);
-        
         const grid = document.createElement("div");
         grid.className = "sessions-grid";
-        grid.innerHTML = afternoonSessions.map(createCardHtml).join('');
+        grid.innerHTML = afternoon.map(createCardHtml).join('');
         contentEl.appendChild(grid);
       }
     }
 
-    // Book action
+    // ---- Render MOBILE schedule ----
+    function renderMobileDaySchedule(dateStr) {
+      mobileDateVal = dateStr;
+      const contentEl = document.getElementById("mobile-schedule-day-content");
+      contentEl.innerHTML = "";
+
+      const daySessions = allSessionsData.filter(s => s.date === dateStr);
+      if (daySessions.length === 0) {
+        contentEl.innerHTML = `<div class="mobile-empty">Nema termina za odabrani dan.</div>`;
+        return;
+      }
+
+      const morning   = daySessions.filter(s => parseInt(s.time.split(':')[0]) < 12);
+      const afternoon = daySessions.filter(s => parseInt(s.time.split(':')[0]) >= 12);
+
+      function createMobileCard(session) {
+        const freeSpots = session.capacity - session.booked_count;
+        const typeLabel = session.type === "privatni" ? "Privatni trening" : (session.type === "poluindividualni" ? "Poluindividualni" : "Grupni trening");
+        const cardClass = session.user_booked > 0 ? "mobile-session-card user-booked" : "mobile-session-card";
+
+        let rightHtml = "";
+        if (session.user_booked > 0) {
+          rightHtml = `<div class="mobile-badge-booked">Prijavljen/a ✓</div>`;
+        } else if (freeSpots <= 0) {
+          rightHtml = `<div class="mobile-badge-full">Popunjeno</div>`;
+        } else {
+          const isNoPackage = userPackageVal.toLowerCase().includes("nema");
+          rightHtml = isNoPackage
+            ? `<button class="mobile-btn-book" style="opacity:0.6;" onclick="alert('Nemate aktivnu članarinu. Molimo kontaktirajte studio.')">Rezerviraj</button>`
+            : `<button class="mobile-btn-book" onclick="bookSession(${session.id})">Rezerviraj</button>`;
+        }
+
+        return `
+          <div class="${cardClass}">
+            <div class="mobile-session-left">
+              <div class="mobile-session-time">${session.time}h</div>
+              <div class="mobile-session-type">${typeLabel}</div>
+              <div class="mobile-session-instructor">Trener: ${session.instructor || "Adrijana"}</div>
+              <div class="mobile-session-spots">Slobodno: ${freeSpots} od ${session.capacity}</div>
+            </div>
+            <div class="mobile-session-right">${rightHtml}</div>
+          </div>`;
+      }
+
+      if (morning.length > 0) {
+        contentEl.innerHTML += `<div class="mobile-time-group-title">☀️ Jutro</div>`;
+        contentEl.innerHTML += morning.map(createMobileCard).join('');
+      }
+      if (afternoon.length > 0) {
+        contentEl.innerHTML += `<div class="mobile-time-group-title">🌇 Popodne / Večer</div>`;
+        contentEl.innerHTML += afternoon.map(createMobileCard).join('');
+      }
+    }
+
+    // ---- Short day label ----
+    function getShortDayLabel(dateStr) {
+      const date = new Date(dateStr);
+      const days = ["Ned", "Pon", "Uto", "Sri", "Čet", "Pet", "Sub"];
+      const [year, month, day] = dateStr.split('-');
+      return `${days[date.getDay()]}, ${day}.${month}.`;
+    }
+
+    // ---- Book session ----
     async function bookSession(sessionId) {
       try {
-        const res = await fetch(`${API_BASE}/api/book`, {
+        const res  = await fetch(`${API_BASE}/api/book`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: userId, session_id: sessionId })
         });
         const data = await res.json();
-
         if (res.ok && data.success) {
           alert("Rezervacija uspješna!");
           loadDashboardData();
@@ -770,18 +1197,16 @@
       }
     }
 
-    // Cancel action
+    // ---- Cancel booking ----
     async function cancelBooking(sessionId) {
       if (!confirm("Jeste li sigurni da želite otkazati ovaj trening?")) return;
-
       try {
-        const res = await fetch(`${API_BASE}/api/cancel-booking`, {
+        const res  = await fetch(`${API_BASE}/api/cancel-booking`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: userId, session_id: sessionId })
         });
         const data = await res.json();
-
         if (res.ok && data.success) {
           alert(data.message);
           loadDashboardData();
@@ -793,20 +1218,18 @@
       }
     }
 
-    // Date formatting helper YYYY-MM-DD to DD.MM.YYYY.
+    // ---- Date helpers ----
     function formatDate(dateStr) {
       if (!dateStr) return "";
       const [year, month, day] = dateStr.split('-');
       return `${day}.${month}.${year}.`;
     }
 
-    // Format to croatian day names
     function formatCroatianDate(dateStr) {
       if (!dateStr) return "";
       const date = new Date(dateStr);
-      const days = ["Nedjelja", "Ponedjeljak", "Utorak", "Srijeda", "Četvrtak", "Petak", "Subota"];
-      const dayName = days[date.getDay()];
-      return `${dayName}, ${formatDate(dateStr)}`;
+      const days = ["Nedjelja","Ponedjeljak","Utorak","Srijeda","Četvrtak","Petak","Subota"];
+      return `${days[date.getDay()]}, ${formatDate(dateStr)}`;
     }
 
     function logout() {
@@ -814,33 +1237,28 @@
       window.location.href = "index.html";
     }
 
-    // Obavijesti klijenta JS
+    // ---- Relative time ----
     function formatRelativeTime(dateStr) {
       try {
         const past = new Date(dateStr.replace(" ", "T") + "Z");
-        const now = new Date();
-        const diffMs = now.getTime() - past.getTime();
+        const now  = new Date();
+        const diffMs   = now.getTime() - past.getTime();
         const diffMins = Math.floor(diffMs / 60000);
-        
-        if (diffMins < 1) return "Upravo sad";
+        if (diffMins < 1)  return "Upravo sad";
         if (diffMins < 60) return `prije ${diffMins} min`;
-        
         const diffHours = Math.floor(diffMins / 60);
         if (diffHours < 24) {
-          if (diffHours === 1) return "prije 1 sat";
-          if (diffHours >= 2 && diffHours <= 4) return `prije ${diffHours} sata`;
+          if (diffHours === 1)                        return "prije 1 sat";
+          if (diffHours >= 2 && diffHours <= 4)       return `prije ${diffHours} sata`;
           return `prije ${diffHours} sati`;
         }
-        
         const diffDays = Math.floor(diffHours / 24);
-        if (diffDays === 1) return "jučer";
-        if (diffDays >= 2 && diffDays <= 4) return `prije ${diffDays} dana`;
+        if (diffDays === 1)                           return "jučer";
         return `prije ${diffDays} dana`;
-      } catch (e) {
-        return dateStr;
-      }
+      } catch (e) { return dateStr; }
     }
 
+    // ---- Notification helpers ----
     async function markSingleNotificationAsRead(id) {
       try {
         const res = await fetch(`${API_BASE}/api/client/notifications/read`, {
@@ -849,12 +1267,8 @@
           body: JSON.stringify({ user_id: parseInt(userId), notification_ids: [id] })
         });
         const data = await res.json();
-        if (res.ok && data.success) {
-          loadDashboardData();
-        }
-      } catch (err) {
-        console.error("Greška pri čitanju obavijesti:", err);
-      }
+        if (res.ok && data.success) loadDashboardData();
+      } catch (err) { console.error("Greška pri čitanju obavijesti:", err); }
     }
 
     async function markAllNotificationsAsRead() {
@@ -865,14 +1279,11 @@
           body: JSON.stringify({ user_id: parseInt(userId) })
         });
         const data = await res.json();
-        if (res.ok && data.success) {
-          loadDashboardData();
-        }
-      } catch (err) {
-        console.error("Greška pri čitanju svih obavijesti:", err);
-      }
+        if (res.ok && data.success) loadDashboardData();
+      } catch (err) { console.error("Greška pri čitanju svih obavijesti:", err); }
     }
   </script>
+
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

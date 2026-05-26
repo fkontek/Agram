@@ -223,19 +223,23 @@ export default {
 
         const nowCroatia = getCroatiaNow();
         const todayStr = formatDate(nowCroatia);
+        // Get current time in HH:MM format for filtering past sessions today
+        const currentTimeStr = `${String(nowCroatia.getHours()).padStart(2, '0')}:${String(nowCroatia.getMinutes()).padStart(2, '0')}`;
         // Calculate max date: today + 6 days (rolling 7 days total)
         const maxDate = new Date(nowCroatia.getTime() + 6 * 24 * 60 * 60 * 1000);
         const maxDateStr = formatDate(maxDate);
         
-        // Fetch sessions from today up to today + 6 days
+        // Fetch sessions up to today + 6 days, excluding past sessions from today
+        // For future days: show all; for today: only show sessions that haven't started yet
         const { results } = await env.DB.prepare(`
           SELECT s.*, 
                  (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.status >= 0) as booked_count,
                  (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.user_id = ? AND b.status >= 0) as user_booked
           FROM Sessions s
-          WHERE s.date >= ? AND s.date <= ?
+          WHERE s.date <= ?
+            AND (s.date > ? OR (s.date = ? AND s.time > ?))
           ORDER BY s.date ASC, s.time ASC
-        `).bind(userId, todayStr, maxDateStr).all();
+        `).bind(userId, maxDateStr, todayStr, todayStr, currentTimeStr).all();
 
         return jsonResponse({ success: true, sessions: results });
       }
