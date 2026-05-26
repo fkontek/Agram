@@ -420,6 +420,25 @@
     </section>
     <!-- End Contact section -->
 
+    <!-- Instagram Section -->
+    <section id="instagram-feed">
+      <div class="instagram-feed container">
+        <h1 class="section-title">Pratite nas na <span>Instagramu</span></h1>
+        <p class="instagram-handle">
+          <a href="https://www.instagram.com/pilatesreformeragram/" target="_blank" rel="noopener">@pilatesreformeragram</a>
+        </p>
+        <div id="instagram-grid" class="instagram-grid">
+          <div class="instagram-skeleton"></div>
+          <div class="instagram-skeleton"></div>
+          <div class="instagram-skeleton"></div>
+          <div class="instagram-skeleton"></div>
+          <div class="instagram-skeleton"></div>
+          <div class="instagram-skeleton"></div>
+        </div>
+        <a href="https://www.instagram.com/pilatesreformeragram/" target="_blank" rel="noopener" class="cta">Posjetite naš profil</a>
+      </div>
+    </section>
+
 <!-- Footer section -->
 <section id="footer">
   <div class="footer container">
@@ -446,6 +465,50 @@
     <!-- End Footer section -->
     <script src="./ScrollEditor.js"></script>
     <script src="./app.js"></script>
+
+    <script>
+      // Instagram Feed loader
+      window.addEventListener("DOMContentLoaded", async () => {
+        const grid = document.getElementById("instagram-grid");
+        if (!grid) return;
+
+        const API_BASE = window.location.hostname.includes("test") || window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")
+          ? "https://agram-backend-test.filip-kontek.workers.dev"
+          : "https://agram-backend.filip-kontek.workers.dev";
+
+        try {
+          const res = await fetch(`${API_BASE}/api/instagram/posts`);
+          const data = await res.json();
+          
+          if (res.ok && data.success && data.posts && data.posts.length > 0) {
+            grid.innerHTML = data.posts.map(post => {
+              const captionText = post.caption ? post.caption.replace(/"/g, '&quot;') : "";
+              const mediaUrl = post.media_type === "VIDEO" && post.thumbnail_url ? post.thumbnail_url : post.media_url;
+              return `
+                <a href="${post.permalink}" target="_blank" rel="noopener" class="instagram-card">
+                  <img src="${mediaUrl}" alt="Instagram objava" loading="lazy" />
+                  <div class="instagram-overlay">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="instagram-icon"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                    <p class="instagram-caption">${post.caption || ""}</p>
+                  </div>
+                </a>
+              `;
+            }).join('');
+          } else {
+            // Fallback: If no posts or config is missing, show a nice call to action without empty grid
+            grid.style.display = "none";
+            const handleText = document.querySelector("#instagram-feed .instagram-handle");
+            if (handleText) {
+              handleText.innerHTML = `Pratite naš rad, najnovije vijesti i atmosferu iz studija direktno na našem Instagram profilu:<br><br><a href="https://www.instagram.com/pilatesreformeragram/" target="_blank" rel="noopener" style="font-size: 2.2rem; font-weight: 700; color: var(--primary-gold);">@pilatesreformeragram</a>`;
+            }
+          }
+        } catch (err) {
+          console.error("Greška pri dohvaćanju Instagram objava:", err);
+          grid.style.display = "none";
+        }
+      });
+    </script>
+
 
     <script>
       const nav = document.querySelector(".main-nav");

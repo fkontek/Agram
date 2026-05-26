@@ -96,6 +96,89 @@ async function sendEmail(env, to, subject, htmlContent) {
   }
 }
 
+// Synchronize Instagram Feed
+async function syncInstagramFeed(env) {
+  try {
+    // 1. Get access token from Settings
+    const tokenObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_access_token'").first();
+    if (!tokenObj || !tokenObj.value) {
+      console.warn("Instagram access token not configured in Settings.");
+      return false;
+    }
+    const token = tokenObj.value;
+
+    // 2. Fetch latest media (limit 6) from Instagram Basic Display API
+    const res = await fetch(`https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&limit=6&access_token=${token}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Instagram API error fetching media:", errorText);
+      return false;
+    }
+    const data = await res.json();
+    if (!data || !data.data || !Array.isArray(data.data)) {
+      console.error("Invalid response from Instagram API:", data);
+      return false;
+    }
+
+    // 3. Store posts in InstagramPosts table
+    const statements = [
+      env.DB.prepare("DELETE FROM InstagramPosts")
+    ];
+
+    for (const post of data.data) {
+      statements.push(
+        env.DB.prepare(`
+          INSERT INTO InstagramPosts (id, caption, media_type, media_url, permalink, thumbnail_url, timestamp)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          post.id,
+          post.caption || "",
+          post.media_type,
+          post.media_url,
+          post.permalink,
+          post.thumbnail_url || null,
+          post.timestamp
+        )
+      );
+    }
+
+    await env.DB.batch(statements);
+
+    // 4. Update last sync time
+    const croatiaNow = getCroatiaNow();
+    const nowStr = croatiaNow.toISOString().replace('T', ' ').substring(0, 19);
+    await env.DB.prepare("INSERT OR REPLACE INTO Settings (key, value) VALUES ('instagram_last_synced_at', ?)").bind(nowStr).run();
+
+    // 5. Automatic token refresh (if updated more than 30 days ago)
+    const tokenUpdatedObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_token_updated_at'").first();
+    const tokenUpdated = tokenUpdatedObj ? new Date(tokenUpdatedObj.value.replace(" ", "T") + "Z") : null;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    if (!tokenUpdated || tokenUpdated < thirtyDaysAgo) {
+      console.log("Refreshing Instagram access token...");
+      const refreshRes = await fetch(`https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${token}`);
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        if (refreshData && refreshData.access_token) {
+          await env.DB.batch([
+            env.DB.prepare("INSERT OR REPLACE INTO Settings (key, value) VALUES ('instagram_access_token', ?)").bind(refreshData.access_token),
+            env.DB.prepare("INSERT OR REPLACE INTO Settings (key, value) VALUES ('instagram_token_updated_at', ?)").bind(nowStr)
+          ]);
+          console.log("Instagram access token successfully refreshed.");
+        }
+      } else {
+        console.error("Failed to refresh Instagram access token:", await refreshRes.text());
+      }
+    }
+
+    return true;
+  } catch (e) {
+    console.error("Error syncing Instagram feed:", e);
+    return false;
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -238,6 +321,12 @@ export default {
       if (request.method === "GET" && url.pathname === "/api/news") {
         const { results } = await env.DB.prepare("SELECT * FROM News ORDER BY created_at DESC").all();
         return jsonResponse({ success: true, news: results });
+      }
+
+      // GET INSTAGRAM FEED
+      if (request.method === "GET" && url.pathname === "/api/instagram/posts") {
+        const { results } = await env.DB.prepare("SELECT * FROM InstagramPosts ORDER BY timestamp DESC LIMIT 6").all();
+        return jsonResponse({ success: true, posts: results });
       }
 
 
@@ -1039,6 +1128,59 @@ export default {
         return jsonResponse({ success: true, message: "Obavijest/radionica je uspješno objavljena!" });
       }
 
+      // ADMIN: GET INSTAGRAM CONFIG STATUS
+      if (request.method === "GET" && url.pathname === "/api/admin/instagram/status") {
+        const tokenObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_access_token'").first();
+        const lastSyncObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_last_synced_at'").first();
+        const tokenUpdatedObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_token_updated_at'").first();
+        
+        return jsonResponse({
+          success: true,
+          isConfigured: !!(tokenObj && tokenObj.value),
+          lastSyncedAt: lastSyncObj ? lastSyncObj.value : null,
+          tokenUpdatedAt: tokenUpdatedObj ? tokenUpdatedObj.value : null
+        });
+      }
+
+      // ADMIN: SET INSTAGRAM ACCESS TOKEN
+      if (request.method === "POST" && url.pathname === "/api/admin/instagram/token") {
+        const { token } = await request.json();
+        if (!token) {
+          return jsonResponse({ success: false, error: "Pristupni token je obavezan." }, 400);
+        }
+
+        const croatiaNow = getCroatiaNow();
+        const nowStr = croatiaNow.toISOString().replace('T', ' ').substring(0, 19);
+
+        // Batch save token and mark update time
+        await env.DB.batch([
+          env.DB.prepare("INSERT OR REPLACE INTO Settings (key, value) VALUES ('instagram_access_token', ?)").bind(token),
+          env.DB.prepare("INSERT OR REPLACE INTO Settings (key, value) VALUES ('instagram_token_updated_at', ?)").bind(nowStr)
+        ]);
+
+        await logActivity(env, "Admin je ažurirao dugotrajni pristupni token za Instagram.");
+
+        // Pokreni odmah prvu sinkronizaciju objava
+        const syncSuccess = await syncInstagramFeed(env);
+
+        return jsonResponse({ 
+          success: true, 
+          message: "Instagram token je uspješno spremljen!",
+          syncSuccess
+        });
+      }
+
+      // ADMIN: MANUALLY SYNC INSTAGRAM FEED
+      if (request.method === "POST" && url.pathname === "/api/admin/instagram/sync") {
+        const syncSuccess = await syncInstagramFeed(env);
+        if (!syncSuccess) {
+          return jsonResponse({ success: false, error: "Neuspješna sinkronizacija. Provjerite ispravnost Instagram tokena." }, 500);
+        }
+
+        const { results } = await env.DB.prepare("SELECT * FROM InstagramPosts ORDER BY timestamp DESC LIMIT 6").all();
+        return jsonResponse({ success: true, message: "Sinkronizacija uspješna!", posts: results });
+      }
+
       // Fallback
       return jsonResponse({ success: false, error: "Stranica nije pronađena (404)." }, 404);
 
@@ -1046,5 +1188,8 @@ export default {
       console.error("Worker error:", e);
       return jsonResponse({ success: false, error: "Interna pogreška poslužitelja: " + e.message }, 500);
     }
+  },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(syncInstagramFeed(env));
   }
 };

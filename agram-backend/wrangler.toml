@@ -14,3 +14,7 @@ name = "agram-backend-test"
 binding = "DB"
 database_name = "agram-auth-test"
 database_id = "16e4301d-2852-4eee-ad79-3ceb122787d0"
+
+[triggers]
+crons = ["0 */12 * * *"]
+
