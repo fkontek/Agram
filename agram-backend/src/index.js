@@ -630,6 +630,31 @@ export default {
         return jsonResponse({ success: true, message: "Zahtjev za registraciju je odbačen." });
       }
 
+      // ADMIN: DELETE CLIENT (complete removal of client and all relational data)
+      if (request.method === "POST" && url.pathname === "/api/admin/delete-client") {
+        const { client_id } = await request.json();
+        if (!client_id) {
+          return jsonResponse({ success: false, error: "ID klijenta je obavezan." }, 400);
+        }
+
+        const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(client_id).first();
+        if (!client) {
+          return jsonResponse({ success: false, error: "Klijent nije pronađen." }, 404);
+        }
+
+        // Batch delete from all relational tables referencing user_id
+        await env.DB.batch([
+          env.DB.prepare("DELETE FROM Bookings WHERE user_id = ?").bind(client_id),
+          env.DB.prepare("DELETE FROM ClientNotifications WHERE user_id = ?").bind(client_id),
+          env.DB.prepare("DELETE FROM WorkshopSignups WHERE user_id = ?").bind(client_id),
+          env.DB.prepare("DELETE FROM Clients WHERE id = ?").bind(client_id)
+        ]);
+
+        await logActivity(env, `Admin je potpuno obrisao klijenta '${client.username}' i sve njegove povezane podatke.`);
+
+        return jsonResponse({ success: true, message: `Klijent '${client.username}' i svi njegovi podaci su obrisani.` });
+      }
+
       // ADMIN: GET LIST OF APPROVED CLIENTS
       if (request.method === "GET" && url.pathname === "/api/admin/clients") {
         const { results } = await env.DB.prepare(`

@@ -1615,6 +1615,7 @@
                 <div style="display: flex; gap: 6px;">
                   <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
                   <button class="btn-action btn-edit" style="border-color: var(--primary-gold-dark);" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})">Karton</button>
+                  <button class="btn-action btn-delete" onclick="deleteClient(${client.id}, '${client.username}')">Obriši</button>
                 </div>
               </td>
             `;
@@ -1655,6 +1656,7 @@
           <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(197,168,128,0.1); padding-top: 8px;">
             <button class="mobile-btn-action" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Uredi</button>
             <button class="mobile-btn-action" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Karton</button>
+            <button class="mobile-btn-action" onclick="deleteClient(${client.id}, '${client.username}')" style="flex: 1; background: transparent; color: #b22222; border: 1.5px solid #b22222; border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Obriši</button>
           </div>
         `;
         container.appendChild(card);
@@ -2395,6 +2397,28 @@
 
     function closeQuestionnaireModal() {
       document.getElementById("view-questionnaire-modal").style.display = "none";
+    }
+
+    async function deleteClient(clientId, username) {
+      if (!confirm(`JESTE LI SIGURNI da želite POTPUNO obrisati klijenta '${username}'? Ova akcija je nepovratna i obrisat će sve njegove dolaske, rezervacije, obavijesti i zdravstveni karton iz baze podataka.`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/delete-client`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_id: clientId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message);
+          fetchActivityLogs(true);
+          loadClientsList();
+        } else {
+          alert(data.error || "Greška pri brisanju klijenta.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
     }
   </script>
   <script>
