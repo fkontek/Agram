@@ -75,6 +75,21 @@ async function sendEmail(env, to, subject, htmlContent) {
     console.warn("RESEND_API_KEY is not defined. Skipping email sending.");
     return false;
   }
+
+  let recipient = to;
+  let emailSubject = subject;
+  
+  // Sandbox mode: if EMAIL_SANDBOX_MODE is true or default sender is used, redirect all emails to the specified test address.
+  const isSandbox = env.EMAIL_SANDBOX_MODE !== "false" && (env.EMAIL_SANDBOX_MODE === "true" || !env.EMAIL_FROM_ADDRESS);
+  const redirectTo = env.EMAIL_REDIRECT_TO || "filip.kontek@gmail.com";
+  
+  if (isSandbox && redirectTo) {
+    recipient = redirectTo;
+    emailSubject = `[TEST ZA: ${to}] ${subject}`;
+  }
+
+  const fromAddress = env.EMAIL_FROM_ADDRESS || "Agram Pilates <onboarding@resend.dev>";
+
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -83,9 +98,9 @@ async function sendEmail(env, to, subject, htmlContent) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        from: "Agram Pilates <onboarding@resend.dev>", // Fallback sandbox domain
-        to: [to],
-        subject: subject,
+        from: fromAddress,
+        to: [recipient],
+        subject: emailSubject,
         html: htmlContent
       })
     });
