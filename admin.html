@@ -732,6 +732,23 @@
       button.mobile-btn-delete-session { background-color: transparent; color: #b22222; border: 1px solid #b22222; font-size: 1.0rem; padding: 5px 10px; border-radius: 15px; }
       button.mobile-btn-edit-client { background-color: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); padding: 6px 12px; font-size: 1.1rem; border-radius: 20px; width: 100%; text-align: center; }
       
+      button.mobile-btn-book {
+        background: var(--primary-gold);
+        border: 1px solid var(--primary-gold-dark);
+        color: var(--dark-bg);
+        padding: 12px 16px;
+        border-radius: 30px;
+        font-size: 1.25rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        width: 100%;
+        font-family: inherit;
+      }
+      button.mobile-btn-book:active { transform: scale(0.96); background-color: var(--primary-gold-dark); color: white; }
+      
       /* ---- Empty state ---- */
       .mobile-empty {
         text-align: center;
@@ -1912,8 +1929,14 @@
       const usernameVal = document.getElementById("new-client-user").value;
       const emailVal = document.getElementById("new-client-email").value;
       const packageVal = document.getElementById("new-client-package").value;
-      const creditsVal = document.getElementById("new-client-credits").value;
+      const creditsVal = parseInt(document.getElementById("new-client-credits").value, 10) || 0;
       const expiresDaysVal = document.getElementById("new-client-expires").value;
+
+      const limit = getPackageLimit(packageVal);
+      if (packageVal !== "Nema paketa" && creditsVal > limit) {
+        alert(`Broj treninga (${creditsVal}) ne može biti veći od limita paketa (${limit}).`);
+        return;
+      }
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/create-client`, {
@@ -1972,6 +1995,15 @@
       document.getElementById("edit-package-expires").value = client.package_expires || "";
       
       document.getElementById("edit-credits-modal").style.display = "flex";
+    }
+
+    // Helper to get limit from package name
+    function getPackageLimit(packageName) {
+      if (!packageName || packageName === "Nema paketa" || packageName === "Bez paketa") {
+        return 0;
+      }
+      const match = packageName.match(/\d+/);
+      return match ? parseInt(match[0], 10) : 0;
     }
 
     // Auto-fill logic for new client form
@@ -2072,9 +2104,21 @@
       e.preventDefault();
       const clientId = document.getElementById("edit-client-id").value;
       const packageName = document.getElementById("edit-package-name").value;
-      const totalCredits = document.getElementById("edit-total-credits").value;
-      const remainingCredits = document.getElementById("edit-remaining-credits").value;
+      const totalCredits = parseInt(document.getElementById("edit-total-credits").value, 10) || 0;
+      const remainingCredits = parseInt(document.getElementById("edit-remaining-credits").value, 10) || 0;
       const packageExpires = document.getElementById("edit-package-expires").value;
+
+      const limit = getPackageLimit(packageName);
+      if (packageName !== "Nema paketa") {
+        if (totalCredits > limit) {
+          alert(`Ukupno treninga (${totalCredits}) ne može biti veći od limita paketa (${limit}).`);
+          return;
+        }
+        if (remainingCredits > limit) {
+          alert(`Preostalo treninga (${remainingCredits}) ne može biti veći od limita paketa (${limit}).`);
+          return;
+        }
+      }
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/update-client-credits`, {
@@ -2352,8 +2396,14 @@
           const usernameVal = document.getElementById("mobile-new-client-user").value;
           const emailVal = document.getElementById("mobile-new-client-email").value;
           const packageVal = document.getElementById("mobile-new-client-package").value;
-          const creditsVal = document.getElementById("mobile-new-client-credits").value;
+          const creditsVal = parseInt(document.getElementById("mobile-new-client-credits").value, 10) || 0;
           const expiresDaysVal = document.getElementById("mobile-new-client-expires").value;
+
+          const limit = getPackageLimit(packageVal);
+          if (packageVal !== "Nema paketa" && creditsVal > limit) {
+            alert(`Broj treninga (${creditsVal}) ne može biti veći od limita paketa (${limit}).`);
+            return;
+          }
 
           try {
             const res = await fetch(`${API_BASE}/api/admin/create-client`, {

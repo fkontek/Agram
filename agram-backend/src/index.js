@@ -68,6 +68,15 @@ function formatDate(dateObj) {
   return `${year}-${month}-${day}`;
 }
 
+// Helper to get limit from package name
+function getPackageLimit(packageName) {
+  if (!packageName || packageName === "Nema paketa" || packageName === "Bez paketa") {
+    return 0;
+  }
+  const match = packageName.match(/\d+/);
+  return match ? parseInt(match[0], 10) : 0;
+}
+
 // Send email using Resend API
 async function sendEmail(env, to, subject, htmlContent) {
   const apiKey = env.RESEND_API_KEY;
@@ -108,6 +117,77 @@ async function sendEmail(env, to, subject, htmlContent) {
   } catch (e) {
     console.error("Error sending email:", e);
     return false;
+  }
+}
+
+// Notify waitlist when a session spot opens up
+async function notifyWaitlist(env, sessionId) {
+  try {
+    // 1. Get session details
+    const session = await env.DB.prepare("SELECT title, date, time FROM Sessions WHERE id = ?").bind(sessionId).first();
+    if (!session) return;
+
+    // 2. Find all waitlisted users
+    const waitlisted = await env.DB.prepare(`
+      SELECT w.user_id, c.username, c.email
+      FROM Waitlists w
+      JOIN Clients c ON w.user_id = c.id
+      WHERE w.session_id = ?
+    `).bind(sessionId).all();
+
+    if (!waitlisted.results || waitlisted.results.length === 0) {
+      return;
+    }
+
+    const dateStr = session.date.split('-').reverse().join('.') + '.';
+    const subject = `Slobodan termin: ${session.title}`;
+    
+    const emailContent = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+        <h2 style="color: #a98e65;">Oslobodilo se mjesto!</h2>
+        <p>Obavještavamo Vas da se oslobodilo mjesto za termin na koji ste bili prijavljeni na listi čekanja:</p>
+        <table style="border-spacing: 10px;">
+          <tr><td><b>Termin:</b></td><td>${session.title}</td></tr>
+          <tr><td><b>Datum i vrijeme:</b></td><td>${dateStr} u ${session.time}h</td></tr>
+        </table>
+        <p style="margin-top: 20px;">
+          Termin je sada otvoren za rezervaciju svim klijentima. Ako i dalje želite sudjelovati, prijavite se što prije putem aplikacije jer se mjesta popunjavaju po principu tko prvi rezervira.
+        </p>
+        <p style="margin-top: 30px;">
+          <a href="https://pilates-reformer-agram.com/dashboard.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
+            Rezerviraj termin
+          </a>
+        </p>
+        <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+        <p style="font-size: 11px; color: #7c7267;">Ova poruka je poslana automatski klijentima na listi čekanja.</p>
+      </div>
+    `;
+
+    const notificationsQueries = [];
+    
+    // Send emails and build batch queries for in-app notifications
+    for (const user of waitlisted.results) {
+      // Send email
+      await sendEmail(env, user.email, subject, emailContent);
+      
+      // Build query for in-app notification
+      const inAppMsg = `Oslobodilo se mjesto za termin '${session.title}' (${dateStr} u ${session.time}h) za koji ste bili na listi čekanja. Rezervirajte ga odmah!`;
+      notificationsQueries.push(
+        env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(user.user_id, inAppMsg)
+      );
+    }
+
+    // 3. Delete the waitlist for this session
+    notificationsQueries.push(
+      env.DB.prepare("DELETE FROM Waitlists WHERE session_id = ?").bind(sessionId)
+    );
+
+    // Run in-app notifications and delete waitlist in a batch
+    await env.DB.batch(notificationsQueries);
+    
+    await logActivity(env, `Poslane obavijesti za ${waitlisted.results.length} klijenta na listi čekanja za termin '${session.title}' (${dateStr} u ${session.time}h).`);
+  } catch (e) {
+    console.error("Greška u notifyWaitlist:", e);
   }
 }
 
@@ -367,12 +447,13 @@ export default {
         const { results } = await env.DB.prepare(`
           SELECT s.*, 
                  (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.status >= 0) as booked_count,
-                 (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.user_id = ? AND b.status >= 0) as user_booked
+                 (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.user_id = ? AND b.status >= 0) as user_booked,
+                 (SELECT COUNT(*) FROM Waitlists w WHERE w.session_id = s.id AND w.user_id = ?) as user_waitlisted
           FROM Sessions s
           WHERE s.date <= ?
             AND (s.date > ? OR (s.date = ? AND s.time > ?))
           ORDER BY s.date ASC, s.time ASC
-        `).bind(userId, maxDateStr, todayStr, todayStr, currentTimeStr).all();
+        `).bind(userId, userId, maxDateStr, todayStr, todayStr, currentTimeStr).all();
 
         return jsonResponse({ success: true, sessions: results });
       }
@@ -406,6 +487,17 @@ export default {
         const session = await env.DB.prepare("SELECT * FROM Sessions WHERE id = ?").bind(session_id).first();
         if (!session) {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
+        }
+
+        // Check if user already has an active booking on this session's date
+        const existingBookingToday = await env.DB.prepare(`
+          SELECT b.id FROM Bookings b 
+          JOIN Sessions s ON b.session_id = s.id 
+          WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
+        `).bind(user_id, session.date).first();
+        
+        if (existingBookingToday) {
+          return jsonResponse({ success: false, error: "Već imate rezerviran termin za ovaj dan. Nije moguće rezervirati više termina u istom danu." }, 400);
         }
 
         const bookingCountObj = await env.DB.prepare(
@@ -487,7 +579,88 @@ export default {
           await logActivity(env, `Klijent '${client.username}' je ${cancelType} otkazao termin '${session.title}' (${dateStr} u ${session.time}h).`);
         }
 
+        // Notify waitlist when a session spot opens up
+        await notifyWaitlist(env, session_id);
+
         return jsonResponse({ success: true, refunded, message: messageText });
+      }
+
+      // JOIN WAITLIST
+      if (request.method === "POST" && url.pathname === "/api/waitlist/join") {
+        const { user_id, session_id } = await request.json();
+        if (!user_id || !session_id) {
+          return jsonResponse({ success: false, error: "Svi parametri su obavezni." }, 400);
+        }
+
+        // 1. Check if client exists
+        const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
+        if (!client) {
+          return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
+        }
+
+        // 2. Check if session exists
+        const session = await env.DB.prepare("SELECT title, date, time FROM Sessions WHERE id = ?").bind(session_id).first();
+        if (!session) {
+          return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
+        }
+
+        // 3. Check if user is already booked
+        const existingBooking = await env.DB.prepare(
+          "SELECT id FROM Bookings WHERE session_id = ? AND user_id = ? AND status >= 0"
+        ).bind(session_id, user_id).first();
+        if (existingBooking) {
+          return jsonResponse({ success: false, error: "Već ste prijavljeni na ovaj termin." }, 400);
+        }
+
+        // 4. Check if user already has an active booking on this session's date
+        const existingBookingToday = await env.DB.prepare(`
+          SELECT b.id FROM Bookings b 
+          JOIN Sessions s ON b.session_id = s.id 
+          WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
+        `).bind(user_id, session.date).first();
+        
+        if (existingBookingToday) {
+          return jsonResponse({ success: false, error: "Već imate rezerviran termin za ovaj dan. Nije moguće biti na listi čekanja za drugi termin istog dana." }, 400);
+        }
+
+        // 5. Insert into Waitlists
+        try {
+          await env.DB.prepare(
+            "INSERT INTO Waitlists (session_id, user_id) VALUES (?, ?)"
+          ).bind(session_id, user_id).run();
+
+          const dateStr = session.date.split('-').reverse().join('.') + '.';
+          await logActivity(env, `Klijent '${client.username}' se prijavio na listu čekanja za termin '${session.title}' (${dateStr} u ${session.time}h).`);
+
+          return jsonResponse({ success: true, message: "Uspješno ste se prijavili na listu čekanja!" });
+        } catch (err) {
+          if (err.message && err.message.includes("UNIQUE")) {
+            return jsonResponse({ success: true, message: "Već ste na listi čekanja za ovaj termin." });
+          }
+          throw err;
+        }
+      }
+
+      // LEAVE WAITLIST
+      if (request.method === "POST" && url.pathname === "/api/waitlist/leave") {
+        const { user_id, session_id } = await request.json();
+        if (!user_id || !session_id) {
+          return jsonResponse({ success: false, error: "Svi parametri su obavezni." }, 400);
+        }
+
+        const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
+        const session = await env.DB.prepare("SELECT title, date, time FROM Sessions WHERE id = ?").bind(session_id).first();
+
+        await env.DB.prepare(
+          "DELETE FROM Waitlists WHERE session_id = ? AND user_id = ?"
+        ).bind(session_id, user_id).run();
+
+        if (client && session) {
+          const dateStr = session.date.split('-').reverse().join('.') + '.';
+          await logActivity(env, `Klijent '${client.username}' se maknuo s liste čekanja za termin '${session.title}' (${dateStr} u ${session.time}h).`);
+        }
+
+        return jsonResponse({ success: true, message: "Uspješno ste se maknuli s liste čekanja." });
       }
 
       // CLIENT DASHBOARD DATA (Get current bookings and history)
@@ -788,6 +961,11 @@ export default {
           return jsonResponse({ success: false, error: "Korisničko ime i e-mail su obavezni." }, 400);
         }
 
+        const limit = getPackageLimit(package_name);
+        if (package_name !== "Nema paketa" && parseInt(total_credits) > limit) {
+          return jsonResponse({ success: false, error: `Broj treninga (${total_credits}) ne može biti veći od limita paketa (${limit}).` }, 400);
+        }
+
         // Check if username/email already exists
         const existing = await env.DB.prepare("SELECT id FROM Clients WHERE username = ? OR email = ?").bind(username, email).first();
         if (existing) {
@@ -857,6 +1035,16 @@ export default {
         
         if (!client_id) {
           return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        }
+
+        const limit = getPackageLimit(package_name);
+        if (package_name !== "Nema paketa") {
+          if (parseInt(total_credits) > limit) {
+            return jsonResponse({ success: false, error: `Ukupno treninga (${total_credits}) ne može biti veći od limita paketa (${limit}).` }, 400);
+          }
+          if (parseInt(remaining_credits) > limit) {
+            return jsonResponse({ success: false, error: `Preostalo treninga (${remaining_credits}) ne može biti veći od limita paketa (${limit}).` }, 400);
+          }
         }
 
         await env.DB.prepare(`
@@ -944,6 +1132,9 @@ export default {
             await logActivity(env, `Admin je otkazao termin klijentu '${details.username}' za '${details.title}' (${dateStr} u ${details.time}h) - uz povrat.`);
           }
 
+          // Notify waitlist when a session spot opens up
+          await notifyWaitlist(env, booking.session_id);
+
           return jsonResponse({ success: true, message: "Rezervacija je uspješno otkazana, a klijentu je vraćen 1 trening na račun!" });
         } else {
           const msg = details
@@ -959,6 +1150,9 @@ export default {
           if (details) {
             await logActivity(env, `Admin je otkazao termin klijentu '${details.username}' za '${details.title}' (${dateStr} u ${details.time}h) - bez povrata.`);
           }
+
+          // Notify waitlist when a session spot opens up
+          await notifyWaitlist(env, booking.session_id);
 
           return jsonResponse({ success: true, message: "Rezervacija je otkazana bez povrata kredita (označeno kao nedolazak)." });
         }
@@ -1115,6 +1309,9 @@ export default {
         // 3. Delete the session (which will cascade delete bookings)
         queries.push(
           env.DB.prepare("DELETE FROM Sessions WHERE id = ?").bind(session_id)
+        );
+        queries.push(
+          env.DB.prepare("DELETE FROM Waitlists WHERE session_id = ?").bind(session_id)
         );
 
         await env.DB.batch(queries);

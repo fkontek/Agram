@@ -241,6 +241,7 @@
     }
     .session-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--primary-gold); }
     .session-card.user-booked { border: 2px solid #2e7559; background-color: rgba(46,117,89,0.03); }
+    .session-card.user-waitlisted { border: 2px dashed var(--primary-gold-dark); background-color: rgba(197, 168, 128, 0.03); }
     .session-time { font-size: 1.7rem; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 5px; }
     .session-title { font-size: 1.25rem; font-weight: 600; color: var(--text-dark); }
     .session-spots { font-size: 1.15rem; color: var(--text-muted); }
@@ -332,11 +333,13 @@
 
       /* ---- Notifications bar ---- */
       .mobile-notif-bar {
-        background: rgba(178,34,34,0.06);
-        border-bottom: 1px solid rgba(178,34,34,0.15);
+        background: rgba(178,34,34,0.12);
+        border-bottom: 1px solid rgba(178,34,34,0.25);
         padding: 12px 18px;
         flex-shrink: 0;
         display: none;
+        --text-dark: #f7e8e8;
+        --text-muted: rgba(255, 255, 255, 0.5);
       }
       .mobile-notif-bar.visible { display: block; }
       .mobile-notif-title {
@@ -494,6 +497,12 @@
         border-color: #2e7559;
         border-width: 2px;
         background: rgba(46,117,89,0.03);
+      }
+      .mobile-session-card.user-waitlisted {
+        border-color: var(--primary-gold-dark);
+        border-style: dashed;
+        border-width: 2px;
+        background: rgba(197, 168, 128, 0.03);
       }
       .mobile-session-left { flex: 1; min-width: 0; }
       .mobile-session-time { font-size: 2.2rem; font-weight: 800; color: #2c251e; line-height: 1; }
@@ -805,6 +814,7 @@
     let userCreditsVal  = 0;
     let userPackageVal  = "";
     let mobileDateVal   = "";
+    let userBookedDates = [];
 
     if (!userId || !username) {
       window.location.href = "prijava.html";
@@ -891,6 +901,9 @@
           document.getElementById("mobile-package-name").textContent       = userPackageVal;
           document.getElementById("mobile-credits-profil").textContent     = creditsFormatted;
           document.getElementById("mobile-package-expires").textContent    = expiresFormatted;
+
+          // Store booked dates (only active ones where status is 0)
+          userBookedDates = (data.upcoming || []).filter(b => b.status === 0).map(b => b.date);
 
           // 2. Upcoming bookings — desktop
           const upcomingEl = document.getElementById("upcoming-list");
@@ -1085,7 +1098,19 @@
           cardClass += " user-booked";
           buttonHtml = `<span class="badge badge-present" style="text-align:center; font-size:1.15rem; width:100%; display:block; border-radius:20px;">Prijavljen/a</span>`;
         } else if (freeSpots <= 0) {
-          buttonHtml = `<span class="badge badge-absent" style="text-align:center; font-size:1.15rem; width:100%; display:block; border-radius:20px;">Popunjeno</span>`;
+          if (session.user_waitlisted > 0) {
+            cardClass += " user-waitlisted";
+            buttonHtml = `<button class="btn-cancel" style="width:100%; border-color:var(--primary-gold-dark); color:var(--primary-gold-dark);" onclick="leaveWaitlist(${session.id})">Makni me s liste</button>`;
+          } else if (userBookedDates.includes(session.date)) {
+            buttonHtml = `<span class="badge badge-absent" style="text-align:center; font-size:1.15rem; width:100%; display:block; border-radius:20px;">Popunjeno</span>`;
+          } else {
+            const isNoPackage = userPackageVal.toLowerCase().includes("nema");
+            buttonHtml = isNoPackage
+              ? `<button class="btn-book" style="opacity:0.6; cursor:not-allowed; width:100%; background-color:#a98e65; border-color:#a98e65; color:white;" onclick="alert('Nemate aktivnu članarinu.')">Lista čekanja</button>`
+              : `<button class="btn-book" style="width:100%; background-color:#a98e65; border-color:#a98e65; color:white;" onclick="joinWaitlist(${session.id})">Lista čekanja</button>`;
+          }
+        } else if (userBookedDates.includes(session.date)) {
+          buttonHtml = `<button class="btn-book" style="opacity:0.5; cursor:not-allowed; width:100%;" onclick="alert('Već imate rezerviran termin za ovaj dan.')" disabled>Rezerviraj</button>`;
         } else {
           const isNoPackage = userPackageVal.toLowerCase().includes("nema");
           buttonHtml = isNoPackage
@@ -1151,13 +1176,30 @@
       function createMobileCard(session) {
         const freeSpots = session.capacity - session.booked_count;
         const typeLabel = session.type === "privatni" ? "Privatni trening" : (session.type === "poluindividualni" ? "Poluindividualni" : "Grupni trening");
-        const cardClass = session.user_booked > 0 ? "mobile-session-card user-booked" : "mobile-session-card";
+        
+        let cardClass = "mobile-session-card";
+        if (session.user_booked > 0) {
+          cardClass += " user-booked";
+        } else if (session.user_waitlisted > 0) {
+          cardClass += " user-waitlisted";
+        }
 
         let rightHtml = "";
         if (session.user_booked > 0) {
           rightHtml = `<div class="mobile-badge-booked">Prijavljen/a ✓</div>`;
         } else if (freeSpots <= 0) {
-          rightHtml = `<div class="mobile-badge-full">Popunjeno</div>`;
+          if (session.user_waitlisted > 0) {
+            rightHtml = `<button class="mobile-btn-cancel" style="border-color:var(--primary-gold-dark); color:var(--primary-gold-dark);" onclick="leaveWaitlist(${session.id})">Makni me</button>`;
+          } else if (userBookedDates.includes(session.date)) {
+            rightHtml = `<div class="mobile-badge-full">Popunjeno</div>`;
+          } else {
+            const isNoPackage = userPackageVal.toLowerCase().includes("nema");
+            rightHtml = isNoPackage
+              ? `<button class="mobile-btn-book" style="opacity:0.6; background-color:#a98e65; color:white;" onclick="alert('Nemate aktivnu članarinu. Molimo kontaktirajte studio.')">Lista</button>`
+              : `<button class="mobile-btn-book" style="background-color:#a98e65; color:white;" onclick="joinWaitlist(${session.id})">Lista</button>`;
+          }
+        } else if (userBookedDates.includes(session.date)) {
+          rightHtml = `<button class="mobile-btn-book" style="opacity:0.5;" onclick="alert('Već imate rezerviran termin za ovaj dan.')" disabled>Rezerviraj</button>`;
         } else {
           const isNoPackage = userPackageVal.toLowerCase().includes("nema");
           rightHtml = isNoPackage
@@ -1230,6 +1272,47 @@
           loadDashboardData();
         } else {
           alert(data.error || "Greška pri otkazivanju.");
+        }
+      } catch (err) {
+        alert("Greška u komunikaciji sa serverom.");
+      }
+    }
+
+    // ---- Join Waitlist ----
+    async function joinWaitlist(sessionId) {
+      try {
+        const res  = await fetch(`${API_BASE}/api/waitlist/join`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: parseInt(userId), session_id: sessionId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message || "Uspješno ste se prijavili na listu čekanja!");
+          loadDashboardData();
+        } else {
+          alert(data.error || "Greška pri prijavi na listu čekanja.");
+        }
+      } catch (err) {
+        alert("Greška u komunikaciji sa serverom.");
+      }
+    }
+
+    // ---- Leave Waitlist ----
+    async function leaveWaitlist(sessionId) {
+      if (!confirm("Jeste li sigurni da se želite maknuti s liste čekanja za ovaj termin?")) return;
+      try {
+        const res  = await fetch(`${API_BASE}/api/waitlist/leave`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: parseInt(userId), session_id: sessionId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message || "Maknuti ste s liste čekanja.");
+          loadDashboardData();
+        } else {
+          alert(data.error || "Greška pri uklanjanju s liste čekanja.");
         }
       } catch (err) {
         alert("Greška u komunikaciji sa serverom.");
