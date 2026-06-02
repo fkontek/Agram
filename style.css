@@ -2,22 +2,30 @@
 
 /* Modern variables system for Agram Pilates Studio */
 :root {
-  --primary-gold: #c5a880;        /* Warm sand-gold */
-  --primary-gold-dark: #a98e65;   /* Darker gold for hovers/borders */
-  --primary-gold-light: #f5eedf;  /* Very soft gold accent for cards/bg */
-  --dark-bg: #1a1510;             /* Premium dark brown/black */
-  --light-bg: #faf8f5;            /* Off-white warm pješčana background */
+  --primary-gold: #c5a880;
+  /* Warm sand-gold */
+  --primary-gold-dark: #a98e65;
+  /* Darker gold for hovers/borders */
+  --primary-gold-light: #f5eedf;
+  /* Very soft gold accent for cards/bg */
+  --dark-bg: #1a1510;
+  /* Premium dark brown/black */
+  --light-bg: #faf8f5;
+  /* Off-white warm pješčana background */
   --card-bg: #ffffff;
-  --text-dark: #2c251e;           /* Elegant dark text */
-  --text-light: #fdfbf7;          /* Clean off-white text */
-  --text-muted: #7c7267;          /* Soft grey-brown for secondary texts */
+  --text-dark: #2c251e;
+  /* Elegant dark text */
+  --text-light: #fdfbf7;
+  /* Clean off-white text */
+  --text-muted: #7c7267;
+  /* Soft grey-brown for secondary texts */
   --border-color: #ebdcc5;
-  
+
   --shadow-sm: 0 2px 8px rgba(28, 21, 16, 0.05);
   --shadow-md: 0 8px 24px rgba(28, 21, 16, 0.08);
   --shadow-lg: 0 16px 40px rgba(28, 21, 16, 0.12);
   --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(255, 255, 255, 0.05) inset;
-  
+
   --transition-fast: 0.2s ease;
   --transition-normal: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   --radius-sm: 8px;
@@ -139,7 +147,7 @@ p {
 }
 
 .logo-icon {
-  height: 50px;
+  height: 100px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
@@ -312,7 +320,14 @@ p {
 }
 
 /* Scroll margin adjustments to prevent header overlap */
-#services, #raspored, #cjenik, #galerija, #collaboration, #about, #contact, #instagram-feed {
+#services,
+#raspored,
+#cjenik,
+#galerija,
+#collaboration,
+#about,
+#contact,
+#instagram-feed {
   scroll-margin-top: 90px;
 }
 
@@ -553,7 +568,8 @@ p {
   text-align: center;
 }
 
-.schedule th, .schedule td {
+.schedule th,
+.schedule td {
   padding: 14px;
   border-bottom: 1px solid var(--border-color);
 }
@@ -683,7 +699,10 @@ p {
 #price-note-overlay {
   display: none;
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: rgba(26, 21, 16, 0.6);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -837,8 +856,13 @@ p {
   transition: var(--transition-fast);
 }
 
-#prev-btn { left: 30px; }
-#next-btn { right: 30px; }
+#prev-btn {
+  left: 30px;
+}
+
+#next-btn {
+  right: 30px;
+}
 
 #prev-btn:hover,
 #next-btn:hover {
@@ -1200,8 +1224,10 @@ p {
 /* Temporary Overlay (Website In Progress) */
 .overlay {
   position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   background-color: rgba(26, 21, 16, 0.95);
   display: flex;
   justify-content: center;
@@ -1236,6 +1262,7 @@ p {
     width: 100%;
     left: 0;
   }
+
   100% {
     width: 0;
     left: 100%;
@@ -1247,6 +1274,7 @@ p {
     opacity: 1;
     transform: scale(1);
   }
+
   100% {
     opacity: 0;
     transform: scale(1.4);
@@ -1270,6 +1298,7 @@ p {
     transform: translateY(30px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1281,7 +1310,7 @@ p {
   #header .hamburger {
     display: none;
   }
-  
+
   #header .nav-list ul {
     display: flex;
     flex-direction: row;
@@ -1292,18 +1321,18 @@ p {
     align-items: center;
     gap: 10px;
   }
-  
+
   #header .nav-list ul li {
     display: flex;
   }
-  
+
   #header .nav-list ul li a {
     font-size: 1.4rem;
     letter-spacing: 0.1rem;
     padding: 10px 15px;
     white-space: nowrap;
   }
-  
+
   #header .nav-list ul li a:hover {
     color: var(--primary-gold);
     transform: translateY(-1px);
@@ -1315,47 +1344,47 @@ p {
   .container {
     padding: 30px 20px;
   }
-  
+
   .section-title {
     font-size: 2.8rem;
   }
-  
+
   #services .service-bottom {
     gap: 20px;
   }
-  
+
   #services .service-item {
     flex: 1 1 45%;
     max-width: 100%;
   }
-  
+
   #about .about {
     flex-direction: column;
     gap: 40px;
     text-align: center;
   }
-  
+
   #about .col-right {
     text-align: center;
   }
-  
+
   #about .col-right h2 {
     text-align: center;
   }
-  
+
   #about .col-left {
     width: 100%;
   }
-  
+
   #about .col-left .about-img::after {
     left: -15px;
     top: 15px;
   }
-  
+
   #contact .contact-items {
     gap: 20px;
   }
-  
+
   #contact .contact-item {
     flex: 1 1 45%;
     max-width: 100%;
@@ -1367,22 +1396,23 @@ p {
   #hero h1 {
     font-size: 3.4rem;
   }
-  
+
   #services .service-item {
     flex: 1 1 100%;
     min-height: auto;
     padding: 30px 20px;
   }
-  
+
   #raspored .schedule {
     padding: 15px;
     overflow-x: auto;
   }
-  
+
   .schedule table {
-    min-width: 500px; /* Enable horizontal scrolling on tiny screens for readability */
+    min-width: 500px;
+    /* Enable horizontal scrolling on tiny screens for readability */
   }
-  
+
   /* Modern Responsive Price List Cards on Mobile */
   .price-table table,
   .price-table thead,
@@ -1395,7 +1425,8 @@ p {
   }
 
   .price-table thead {
-    display: none; /* Hide header row on mobile cards */
+    display: none;
+    /* Hide header row on mobile cards */
   }
 
   .price-table tr {
@@ -1426,7 +1457,7 @@ p {
     color: var(--text-muted);
     margin-bottom: 2px;
   }
-  
+
   .price-table tr.category-header {
     background-color: var(--primary-gold);
     border: 1px solid var(--primary-gold-dark);
@@ -1452,24 +1483,24 @@ p {
   .price-table tr.category-header td::before {
     display: none;
   }
-  
+
   #collaboration .collaboration-item {
     flex-direction: column;
   }
-  
+
   #collaboration .collaboration-image {
     min-height: 250px;
   }
-  
+
   #contact .contact-item {
     flex: 1 1 100%;
   }
-  
+
   /* Mobile Gallery Preview styling */
   .gallery-grid {
     display: none !important;
   }
-  
+
   .mobile-gallery {
     display: block !important;
     width: 100%;
@@ -1477,7 +1508,7 @@ p {
     margin: 20px auto 0 auto;
     padding: 0 10px;
   }
-  
+
   .gallery-preview-wrapper {
     position: relative;
     border-radius: var(--radius-md);
@@ -1487,12 +1518,12 @@ p {
     border: 1px solid rgba(197, 168, 128, 0.2);
     transition: var(--transition-fast);
   }
-  
+
   .gallery-preview-wrapper img {
     height: 220px;
     display: block;
   }
-  
+
   .gallery-overlay-text {
     position: absolute;
     bottom: 0;
@@ -1507,14 +1538,21 @@ p {
     text-transform: uppercase;
     border-top: 1px solid rgba(197, 168, 128, 0.3);
   }
-  
-  #prev-btn, #next-btn {
+
+  #prev-btn,
+  #next-btn {
     width: 45px;
     height: 45px;
     font-size: 2.5rem;
   }
-  #prev-btn { left: 10px; }
-  #next-btn { right: 10px; }
+
+  #prev-btn {
+    left: 10px;
+  }
+
+  #next-btn {
+    right: 10px;
+  }
 }
 
 @media only screen and (min-width: 769px) {
@@ -1656,6 +1694,7 @@ p {
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
@@ -1682,6 +1721,7 @@ p {
   #instagram-feed {
     padding: 40px 0;
   }
+
   .instagram-grid {
     grid-template-columns: repeat(1, 1fr);
     max-width: 450px;
