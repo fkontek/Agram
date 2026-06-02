@@ -6,7 +6,7 @@
   /* Warm sand-gold */
   --primary-gold-dark: #a98e65;
   /* Darker gold for hovers/borders */
-  --primary-gold-light: #f5eedf;
+  --primary-gold-light: #decba5;
   /* Very soft gold accent for cards/bg */
   --dark-bg: #1a1510;
   /* Premium dark brown/black */
@@ -99,6 +99,10 @@ p {
   font-weight: 600;
 }
 
+.break-mobile {
+  display: none;
+}
+
 .cta {
   display: inline-block;
   padding: 12px 35px;
@@ -127,10 +131,11 @@ p {
 }
 
 .brand h1 {
-  font-size: 2.2rem;
+  font-size: 2.0rem;
   text-transform: uppercase;
   color: var(--text-light);
   letter-spacing: 1px;
+  transition: font-size var(--transition-normal);
 }
 
 .brand h1 span {
@@ -138,24 +143,39 @@ p {
   font-weight: 600;
 }
 
-/* Brand: logo + tekst u jednom flex redu */
-.brand a {
+/* Brand-link wraps the logo image and brand name as a single unified link */
+.brand-link {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 30px; /* Elegant gap between symbol and wordmark */
   text-decoration: none;
+  transition: gap var(--transition-normal);
+}
+
+.logo-box {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
 }
 
 .logo-icon {
-  height: 100px;
+  height: 65px; /* Clean, modern default height instead of bulging 100px */
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
-  transition: var(--transition-normal);
+  transition: height var(--transition-normal);
+}
+
+#header.scrolled .brand-link {
+  gap: 15px; /* Smanjen razmak kada je zaglavlje skrolano */
 }
 
 #header.scrolled .logo-icon {
-  height: 40px;
+  height: 45px;
 }
 
 /* Header section */
@@ -174,6 +194,7 @@ p {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 0; /* Clear padding inheritance from .container to prevent oversized header */
   transition: background-color 0.4s ease, box-shadow 0.4s ease, min-height 0.4s ease;
 }
 
@@ -186,6 +207,7 @@ p {
   max-width: 1200px;
   margin: 0 auto;
   padding: 8px 30px;
+  transition: padding var(--transition-normal);
 }
 
 /* Hamburger for Mobile devices */
@@ -308,7 +330,7 @@ p {
 }
 
 #header.scrolled .brand h1 {
-  font-size: 1.9rem;
+  font-size: 1.7rem;
 }
 
 #header.scrolled .hamburger {
@@ -596,7 +618,7 @@ p {
 }
 
 .schedule tr:nth-child(even) {
-  background-color: rgba(245, 238, 223, 0.25);
+  background-color: rgba(222, 203, 165, 0.25);
 }
 
 .schedule tr:hover {
@@ -1341,6 +1363,25 @@ p {
 
 /* Media query for tablet screens (max-width: 1023px) */
 @media only screen and (max-width: 1023px) {
+  .brand-link {
+    gap: 15px;
+  }
+  .logo-icon {
+    height: 50px;
+  }
+  .brand h1 {
+    font-size: 1.6rem;
+  }
+  #header.scrolled .logo-icon {
+    height: 40px;
+  }
+  #header.scrolled .brand h1 {
+    font-size: 1.4rem;
+  }
+  #header.scrolled .brand-link {
+    gap: 10px;
+  }
+
   .container {
     padding: 30px 20px;
   }
@@ -1393,6 +1434,25 @@ p {
 
 /* Media query for mobile screens (max-width: 768px) */
 @media only screen and (max-width: 768px) {
+  .brand-link {
+    gap: 10px;
+  }
+  .logo-icon {
+    height: 42px;
+  }
+  .brand h1 {
+    font-size: 1.35rem;
+  }
+  #header.scrolled .logo-icon {
+    height: 35px;
+  }
+  #header.scrolled .brand h1 {
+    font-size: 1.15rem;
+  }
+  #header.scrolled .brand-link {
+    gap: 8px;
+  }
+
   #hero h1 {
     font-size: 3.4rem;
   }
@@ -1405,12 +1465,24 @@ p {
 
   #raspored .schedule {
     padding: 15px;
-    overflow-x: auto;
+    overflow-x: hidden;
   }
 
   .schedule table {
-    min-width: 500px;
-    /* Enable horizontal scrolling on tiny screens for readability */
+    min-width: 100%;
+  }
+
+  .schedule td {
+    padding: 10px 5px;
+    font-size: 1.25rem;
+  }
+
+  .separator {
+    display: none;
+  }
+
+  .break-mobile {
+    display: inline;
   }
 
   /* Modern Responsive Price List Cards on Mobile */
