@@ -242,6 +242,16 @@
       border-bottom: 1px solid var(--border-color);
     }
 
+    #clients-table th, #clients-table td {
+      padding: 8px 10px;
+      font-size: 1.25rem;
+    }
+
+    #clients-table button.btn-action {
+      padding: 4px 10px;
+      font-size: 1.05rem;
+    }
+
     th {
       background-color: var(--primary-gold-light);
       color: var(--text-dark);
@@ -855,11 +865,36 @@
         </table>
       </div>
 
+      <!-- Zahtjevi za pakete (Na čekanju) -->
+      <div id="pending-packages-section" class="admin-card" style="display: none; border-color: var(--primary-gold); background-color: rgba(197, 168, 128, 0.03);">
+        <h2 style="color: var(--primary-gold-dark);">Zahtjevi za pakete (Na čekanju)</h2>
+        <div class="table-responsive-desktop">
+          <table id="pending-packages-table">
+            <thead>
+              <tr>
+                <th>Korisničko ime</th>
+                <th>E-mail</th>
+                <th>Traženi paket</th>
+                <th>Vrijeme zahtjeva</th>
+                <th>Akcije</th>
+              </tr>
+            </thead>
+            <tbody id="pending-packages-tbody">
+              <tr><td colspan="5">Učitavanje...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Dodaj klijenta -->
       <div class="admin-card">
         <h2>Dodaj novog klijenta</h2>
         <form id="add-client-form">
           <div class="form-grid">
+            <div class="form-group">
+              <label for="new-client-name">Puno ime i prezime</label>
+              <input type="text" id="new-client-name" required placeholder="Npr. Ivana Horvat" />
+            </div>
             <div class="form-group">
               <label for="new-client-user">Korisničko ime</label>
               <input type="text" id="new-client-user" required placeholder="Npr. ivana_k" />
@@ -886,14 +921,8 @@
                 <option value="Nema paketa">Bez paketa</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="new-client-credits">Broj treninga</label>
-              <input type="number" id="new-client-credits" value="8" min="0" />
-            </div>
-            <div class="form-group">
-              <label for="new-client-expires">Trajanje paketa (dana)</label>
-              <input type="number" id="new-client-expires" value="30" min="0" />
-            </div>
+            <input type="hidden" id="new-client-credits" value="8" />
+            <input type="hidden" id="new-client-expires" value="30" />
           </div>
           <button type="submit" class="btn-submit">Spremi klijenta</button>
         </form>
@@ -903,8 +932,7 @@
       <table id="clients-table">
         <thead>
           <tr>
-            <th>Korisničko ime</th>
-            <th>Email</th>
+            <th>Klijent</th>
             <th>Paket</th>
             <th>Preostalo</th>
             <th>Istječe</th>
@@ -913,7 +941,7 @@
           </tr>
         </thead>
         <tbody id="clients-tbody">
-          <tr><td colspan="7">Učitavanje klijenata...</td></tr>
+          <tr><td colspan="6">Učitavanje klijenata...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1098,6 +1126,10 @@
           <form id="mobile-add-client-form">
             <div style="display: flex; flex-direction: column; gap: 12px;">
               <div class="form-group">
+                <label for="mobile-new-client-name" style="font-size: 1.05rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Puno ime i prezime</label>
+                <input type="text" id="mobile-new-client-name" required placeholder="Npr. Ivana Horvat" style="padding: 10px; font-size: 1.25rem; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit;" />
+              </div>
+              <div class="form-group">
                 <label for="mobile-new-client-user" style="font-size: 1.05rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Korisničko ime</label>
                 <input type="text" id="mobile-new-client-user" required placeholder="Npr. ivana_k" style="padding: 10px; font-size: 1.25rem; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit;" />
               </div>
@@ -1123,16 +1155,8 @@
                   <option value="Nema paketa">Bez paketa</option>
                 </select>
               </div>
-              <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                  <label for="mobile-new-client-credits" style="font-size: 1.05rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Broj treninga</label>
-                  <input type="number" id="mobile-new-client-credits" value="8" min="0" style="padding: 10px; font-size: 1.25rem; border: 1px solid var(--border-color); border-radius: 6px; width: 100%; font-family: inherit;" />
-                </div>
-                <div class="form-group" style="flex: 1;">
-                  <label for="mobile-new-client-expires" style="font-size: 1.05rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Trajanje (dana)</label>
-                  <input type="number" id="mobile-new-client-expires" value="30" min="0" style="padding: 10px; font-size: 1.25rem; border: 1px solid var(--border-color); border-radius: 6px; width: 100%; font-family: inherit;" />
-                </div>
-              </div>
+              <input type="hidden" id="mobile-new-client-credits" value="8" />
+              <input type="hidden" id="mobile-new-client-expires" value="30" />
               <button type="submit" class="mobile-btn-book" style="margin-top: 10px;">Spremi klijenta</button>
             </div>
           </form>
@@ -1142,6 +1166,14 @@
         <div id="mobile-pending-clients-section" style="display: none; margin-bottom: 20px;">
           <div class="mobile-section-title" style="color: #b22222; border-left-color: #b22222;">Zahtjevi na čekanju</div>
           <div id="mobile-pending-clients-list" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="mobile-empty">Učitavanje...</div>
+          </div>
+        </div>
+
+        <!-- Mobile Pending Packages Section -->
+        <div id="mobile-pending-packages-section" style="display: none; margin-bottom: 20px;">
+          <div class="mobile-section-title" style="color: var(--primary-gold-dark); border-left-color: var(--primary-gold);">Zahtjevi za pakete</div>
+          <div id="mobile-pending-packages-list" style="display: flex; flex-direction: column; gap: 10px;">
             <div class="mobile-empty">Učitavanje...</div>
           </div>
         </div>
@@ -1312,14 +1344,8 @@
             <option value="Nema paketa">Bez paketa</option>
           </select>
         </div>
-        <div class="form-group" style="margin-bottom: 15px;">
-          <label for="edit-total-credits">Ukupno treninga</label>
-          <input type="number" id="edit-total-credits" min="0" required />
-        </div>
-        <div class="form-group" style="margin-bottom: 15px;">
-          <label for="edit-remaining-credits">Preostalo treninga</label>
-          <input type="number" id="edit-remaining-credits" min="0" required />
-        </div>
+        <input type="hidden" id="edit-total-credits" />
+        <input type="hidden" id="edit-remaining-credits" />
         <div class="form-group" style="margin-bottom: 20px;">
           <label for="edit-package-expires">Datum isteka (YYYY-MM-DD)</label>
           <input type="date" id="edit-package-expires" />
@@ -1377,13 +1403,14 @@
   <div id="view-questionnaire-modal" class="modal">
     <div class="modal-content" style="max-width: 600px;">
       <div class="modal-header">
-        <h3>Zdravstveni upitnik klijenta</h3>
+        <h3>Karton i osobni podaci klijenta</h3>
         <button class="close-btn" onclick="closeQuestionnaireModal()">&times;</button>
       </div>
       <div style="max-height: 400px; overflow-y: auto; padding-right: 5px; text-align: left;">
         <div style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-          <p style="margin: 0; font-size: 1.35rem; color: var(--text-dark);">Klijent: <strong id="q-modal-username" style="color: var(--primary-gold-dark);"></strong></p>
-          <p style="margin: 5px 0 0 0; font-size: 1.2rem; color: var(--text-muted);">Email: <span id="q-modal-email"></span></p>
+          <p style="margin: 0 0 5px 0; font-size: 1.35rem; color: var(--text-dark);">Ime i prezime: <strong id="q-modal-name" style="color: var(--primary-gold-dark);"></strong></p>
+          <p style="margin: 0 0 5px 0; font-size: 1.25rem; color: var(--text-dark);">Korisničko ime: <span id="q-modal-username" style="font-weight: 600;"></span></p>
+          <p style="margin: 0; font-size: 1.25rem; color: var(--text-dark);">Email: <span id="q-modal-email" style="font-weight: 600;"></span></p>
         </div>
         <div id="q-answers-container" style="display: flex; flex-direction: column; gap: 15px; font-size: 1.3rem; line-height: 1.8rem; color: var(--text-dark);">
           <!-- Dynamic answers -->
@@ -1842,12 +1869,13 @@
     // TAB 2: KLIJENTI & PAKETI
     async function loadClientsList() {
       const tbody = document.getElementById("clients-tbody");
-      tbody.innerHTML = "<tr><td colspan='7'>Učitavanje...</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='6'>Učitavanje...</td></tr>";
       const mobileList = document.getElementById("mobile-clients-list");
       mobileList.innerHTML = "<div class='mobile-empty'>Učitavanje klijenata...</div>";
 
       // Također učitaj klijente na čekanju
       loadPendingClients();
+      loadPendingPackageRequests();
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/clients`);
@@ -1859,7 +1887,7 @@
           renderMobileClients(allClientsMobile);
 
           if (data.clients.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='7' style='text-align: center; color: var(--text-muted);'>Nema registriranih klijenata.</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='6' style='text-align: center; color: var(--text-muted);'>Nema registriranih klijenata.</td></tr>";
             return;
           }
 
@@ -1869,8 +1897,7 @@
               tr.style.backgroundColor = "rgba(178, 34, 34, 0.05)";
             }
             tr.innerHTML = `
-              <td><strong>${client.username}</strong> ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</td>
-              <td>${client.email}</td>
+              <td><strong>${client.full_name || client.username}</strong> ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</td>
               <td>${client.package_name || "Nema"}</td>
               <td><span style="font-weight: 700; color: var(--primary-gold-dark);">${client.remaining_credits}</span> / ${client.total_credits}</td>
               <td>${client.package_expires ? formatDateStr(client.package_expires) : "Nema"}</td>
@@ -1912,8 +1939,7 @@
         card.innerHTML = `
           <div class="mobile-client-header">
             <div>
-              <div class="mobile-client-username">${client.username} ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</div>
-              <div class="mobile-client-email">${client.email}</div>
+              <div class="mobile-client-username">${client.full_name || client.username} ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</div>
             </div>
           </div>
           <div class="mobile-client-package-info">
@@ -1945,6 +1971,7 @@
         return;
       }
       const filtered = allClientsMobile.filter(c => 
+        (c.full_name && c.full_name.toLowerCase().includes(query)) ||
         c.username.toLowerCase().includes(query) || 
         c.email.toLowerCase().includes(query) ||
         (c.package_name && c.package_name.toLowerCase().includes(query))
@@ -1955,6 +1982,7 @@
     // Add client submit
     document.getElementById("add-client-form").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const fullNameVal = document.getElementById("new-client-name").value;
       const usernameVal = document.getElementById("new-client-user").value;
       const emailVal = document.getElementById("new-client-email").value;
       const packageVal = document.getElementById("new-client-package").value;
@@ -1972,6 +2000,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            full_name: fullNameVal,
             username: usernameVal,
             email: emailVal,
             package_name: packageVal,
@@ -2407,6 +2436,7 @@
       if (mobAddClientForm) {
         mobAddClientForm.addEventListener("submit", async (e) => {
           e.preventDefault();
+          const fullNameVal = document.getElementById("mobile-new-client-name").value;
           const usernameVal = document.getElementById("mobile-new-client-user").value;
           const emailVal = document.getElementById("mobile-new-client-email").value;
           const packageVal = document.getElementById("mobile-new-client-package").value;
@@ -2424,6 +2454,7 @@
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                full_name: fullNameVal,
                 username: usernameVal,
                 email: emailVal,
                 package_name: packageVal,
@@ -2551,7 +2582,7 @@
             pending.forEach(client => {
               const tr = document.createElement("tr");
               tr.innerHTML = `
-                <td><strong>${client.username}</strong></td>
+                <td><strong>${client.full_name || client.username}</strong><br><span style="font-size: 1.1rem; color: var(--text-muted);">Korisničko ime: ${client.username}</span></td>
                 <td>${client.email}</td>
                 <td>
                   <button class="btn-action btn-checkin" onclick="approveClient(${client.id}, '${client.username}')">Odobri</button>
@@ -2573,7 +2604,8 @@
               card.innerHTML = `
                 <div class="mobile-client-header">
                   <div>
-                    <div class="mobile-client-username">${client.username}</div>
+                    <div class="mobile-client-username">${client.full_name || client.username}</div>
+                    <div style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 4px;">Korisničko ime: ${client.username}</div>
                     <div class="mobile-client-email">${client.email}</div>
                   </div>
                 </div>
@@ -2635,9 +2667,146 @@
       }
     }
 
+    async function loadPendingPackageRequests() {
+      const tbody = document.getElementById("pending-packages-tbody");
+      const mobileList = document.getElementById("mobile-pending-packages-list");
+      const desktopSection = document.getElementById("pending-packages-section");
+      const mobileSection = document.getElementById("mobile-pending-packages-section");
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/package-requests`);
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          const pending = data.requests || [];
+
+          if (pending.length === 0) {
+            if (desktopSection) desktopSection.style.display = "none";
+            if (mobileSection) mobileSection.style.display = "none";
+            return;
+          }
+
+          // Show sections
+          if (desktopSection) desktopSection.style.display = "block";
+          if (mobileSection) mobileSection.style.display = "block";
+
+          // Render Desktop Table
+          if (tbody) {
+            tbody.innerHTML = "";
+            pending.forEach(req => {
+              const tr = document.createElement("tr");
+              const requestDate = new Date(req.created_at);
+              const formattedDate = requestDate.toLocaleString("hr-HR", { timeZone: "Europe/Zagreb" });
+              
+              tr.innerHTML = `
+                <td><strong>${req.full_name || req.username}</strong><br><span style="font-size: 1.1rem; color: var(--text-muted);">Korisničko ime: ${req.username}</span></td>
+                <td>${req.email}</td>
+                <td><span style="color: var(--primary-gold-dark); font-weight: 700;">${req.package_name}</span></td>
+                <td>${formattedDate}</td>
+                <td>
+                  <button class="btn-action btn-checkin" onclick="approvePackageRequest(${req.request_id}, '${req.username}', '${req.package_name}')">Odobri</button>
+                  <button class="btn-action btn-delete" style="margin-left: 8px;" onclick="rejectPackageRequest(${req.request_id}, '${req.username}', '${req.package_name}')">Odbaci</button>
+                </td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+
+          // Render Mobile List
+          if (mobileList) {
+            mobileList.innerHTML = "";
+            pending.forEach(req => {
+              const card = document.createElement("div");
+              card.className = "mobile-client-card";
+              card.style.borderColor = "var(--primary-gold)";
+              card.style.background = "rgba(197, 168, 128, 0.03)";
+              
+              const requestDate = new Date(req.created_at);
+              const formattedDate = requestDate.toLocaleString("hr-HR", { timeZone: "Europe/Zagreb" });
+
+              card.innerHTML = `
+                <div class="mobile-client-header">
+                  <div>
+                    <div class="mobile-client-username">${req.full_name || req.username}</div>
+                    <div style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 4px;">Korisničko ime: ${req.username}</div>
+                    <div class="mobile-client-email">${req.email}</div>
+                    <div style="margin-top: 6px; font-size: 1.15rem; color: var(--text-dark);">
+                      Traženi paket: <strong style="color: var(--primary-gold-dark);">${req.package_name}</strong>
+                    </div>
+                    <div style="margin-top: 4px; font-size: 1.0rem; color: var(--text-muted);">
+                      Vrijeme: ${formattedDate}
+                    </div>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(197, 168, 128, 0.15); padding-top: 8px;">
+                  <button class="mobile-btn-action mobile-btn-checkin" style="flex: 1;" onclick="approvePackageRequest(${req.request_id}, '${req.username}', '${req.package_name}')">Odobri</button>
+                  <button class="mobile-btn-action mobile-btn-cancel-att" style="flex: 1;" onclick="rejectPackageRequest(${req.request_id}, '${req.username}', '${req.package_name}')">Odbaci</button>
+                </div>
+              `;
+              mobileList.appendChild(card);
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Greška pri dohvaćanju zahtjeva za pakete:", err);
+      }
+    }
+
+    async function approvePackageRequest(requestId, username, packageName) {
+      if (!confirm(`Odobriti paket '${packageName}' za korisnika '${username}'?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/approve-package-request`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ request_id: requestId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(`Paket '${packageName}' je uspješno aktiviran za korisnika '${username}'.`);
+          fetchActivityLogs(true);
+          loadClientsList();
+        } else {
+          alert(data.error || "Greška pri odobrenju paketa.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    }
+
+    async function rejectPackageRequest(requestId, username, packageName) {
+      if (!confirm(`Jeste li sigurni da želite ODBACITI zahtjev za paket '${packageName}' korisnika '${username}'?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/reject-package-request`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ request_id: requestId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert("Zahtjev za paket je odbijen.");
+          fetchActivityLogs(true);
+          loadClientsList();
+        } else {
+          alert(data.error || "Greška pri odbijanju paketa.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    }
+
     function viewClientQuestionnaire(client) {
+      document.getElementById("q-modal-name").textContent = client.full_name || client.username || "—";
+      document.getElementById("q-modal-username").textContent = client.username || "—";
+      document.getElementById("q-modal-email").textContent = client.email || "—";
+
+      const container = document.getElementById("q-answers-container");
+      container.innerHTML = "";
+
       if (!client.questionnaire) {
-        alert("Klijent još nije ispunio zdravstveni upitnik.");
+        container.innerHTML = "<p style='color: var(--text-muted); font-style: italic; font-size: 1.3rem; margin: 10px 0;'>Klijent još nije ispunio zdravstveni upitnik.</p>";
+        document.getElementById("view-questionnaire-modal").style.display = "flex";
         return;
       }
 
@@ -2646,20 +2815,16 @@
         answers = typeof client.questionnaire === "string" ? JSON.parse(client.questionnaire) : client.questionnaire;
       } catch (e) {
         console.error("Greška pri parsiranju upitnika:", e);
-        alert("Greška pri učitavanju zdravstvenog kartona.");
+        container.innerHTML = "<p style='color: #b22222; font-weight: 600; font-size: 1.3rem; margin: 10px 0;'>Greška pri učitavanju zdravstvenog kartona.</p>";
+        document.getElementById("view-questionnaire-modal").style.display = "flex";
         return;
       }
 
       if (!answers) {
-        alert("Zdravstveni karton je prazan.");
+        container.innerHTML = "<p style='color: var(--text-muted); font-style: italic; font-size: 1.3rem; margin: 10px 0;'>Zdravstveni karton je prazan.</p>";
+        document.getElementById("view-questionnaire-modal").style.display = "flex";
         return;
       }
-
-      document.getElementById("q-modal-username").textContent = client.username;
-      document.getElementById("q-modal-email").textContent = client.email;
-
-      const container = document.getElementById("q-answers-container");
-      container.innerHTML = "";
 
       const questions = [
         { key: "age", label: "Godine" },

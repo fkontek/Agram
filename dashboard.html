@@ -661,7 +661,7 @@
           <p>Iskorišteno treninga: <strong id="remaining-credits">Učitavanje...</strong></p>
           <p>Članarina vrijedi do: <strong id="package-expires">Učitavanje...</strong></p>
           <div style="margin-top:20px; text-align:center;">
-            <button class="btn-book" onclick="openRequestPackageModal()" style="width:100%; padding:10px 14px; font-size:1.25rem;">Zatraži novi paket</button>
+            <button id="request-package-btn" class="btn-book" onclick="openRequestPackageModal()" style="width:100%; padding:10px 14px; font-size:1.25rem;">Zatraži novi paket</button>
           </div>
         </div>
 
@@ -782,7 +782,7 @@
           </div>
         </div>
         <div style="margin-top:15px; margin-bottom:20px;">
-          <button class="mobile-btn-book" onclick="openRequestPackageModal()">Zatraži novi paket</button>
+          <button id="mobile-request-package-btn" class="mobile-btn-book" onclick="openRequestPackageModal()">Zatraži novi paket</button>
         </div>
         <div class="mobile-section-title">Moji zakazani termini</div>
         <div id="mobile-upcoming-list">
@@ -954,7 +954,56 @@
             mobCreditsProfilEl.style.color = "var(--primary-gold)";
             mobCreditsProfilEl.style.fontWeight = "700";
           }
-          document.getElementById("mobile-package-expires").textContent    = expiresFormatted;
+           document.getElementById("mobile-package-expires").textContent    = expiresFormatted;
+
+          // Enable/disable package request buttons based on credits and pending requests
+          const reqBtn = document.getElementById("request-package-btn");
+          const mReqBtn = document.getElementById("mobile-request-package-btn");
+          if (reqBtn && mReqBtn) {
+            if (data.pending_request) {
+              reqBtn.disabled = true;
+              reqBtn.textContent = "Zahtjev na čekanju...";
+              reqBtn.title = `Već ste poslali zahtjev za paket: ${data.pending_request.package_name}`;
+              reqBtn.style.opacity = "0.6";
+              reqBtn.style.cursor = "not-allowed";
+              reqBtn.style.pointerEvents = "none";
+              
+              mReqBtn.disabled = true;
+              mReqBtn.textContent = "Zahtjev na čekanju...";
+              mReqBtn.title = `Već ste poslali zahtjev za paket: ${data.pending_request.package_name}`;
+              mReqBtn.style.opacity = "0.6";
+              mReqBtn.style.cursor = "not-allowed";
+              mReqBtn.style.pointerEvents = "none";
+            } else if (userCreditsVal > 0) {
+              reqBtn.disabled = true;
+              reqBtn.textContent = "Zatraži novi paket";
+              reqBtn.title = "Nije moguće zatražiti novi paket dok ne iskoristite sve treninge iz postojećeg.";
+              reqBtn.style.opacity = "0.6";
+              reqBtn.style.cursor = "not-allowed";
+              reqBtn.style.pointerEvents = "none";
+              
+              mReqBtn.disabled = true;
+              mReqBtn.textContent = "Zatraži novi paket";
+              mReqBtn.title = "Nije moguće zatražiti novi paket dok ne iskoristite sve treninge iz postojećeg.";
+              mReqBtn.style.opacity = "0.6";
+              mReqBtn.style.cursor = "not-allowed";
+              mReqBtn.style.pointerEvents = "none";
+            } else {
+              reqBtn.disabled = false;
+              reqBtn.textContent = "Zatraži novi paket";
+              reqBtn.title = "";
+              reqBtn.style.opacity = "1";
+              reqBtn.style.cursor = "pointer";
+              reqBtn.style.pointerEvents = "auto";
+              
+              mReqBtn.disabled = false;
+              mReqBtn.textContent = "Zatraži novi paket";
+              mReqBtn.title = "";
+              mReqBtn.style.opacity = "1";
+              mReqBtn.style.cursor = "pointer";
+              mReqBtn.style.pointerEvents = "auto";
+            }
+          }
 
           // Store booked dates (only active ones where status is 0)
           userBookedDates = (data.upcoming || []).filter(b => b.status === 0).map(b => b.date);
@@ -1473,8 +1522,9 @@
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          alert("Zahtjev za paket je uspješno poslan! Administrator će vas kontaktirati.");
+          alert(data.message || "Zahtjev za paket je uspješno poslan!");
           closeRequestPackageModal();
+          loadDashboardData();
         } else {
           alert(data.error || "Greška pri slanju zahtjeva.");
         }

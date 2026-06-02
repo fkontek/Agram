@@ -332,7 +332,7 @@ export default {
 
         const hashedPassword = await hashPassword(password);
         const user = await env.DB.prepare(
-          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire FROM Clients WHERE (username = ? OR email = ?) AND password = ?"
+          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name FROM Clients WHERE (username = ? OR email = ?) AND password = ?"
         ).bind(username, username, hashedPassword).first();
 
         if (!user) {
@@ -348,7 +348,7 @@ export default {
 
       // REGISTER (Public registration, status 'pending' awaiting admin approval)
       if (request.method === "POST" && url.pathname === "/api/register") {
-        const { username, email } = await request.json();
+        const { full_name, username, email } = await request.json();
         
         if (!username || !email) {
           return jsonResponse({ success: false, error: "Korisničko ime i e-mail su obavezni." }, 400);
@@ -360,13 +360,13 @@ export default {
           return jsonResponse({ success: false, error: "Korisnik s tim korisničkim imenom ili e-mailom već postoji." }, 400);
         }
 
-        // Insert client with 'pending' status, 'PENDING' password, and null questionnaire
+        // Insert client with 'pending' status, 'PENDING' password, null questionnaire, and full_name
         await env.DB.prepare(`
-          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire)
-          VALUES (?, ?, 'PENDING', 0, 1, 'Nema aktivnog paketa', 0, 0, NULL, 'pending', NULL)
-        `).bind(username, email).run();
+          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name)
+          VALUES (?, ?, 'PENDING', 0, 1, 'Nema aktivnog paketa', 0, 0, NULL, 'pending', NULL, ?)
+        `).bind(username, email, full_name || null).run();
 
-        await logActivity(env, `Novi klijent '${username}' je poslao zahtjev za registraciju.`);
+        await logActivity(env, `Novi klijent '${full_name || username}' je poslao zahtjev za registraciju.`);
 
         return jsonResponse({
           success: true,
@@ -760,7 +760,12 @@ export default {
 
         // 3. Current user details
         const userDetails = await env.DB.prepare(
-          "SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire FROM Clients WHERE id = ?"
+          "SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire, status FROM Clients WHERE id = ?"
+        ).bind(userId).first();
+
+        // 3.5. Check for pending package requests
+        const pendingRequest = await env.DB.prepare(
+          "SELECT package_name FROM PackageRequests WHERE user_id = ? AND status = 'pending' LIMIT 1"
         ).bind(userId).first();
 
         // 4. Notifications
@@ -775,6 +780,7 @@ export default {
         return jsonResponse({
           success: true,
           user: userDetails,
+          pending_request: pendingRequest,
           upcoming: upcomingBookings.results,
           history: historyBookings.results,
           notifications: notifications.results
@@ -930,7 +936,7 @@ export default {
       // ADMIN: GET PENDING CLIENTS
       if (request.method === "GET" && url.pathname === "/api/admin/pending-clients") {
         const { results } = await env.DB.prepare(
-          "SELECT id, username, email, created_at FROM Clients WHERE status = 'pending' ORDER BY created_at DESC"
+          "SELECT id, username, email, created_at, full_name FROM Clients WHERE status = 'pending' ORDER BY created_at DESC"
         ).all();
         return jsonResponse({ success: true, clients: results });
       }
@@ -1024,11 +1030,11 @@ export default {
       // ADMIN: GET LIST OF APPROVED CLIENTS
       if (request.method === "GET" && url.pathname === "/api/admin/clients") {
         const { results } = await env.DB.prepare(`
-          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, questionnaire, status,
+          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, questionnaire, status, full_name,
                  (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 1) as attended_count
           FROM Clients
           WHERE is_admin = 0 AND status IN ('approved', 'frozen')
-          ORDER BY username ASC
+          ORDER BY COALESCE(full_name, username) ASC
         `).all();
 
         return jsonResponse({ success: true, clients: results });
@@ -1044,7 +1050,7 @@ export default {
 
       // ADMIN: CREATE CLIENT (with auto email & temp password)
       if (request.method === "POST" && url.pathname === "/api/admin/create-client") {
-        const { username, email, package_name, total_credits, expiration_days } = await request.json();
+        const { full_name, username, email, package_name, total_credits, expiration_days } = await request.json();
         
         if (!username || !email) {
           return jsonResponse({ success: false, error: "Korisničko ime i e-mail su obavezni." }, 400);
@@ -1073,8 +1079,8 @@ export default {
 
         // Insert client
         const result = await env.DB.prepare(`
-          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires)
-          VALUES (?, ?, ?, 0, 1, ?, ?, ?, ?)
+          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, full_name)
+          VALUES (?, ?, ?, 0, 1, ?, ?, ?, ?, ?)
         `).bind(
           username, 
           email, 
@@ -1082,7 +1088,8 @@ export default {
           package_name || "Nema paketa", 
           parseInt(total_credits) || 0, 
           parseInt(total_credits) || 0, 
-          expiresStr
+          expiresStr,
+          full_name || null
         ).run();
 
         // Send Email via Resend
@@ -1491,10 +1498,22 @@ export default {
           return jsonResponse({ success: false, error: "Nedostaju parametri." }, 400);
         }
 
-        const client = await env.DB.prepare("SELECT username, email FROM Clients WHERE id = ?").bind(user_id).first();
+        const client = await env.DB.prepare("SELECT username, email, remaining_credits FROM Clients WHERE id = ?").bind(user_id).first();
         if (!client) {
           return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
         }
+
+        if (client.remaining_credits > 0) {
+          return jsonResponse({ success: false, error: "Nije moguće zatražiti novi paket dok ne iskoristite sve treninge iz postojećeg." }, 400);
+        }
+
+        const activeRequest = await env.DB.prepare("SELECT id FROM PackageRequests WHERE user_id = ? AND status = 'pending'").bind(user_id).first();
+        if (activeRequest) {
+          return jsonResponse({ success: false, error: "Već imate aktivan zahtjev za paket na čekanju." }, 400);
+        }
+
+        // Save request to DB
+        await env.DB.prepare("INSERT INTO PackageRequests (user_id, package_name, status) VALUES (?, ?, 'pending')").bind(user_id, package_name).run();
 
         // Log activity
         await logActivity(env, `Klijent '${client.username}' je zatražio novi paket: '${package_name}'.`);
@@ -1510,13 +1529,13 @@ export default {
               ${package_name}
             </p>
             <p style="margin-top: 20px;">
-              Molimo Vas da se prijavite u <a href="https://pilates-reformer-agram.com/admin.html">Admin panel</a>, provjerite uplatu i ručno dodijelite paket klijentu u popisu korisnika.
+              Molimo Vas da se prijavite u <a href="https://pilates-reformer-agram.com/admin.html">Admin panel</a>, kako biste odobrili ili odbili ovaj zahtjev.
             </p>
           </div>
         `;
         ctx.waitUntil(sendEmail(env, adminEmail, subject, htmlContent));
 
-        return jsonResponse({ success: true, message: `Zahtjev za paket '${package_name}' je uspješno poslan! Paket će biti aktiviran nakon što administrator obradi uplatu.` });
+        return jsonResponse({ success: true, message: `Zahtjev za paket '${package_name}' je uspješno poslan! Paket će biti aktiviran nakon što ga administrator odobri.` });
       }
 
       // ADMIN: TOGGLE FREEZE CLIENT
@@ -1549,6 +1568,103 @@ export default {
         await logActivity(env, actionMsg);
 
         return jsonResponse({ success: true, message: respMsg, newStatus });
+      }
+
+      // ADMIN: GET PENDING PACKAGE REQUESTS
+      if (request.method === "GET" && url.pathname === "/api/admin/package-requests") {
+        const { results } = await env.DB.prepare(`
+          SELECT pr.id as request_id, pr.package_name, pr.created_at, pr.status, c.id as user_id, c.username, c.email, c.full_name
+          FROM PackageRequests pr
+          JOIN Clients c ON pr.user_id = c.id
+          WHERE pr.status = 'pending'
+          ORDER BY pr.created_at DESC
+        `).all();
+        return jsonResponse({ success: true, requests: results });
+      }
+
+      // ADMIN: APPROVE PACKAGE REQUEST
+      if (request.method === "POST" && url.pathname === "/api/admin/approve-package-request") {
+        const { request_id } = await request.json();
+        if (!request_id) {
+          return jsonResponse({ success: false, error: "ID zahtjeva je obavezan." }, 400);
+        }
+
+        const reqObj = await env.DB.prepare("SELECT user_id, package_name FROM PackageRequests WHERE id = ? AND status = 'pending'").bind(request_id).first();
+        if (!reqObj) {
+          return jsonResponse({ success: false, error: "Zahtjev nije pronađen ili je već obrađen." }, 404);
+        }
+
+        const { user_id, package_name } = reqObj;
+        const client = await env.DB.prepare("SELECT username, email FROM Clients WHERE id = ?").bind(user_id).first();
+        if (!client) {
+          return jsonResponse({ success: false, error: "Klijent nije pronađen." }, 404);
+        }
+
+        const limit = getPackageLimit(package_name);
+        const expiresDate = new Date(getCroatiaNow().getTime() + 30 * 24 * 60 * 60 * 1000);
+        const expiresStr = formatDate(expiresDate);
+
+        // Approve: update client credits, mark request as approved, notify client
+        const msg = `Vaš zahtjev za aktivaciju paketa '${package_name}' je odobren! Paket je aktiviran.`;
+        
+        await env.DB.batch([
+          env.DB.prepare("UPDATE Clients SET package_name = ?, total_credits = ?, remaining_credits = ?, package_expires = ? WHERE id = ?")
+            .bind(package_name, limit, limit, expiresStr, user_id),
+          env.DB.prepare("UPDATE PackageRequests SET status = 'approved' WHERE id = ?")
+            .bind(request_id),
+          env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)")
+            .bind(user_id, msg)
+        ]);
+
+        await logActivity(env, `Admin je odobrio zahtjev za paket '${package_name}' klijentu '${client.username}'.`);
+
+        // Send confirmation email to client
+        const emailSubject = "Agram Pilates - Paket aktiviran";
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+            <h2 style="color: #a98e65;">Paket je uspješno aktiviran!</h2>
+            <p>Bok <b>${client.username}</b>,</p>
+            <p>Obavještavamo Vas da je Vaš zahtjev odobren te je paket <b>'${package_name}'</b> (s ${limit} treninga) sada aktivan na Vašem profilu.</p>
+            <p>Članarina vrijedi do <b>${expiresStr.split('-').reverse().join('.')}.</b></p>
+            <p style="margin-top: 30px;">
+              <a href="https://pilates-reformer-agram.com/dashboard.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
+                Otvori raspored i rezerviraj termin
+              </a>
+            </p>
+          </div>
+        `;
+        ctx.waitUntil(sendEmail(env, client.email, emailSubject, emailHtml));
+
+        return jsonResponse({ success: true, message: "Zahtjev je odobren i paket je aktiviran!" });
+      }
+
+      // ADMIN: REJECT PACKAGE REQUEST
+      if (request.method === "POST" && url.pathname === "/api/admin/reject-package-request") {
+        const { request_id } = await request.json();
+        if (!request_id) {
+          return jsonResponse({ success: false, error: "ID zahtjeva je obavezan." }, 400);
+        }
+
+        const reqObj = await env.DB.prepare("SELECT user_id, package_name FROM PackageRequests WHERE id = ? AND status = 'pending'").bind(request_id).first();
+        if (!reqObj) {
+          return jsonResponse({ success: false, error: "Zahtjev nije pronađen ili je već obrađen." }, 404);
+        }
+
+        const { user_id, package_name } = reqObj;
+        const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
+        
+        const msg = `Vaš zahtjev za aktivaciju paketa '${package_name}' je odbijen. Molimo kontaktirajte studio za detalje.`;
+
+        await env.DB.batch([
+          env.DB.prepare("UPDATE PackageRequests SET status = 'rejected' WHERE id = ?").bind(request_id),
+          env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(user_id, msg)
+        ]);
+
+        if (client) {
+          await logActivity(env, `Admin je odbio zahtjev za paket '${package_name}' klijentu '${client.username}'.`);
+        }
+
+        return jsonResponse({ success: true, message: "Zahtjev je odbijen." });
       }
 
       // Fallback
