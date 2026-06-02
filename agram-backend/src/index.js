@@ -191,6 +191,40 @@ async function notifyWaitlist(env, sessionId) {
   }
 }
 
+// Auto-confirm bookings starting in less than 12 hours as attended (status = 1)
+async function autoConfirmBookings(env) {
+  try {
+    const nowCroatia = getCroatiaNow();
+    
+    // Select all bookings that are currently in status = 0 (Reserved)
+    const activeBookings = await env.DB.prepare(`
+      SELECT b.id, s.date, s.time, c.username
+      FROM Bookings b
+      JOIN Sessions s ON b.session_id = s.id
+      JOIN Clients c ON b.user_id = c.id
+      WHERE b.status = 0
+    `).all();
+
+    if (activeBookings.results && activeBookings.results.length > 0) {
+      const updates = [];
+      for (const b of activeBookings.results) {
+        const sessionTime = new Date(`${b.date}T${b.time}:00`);
+        const diffHours = (sessionTime.getTime() - nowCroatia.getTime()) / (1000 * 60 * 60);
+        if (diffHours < 12) {
+          // Less than 12 hours remaining, auto-confirm as attended (status = 1)
+          updates.push(env.DB.prepare("UPDATE Bookings SET status = 1 WHERE id = ?").bind(b.id));
+          await logActivity(env, `Sustav je automatski zabilježio dolazak (check-in) klijentu '${b.username}' jer je preostalo manje od 12 sati do treninga.`);
+        }
+      }
+      if (updates.length > 0) {
+        await env.DB.batch(updates);
+      }
+    }
+  } catch (e) {
+    console.error("Error in autoConfirmBookings:", e);
+  }
+}
+
 // Synchronize Instagram Feed
 async function syncInstagramFeed(env) {
   try {
@@ -275,7 +309,7 @@ async function syncInstagramFeed(env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     // 1. Handle CORS preflight requests
@@ -434,6 +468,8 @@ export default {
           return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
         }
 
+        await autoConfirmBookings(env);
+
         const nowCroatia = getCroatiaNow();
         const todayStr = formatDate(nowCroatia);
         // Get current time in HH:MM format for filtering past sessions today
@@ -467,11 +503,15 @@ export default {
 
         // 1. Get Client credits and check expiration
         const client = await env.DB.prepare(
-          "SELECT username, remaining_credits, package_expires, package_name FROM Clients WHERE id = ?"
+          "SELECT username, email, remaining_credits, package_expires, package_name, status FROM Clients WHERE id = ?"
         ).bind(user_id).first();
 
         if (!client) {
           return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
+        }
+
+        if (client.status === "frozen") {
+          return jsonResponse({ success: false, error: "Vaša članarina je trenutno zaleđena. Nije moguće rezervirati nove termine." }, 400);
         }
 
         if (client.remaining_credits <= 0) {
@@ -526,10 +566,31 @@ export default {
         const dateStr = session.date.split('-').reverse().join('.') + '.';
         await logActivity(env, `Klijent '${client.username}' je rezervirao termin '${session.title}' (${dateStr} u ${session.time}h).`);
 
+        // If they had exactly 1 credit remaining, they used their last credit! Send notification email.
+        if (client.remaining_credits === 1 && client.email) {
+          const emailSubject = "Agram Pilates - Iskoristili ste sve treninge iz paketa";
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+              <h2 style="color: #a98e65;">Svi treninzi su iskorišteni</h2>
+              <p>Bok <b>${client.username}</b>,</p>
+              <p>Obavještavamo Vas da ste upravo rezervacijom termina <b>'${session.title}'</b> iskoristili zadnji preostali trening iz Vašeg paketa <b>${client.package_name}</b>.</p>
+              <p>Kako biste mogli nastaviti s vježbanjem i rezervirati nove termine, molimo Vas da odaberete novi paket unutar aplikacije.</p>
+              <p style="margin-top: 30px;">
+                <a href="https://pilates-reformer-agram.com/dashboard.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
+                  Otvori Profil i odaberi paket
+                </a>
+              </p>
+              <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+              <p style="font-size: 11px; color: #7c7267;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
+            </div>
+          `;
+          ctx.waitUntil(sendEmail(env, client.email, emailSubject, emailHtml));
+        }
+
         return jsonResponse({ success: true, message: "Uspješna rezervacija termina!" });
       }
 
-      // CANCEL A BOOKING (6-hour rule)
+      // CANCEL A BOOKING (12-hour rule)
       if (request.method === "POST" && url.pathname === "/api/cancel-booking") {
         const { user_id, session_id } = await request.json();
         if (!user_id || !session_id) {
@@ -544,7 +605,7 @@ export default {
           return jsonResponse({ success: false, error: "Rezervacija nije pronađena." }, 404);
         }
 
-        // 2. Get session date/time to check 6h limit
+        // 2. Get session date/time to check 12h limit
         const session = await env.DB.prepare("SELECT date, time FROM Sessions WHERE id = ?").bind(session_id).first();
         if (!session) {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
@@ -557,7 +618,7 @@ export default {
         let refunded = false;
         let messageText = "";
 
-        if (diffHours >= 6) {
+        if (diffHours >= 12) {
           // In-time cancel: Refund credit
           await env.DB.batch([
             env.DB.prepare("DELETE FROM Bookings WHERE session_id = ? AND user_id = ?").bind(session_id, user_id),
@@ -569,7 +630,7 @@ export default {
           // Late cancel: Delete booking but do NOT refund credit
           await env.DB.prepare("UPDATE Bookings SET status = -1 WHERE session_id = ? AND user_id = ?").bind(session_id, user_id).run();
           refunded = false;
-          messageText = "Termin je otkazan manje od 6 sati prije treninga. Kredit se ne vraća (broji se kao iskorišten). Molimo Vas da rezervirate idući slobodan termin ili nas osobno kontaktirate za dogovor.";
+          messageText = "Termin je otkazan manje od 12 sati prije treninga. Kredit se ne vraća (broji se kao iskorišten). Molimo Vas da rezervirate idući slobodan termin ili nas osobno kontaktirate za dogovor.";
         }
 
         const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
@@ -593,9 +654,13 @@ export default {
         }
 
         // 1. Check if client exists
-        const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
+        const client = await env.DB.prepare("SELECT username, status FROM Clients WHERE id = ?").bind(user_id).first();
         if (!client) {
           return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
+        }
+
+        if (client.status === "frozen") {
+          return jsonResponse({ success: false, error: "Vaša članarina je trenutno zaleđena. Nije moguće prijaviti se na listu čekanja." }, 400);
         }
 
         // 2. Check if session exists
@@ -669,6 +734,8 @@ export default {
         if (!userId) {
           return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
         }
+
+        await autoConfirmBookings(env);
 
         const todayStr = formatDate(getCroatiaNow());
 
@@ -792,7 +859,7 @@ export default {
 
             if (booked < session.capacity) {
               // Check client credits
-              const client = await env.DB.prepare("SELECT remaining_credits, package_expires FROM Clients WHERE id = ?").bind(user_id).first();
+              const client = await env.DB.prepare("SELECT username, email, remaining_credits, package_expires, package_name FROM Clients WHERE id = ?").bind(user_id).first();
               if (client && client.remaining_credits > 0 && (!client.package_expires || client.package_expires >= todayStr)) {
                 // Book dynamically and check-in
                 await env.DB.batch([
@@ -800,6 +867,28 @@ export default {
                   env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(user_id)
                 ]);
                 await logActivity(env, `Klijent '${clientName}' se automatski prijavio na slobodni termin '${session.title}' u ${session.time}h.`);
+
+                // If they had exactly 1 credit remaining, they used their last credit! Send notification email.
+                if (client.remaining_credits === 1 && client.email) {
+                  const emailSubject = "Agram Pilates - Iskoristili ste sve treninge iz paketa";
+                  const emailHtml = `
+                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+                      <h2 style="color: #a98e65;">Svi treninzi su iskorišteni</h2>
+                      <p>Bok <b>${client.username}</b>,</p>
+                      <p>Obavještavamo Vas da ste upravo automatskom prijavom na termin <b>'${session.title}'</b> iskoristili zadnji preostali trening iz Vašeg paketa <b>${client.package_name}</b>.</p>
+                      <p>Kako biste mogli nastaviti s vježbanjem i rezervirati nove termine, molimo Vas da odaberete novi paket unutar aplikacije.</p>
+                      <p style="margin-top: 30px;">
+                        <a href="https://pilates-reformer-agram.com/dashboard.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
+                          Otvori Profil i odaberi paket
+                        </a>
+                      </p>
+                      <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+                      <p style="font-size: 11px; color: #7c7267;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
+                    </div>
+                  `;
+                  ctx.waitUntil(sendEmail(env, client.email, emailSubject, emailHtml));
+                }
+
                 return jsonResponse({
                   success: true,
                   message: `Automatski ste prijavljeni na slobodni termin: ${session.title} u ${session.time}. Skinut vam je 1 trening.`
@@ -935,10 +1024,10 @@ export default {
       // ADMIN: GET LIST OF APPROVED CLIENTS
       if (request.method === "GET" && url.pathname === "/api/admin/clients") {
         const { results } = await env.DB.prepare(`
-          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, questionnaire,
+          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, questionnaire, status,
                  (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 1) as attended_count
           FROM Clients
-          WHERE is_admin = 0 AND status = 'approved'
+          WHERE is_admin = 0 AND status IN ('approved', 'frozen')
           ORDER BY username ASC
         `).all();
 
@@ -1161,6 +1250,8 @@ export default {
       // ADMIN: GET LIST OF SESSIONS & ATTENDEES FOR A DATE
       if (request.method === "GET" && url.pathname === "/api/admin/sessions-overview") {
         const dateStr = url.searchParams.get("date") || formatDate(getCroatiaNow());
+        
+        await autoConfirmBookings(env);
         
         // 1. Get all sessions for this date
         const sessions = await env.DB.prepare(`
@@ -1391,6 +1482,73 @@ export default {
 
         const { results } = await env.DB.prepare("SELECT * FROM InstagramPosts ORDER BY timestamp DESC LIMIT 6").all();
         return jsonResponse({ success: true, message: "Sinkronizacija uspješna!", posts: results });
+      }
+
+      // CLIENT: REQUEST NEW PACKAGE
+      if (request.method === "POST" && url.pathname === "/api/client/request-package") {
+        const { user_id, package_name } = await request.json();
+        if (!user_id || !package_name) {
+          return jsonResponse({ success: false, error: "Nedostaju parametri." }, 400);
+        }
+
+        const client = await env.DB.prepare("SELECT username, email FROM Clients WHERE id = ?").bind(user_id).first();
+        if (!client) {
+          return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
+        }
+
+        // Log activity
+        await logActivity(env, `Klijent '${client.username}' je zatražio novi paket: '${package_name}'.`);
+
+        // Send email to admin
+        const adminEmail = "adrijana.kontek@gmail.com";
+        const subject = `Agram Pilates - Zahtjev za paket: ${client.username}`;
+        const htmlContent = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+            <h2 style="color: #a98e65;">Zahtjev za aktivaciju paketa</h2>
+            <p>Klijent <b>${client.username}</b> (e-mail: ${client.email}) je zatražio aktivaciju sljedećeg paketa:</p>
+            <p style="font-size: 1.2rem; background-color: #f5eedf; padding: 15px; border-radius: 8px; border: 1px solid #ebdcc5; font-weight: bold; color: #2c251e;">
+              ${package_name}
+            </p>
+            <p style="margin-top: 20px;">
+              Molimo Vas da se prijavite u <a href="https://pilates-reformer-agram.com/admin.html">Admin panel</a>, provjerite uplatu i ručno dodijelite paket klijentu u popisu korisnika.
+            </p>
+          </div>
+        `;
+        ctx.waitUntil(sendEmail(env, adminEmail, subject, htmlContent));
+
+        return jsonResponse({ success: true, message: `Zahtjev za paket '${package_name}' je uspješno poslan! Paket će biti aktiviran nakon što administrator obradi uplatu.` });
+      }
+
+      // ADMIN: TOGGLE FREEZE CLIENT
+      if (request.method === "POST" && url.pathname === "/api/admin/toggle-freeze") {
+        const { client_id } = await request.json();
+        if (!client_id) {
+          return jsonResponse({ success: false, error: "ID klijenta je obavezan." }, 400);
+        }
+
+        const client = await env.DB.prepare("SELECT username, status FROM Clients WHERE id = ?").bind(client_id).first();
+        if (!client) {
+          return jsonResponse({ success: false, error: "Klijent nije pronađen." }, 404);
+        }
+
+        let newStatus = "approved";
+        let actionMsg = "";
+        let respMsg = "";
+
+        if (client.status === "frozen") {
+          newStatus = "approved";
+          actionMsg = `Admin je odmrznuo račun klijentu '${client.username}'.`;
+          respMsg = `Klijent '${client.username}' je uspješno odmrznut.`;
+        } else {
+          newStatus = "frozen";
+          actionMsg = `Admin je zaledio račun klijentu '${client.username}'.`;
+          respMsg = `Klijent '${client.username}' je uspješno zaleđen.`;
+        }
+
+        await env.DB.prepare("UPDATE Clients SET status = ? WHERE id = ?").bind(newStatus, client_id).run();
+        await logActivity(env, actionMsg);
+
+        return jsonResponse({ success: true, message: respMsg, newStatus });
       }
 
       // Fallback

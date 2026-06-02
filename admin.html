@@ -871,10 +871,18 @@
             <div class="form-group">
               <label for="new-client-package">Paket</label>
               <select id="new-client-package" onchange="handleNewClientPackageChange()">
-                <option value="Grupni 8 treninga">Grupni (8 treninga)</option>
+                <option value="Grupni 1 trening">Grupni (1 trening)</option>
+                <option value="Grupni 4 treninga">Grupni (4 treninga)</option>
+                <option value="Grupni 8 treninga" selected>Grupni (8 treninga)</option>
                 <option value="Grupni 12 treninga">Grupni (12 treninga)</option>
+                <option value="Poluindividualni 1 trening">Poluindividualni (1 trening)</option>
+                <option value="Poluindividualni 4 treninga">Poluindividualni (4 treninga)</option>
                 <option value="Poluindividualni 8 treninga">Poluindividualni (8 treninga)</option>
+                <option value="Poluindividualni 12 treninga">Poluindividualni (12 treninga)</option>
+                <option value="Privatni 1 trening">Privatni (1 trening)</option>
+                <option value="Privatni 4 treninga">Privatni (4 treninga)</option>
                 <option value="Privatni 8 treninga">Privatni (8 treninga)</option>
+                <option value="Privatni 12 treninga">Privatni (12 treninga)</option>
                 <option value="Nema paketa">Bez paketa</option>
               </select>
             </div>
@@ -1100,10 +1108,18 @@
               <div class="form-group">
                 <label for="mobile-new-client-package" style="font-size: 1.05rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Paket</label>
                 <select id="mobile-new-client-package" onchange="handleMobileNewClientPackageChange()" style="padding: 10px; font-size: 1.25rem; border: 1px solid var(--border-color); border-radius: 6px; background: white; font-family: inherit;">
-                  <option value="Grupni 8 treninga">Grupni (8 treninga)</option>
+                  <option value="Grupni 1 trening">Grupni (1 trening)</option>
+                  <option value="Grupni 4 treninga">Grupni (4 treninga)</option>
+                  <option value="Grupni 8 treninga" selected>Grupni (8 treninga)</option>
                   <option value="Grupni 12 treninga">Grupni (12 treninga)</option>
+                  <option value="Poluindividualni 1 trening">Poluindividualni (1 trening)</option>
+                  <option value="Poluindividualni 4 treninga">Poluindividualni (4 treninga)</option>
                   <option value="Poluindividualni 8 treninga">Poluindividualni (8 treninga)</option>
+                  <option value="Poluindividualni 12 treninga">Poluindividualni (12 treninga)</option>
+                  <option value="Privatni 1 trening">Privatni (1 trening)</option>
+                  <option value="Privatni 4 treninga">Privatni (4 treninga)</option>
                   <option value="Privatni 8 treninga">Privatni (8 treninga)</option>
+                  <option value="Privatni 12 treninga">Privatni (12 treninga)</option>
                   <option value="Nema paketa">Bez paketa</option>
                 </select>
               </div>
@@ -1281,10 +1297,18 @@
         <div class="form-group" style="margin-bottom: 15px;">
           <label for="edit-package-name">Naziv paketa</label>
           <select id="edit-package-name" onchange="handleEditClientPackageChange()">
-            <option value="Grupni 8 treninga">Grupni (8 treninga)</option>
+            <option value="Grupni 1 trening">Grupni (1 trening)</option>
+            <option value="Grupni 4 treninga">Grupni (4 treninga)</option>
+            <option value="Grupni 8 treninga" selected>Grupni (8 treninga)</option>
             <option value="Grupni 12 treninga">Grupni (12 treninga)</option>
+            <option value="Poluindividualni 1 trening">Poluindividualni (1 trening)</option>
+            <option value="Poluindividualni 4 treninga">Poluindividualni (4 treninga)</option>
             <option value="Poluindividualni 8 treninga">Poluindividualni (8 treninga)</option>
+            <option value="Poluindividualni 12 treninga">Poluindividualni (12 treninga)</option>
+            <option value="Privatni 1 trening">Privatni (1 trening)</option>
+            <option value="Privatni 4 treninga">Privatni (4 treninga)</option>
             <option value="Privatni 8 treninga">Privatni (8 treninga)</option>
+            <option value="Privatni 12 treninga">Privatni (12 treninga)</option>
             <option value="Nema paketa">Bez paketa</option>
           </select>
         </div>
@@ -1607,17 +1631,9 @@
       const packageVal = document.getElementById("mobile-new-client-package").value;
       const creditsInput = document.getElementById("mobile-new-client-credits");
       const expiresInput = document.getElementById("mobile-new-client-expires");
-
-      if (packageVal.includes("8")) {
-        creditsInput.value = 8;
-        expiresInput.value = 30;
-      } else if (packageVal.includes("12")) {
-        creditsInput.value = 12;
-        expiresInput.value = 30;
-      } else {
-        creditsInput.value = 0;
-        expiresInput.value = 0;
-      }
+      const credits = getPackageLimit(packageVal);
+      creditsInput.value = credits;
+      expiresInput.value = credits > 0 ? 30 : 0;
     }
 
     // TAB 1: DNEVNA EVIDENCIJA & DOLASCI
@@ -1849,8 +1865,11 @@
 
           data.clients.forEach(client => {
             const tr = document.createElement("tr");
+            if (client.status === 'frozen') {
+              tr.style.backgroundColor = "rgba(178, 34, 34, 0.05)";
+            }
             tr.innerHTML = `
-              <td><strong>${client.username}</strong></td>
+              <td><strong>${client.username}</strong> ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</td>
               <td>${client.email}</td>
               <td>${client.package_name || "Nema"}</td>
               <td><span style="font-weight: 700; color: var(--primary-gold-dark);">${client.remaining_credits}</span> / ${client.total_credits}</td>
@@ -1860,6 +1879,9 @@
                 <div style="display: flex; gap: 6px;">
                   <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
                   <button class="btn-action btn-edit" style="border-color: var(--primary-gold-dark);" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})">Karton</button>
+                  <button class="btn-action ${client.status === 'frozen' ? 'btn-checkin' : 'btn-delete'}" style="${client.status === 'frozen' ? 'background-color: #2e7559; border-color: #2e7559;' : ''}" onclick="toggleFreezeClient(${client.id}, '${client.username}', '${client.status}')">
+                    ${client.status === 'frozen' ? 'Odmrzni' : 'Zaledi'}
+                  </button>
                   <button class="btn-action btn-delete" onclick="deleteClient(${client.id}, '${client.username}')">Obriši</button>
                 </div>
               </td>
@@ -1883,10 +1905,14 @@
       clientsList.forEach(client => {
         const card = document.createElement("div");
         card.className = "mobile-client-card";
+        if (client.status === 'frozen') {
+          card.style.borderColor = "#b22222";
+          card.style.background = "rgba(178, 34, 34, 0.03)";
+        }
         card.innerHTML = `
           <div class="mobile-client-header">
             <div>
-              <div class="mobile-client-username">${client.username}</div>
+              <div class="mobile-client-username">${client.username} ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</div>
               <div class="mobile-client-email">${client.email}</div>
             </div>
           </div>
@@ -1898,10 +1924,13 @@
             <div>Istječe: ${client.package_expires ? formatDateStr(client.package_expires) : 'Nema'}</div>
             <div>Ukupno odrađeno: <strong>${client.attended_count}</strong></div>
           </div>
-          <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(197,168,128,0.1); padding-top: 8px;">
-            <button class="mobile-btn-action" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Uredi</button>
-            <button class="mobile-btn-action" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Karton</button>
-            <button class="mobile-btn-action" onclick="deleteClient(${client.id}, '${client.username}')" style="flex: 1; background: transparent; color: #b22222; border: 1.5px solid #b22222; border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Obriši</button>
+          <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(197,168,128,0.1); padding-top: 8px; flex-wrap: wrap;">
+            <button class="mobile-btn-action" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; min-width: 70px; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Uredi</button>
+            <button class="mobile-btn-action" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; min-width: 70px; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Karton</button>
+            <button class="mobile-btn-action ${client.status === 'frozen' ? 'mobile-btn-checkin' : 'mobile-btn-cancel-att'}" onclick="toggleFreezeClient(${client.id}, '${client.username}', '${client.status}')" style="flex: 1; min-width: 70px; border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit; ${client.status === 'frozen' ? 'background-color: #2e7559; border-color: #2e7559; color: white;' : ''}">
+              ${client.status === 'frozen' ? 'Odmrzni' : 'Zaledi'}
+            </button>
+            <button class="mobile-btn-action" onclick="deleteClient(${client.id}, '${client.username}')" style="flex: 1; min-width: 70px; background: transparent; color: #b22222; border: 1.5px solid #b22222; border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Obriši</button>
           </div>
         `;
         container.appendChild(card);
@@ -2011,17 +2040,9 @@
       const packageVal = document.getElementById("new-client-package").value;
       const creditsInput = document.getElementById("new-client-credits");
       const expiresInput = document.getElementById("new-client-expires");
-
-      if (packageVal.includes("8")) {
-        creditsInput.value = 8;
-        expiresInput.value = 30;
-      } else if (packageVal.includes("12")) {
-        creditsInput.value = 12;
-        expiresInput.value = 30;
-      } else {
-        creditsInput.value = 0;
-        expiresInput.value = 0;
-      }
+      const credits = getPackageLimit(packageVal);
+      creditsInput.value = credits;
+      expiresInput.value = credits > 0 ? 30 : 0;
     }
 
     // Auto-fill logic for edit client modal
@@ -2030,20 +2051,13 @@
       const totalInput = document.getElementById("edit-total-credits");
       const remainingInput = document.getElementById("edit-remaining-credits");
       const expiresInput = document.getElementById("edit-package-expires");
-
-      if (packageVal.includes("8")) {
-        totalInput.value = 8;
-        remainingInput.value = 8;
-        const expiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        expiresInput.value = expiresDate.toISOString().split("T")[0];
-      } else if (packageVal.includes("12")) {
-        totalInput.value = 12;
-        remainingInput.value = 12;
+      const credits = getPackageLimit(packageVal);
+      totalInput.value = credits;
+      remainingInput.value = credits;
+      if (credits > 0) {
         const expiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         expiresInput.value = expiresDate.toISOString().split("T")[0];
       } else {
-        totalInput.value = 0;
-        remainingInput.value = 0;
         expiresInput.value = "";
       }
     }
@@ -2693,6 +2707,29 @@
           loadClientsList();
         } else {
           alert(data.error || "Greška pri brisanju klijenta.");
+        }
+      } catch (err) {
+        alert("Greška na poslužitelju.");
+      }
+    }
+
+    async function toggleFreezeClient(clientId, username, currentStatus) {
+      const actionWord = currentStatus === 'frozen' ? 'odmrznuti' : 'zalediti';
+      if (!confirm(`Jeste li sigurni da želite ${actionWord} račun klijenta '${username}'?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/toggle-freeze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_id: clientId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message);
+          fetchActivityLogs(true);
+          loadClientsList();
+        } else {
+          alert(data.error || "Greška pri promjeni statusa zaleđivanja.");
         }
       } catch (err) {
         alert("Greška na poslužitelju.");

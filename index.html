@@ -470,6 +470,17 @@
     <script src="./app.js"></script>
 
     <script>
+      // Global Instagram configuration to avoid duplication
+      const INSTAGRAM_URL = "https://www.instagram.com/pilatesreformeragram/";
+      const INSTAGRAM_HANDLE = "@pilatesreformeragram";
+
+      // Dynamically set all Instagram link hrefs on load
+      window.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll('a[href*="instagram.com"]').forEach(link => {
+          link.href = INSTAGRAM_URL;
+        });
+      });
+
       // Instagram Feed loader
       window.addEventListener("DOMContentLoaded", async () => {
         const grid = document.getElementById("instagram-grid");
@@ -498,16 +509,24 @@
               `;
             }).join('');
           } else {
-            // Fallback: If no posts or config is missing, show a nice call to action without empty grid
+            // Fallback: If no posts or config is missing, show a nice call to action and hide duplicate CTA button
             grid.style.display = "none";
+            const ctaBtn = document.querySelector("#instagram-feed .cta");
+            if (ctaBtn) ctaBtn.style.display = "none";
             const handleText = document.querySelector("#instagram-feed .instagram-handle");
             if (handleText) {
-              handleText.innerHTML = `Pratite naš rad, najnovije vijesti i atmosferu iz studija direktno na našem Instagram profilu:<br><br><a href="https://www.instagram.com/pilatesreformeragram/" target="_blank" rel="noopener" style="font-size: 2.2rem; font-weight: 700; color: var(--primary-gold);">@pilatesreformeragram</a>`;
+              handleText.innerHTML = `Pratite naš rad, najnovije vijesti i atmosferu iz studija direktno na našem Instagram profilu:<br><br><a href="${INSTAGRAM_URL}" target="_blank" rel="noopener" style="font-size: 2.2rem; font-weight: 700; color: var(--primary-gold);">${INSTAGRAM_HANDLE}</a>`;
             }
           }
         } catch (err) {
           console.error("Greška pri dohvaćanju Instagram objava:", err);
           grid.style.display = "none";
+          const ctaBtn = document.querySelector("#instagram-feed .cta");
+          if (ctaBtn) ctaBtn.style.display = "none";
+          const handleText = document.querySelector("#instagram-feed .instagram-handle");
+          if (handleText) {
+            handleText.innerHTML = `Pratite naš rad, najnovije vijesti i atmosferu iz studija direktno na našem Instagram profilu:<br><br><a href="${INSTAGRAM_URL}" target="_blank" rel="noopener" style="font-size: 2.2rem; font-weight: 700; color: var(--primary-gold);">${INSTAGRAM_HANDLE}</a>`;
+          }
         }
       });
     </script>

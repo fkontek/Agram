@@ -632,6 +632,11 @@
   <div id="desktop-container">
     <h1>Dobrodošao, <span id="user-name"></span>!</h1>
 
+    <!-- Zaleđeni račun Banner -->
+    <div id="frozen-banner-desktop" style="display:none; background-color:#b22222; color:white; padding:15px 20px; border-radius:var(--radius-md); margin-bottom:25px; font-weight:600; font-size:1.3rem; text-align:center;">
+      🔒 Vaš račun je trenutno ZALEĐEN. Rezervacije novih termina i prijava na listu čekanja su privremeno onemogućeni.
+    </div>
+
     <!-- Obavijesti -->
     <div class="info-box" id="notifications-box" style="display:none; background-color:rgba(178,34,34,0.03); border:1px solid rgba(178,34,34,0.2); margin-bottom:25px;">
       <h2 style="color:#b22222; margin-bottom:10px;">
@@ -653,8 +658,11 @@
             Status članarine
           </h2>
           <p>Aktivni paket: <strong id="package-name">Učitavanje...</strong></p>
-          <p>Preostalo treninga: <strong id="remaining-credits">Učitavanje...</strong></p>
+          <p>Iskorišteno treninga: <strong id="remaining-credits">Učitavanje...</strong></p>
           <p>Članarina vrijedi do: <strong id="package-expires">Učitavanje...</strong></p>
+          <div style="margin-top:20px; text-align:center;">
+            <button class="btn-book" onclick="openRequestPackageModal()" style="width:100%; padding:10px 14px; font-size:1.25rem;">Zatraži novi paket</button>
+          </div>
         </div>
 
         <!-- Zakazani termini -->
@@ -723,7 +731,7 @@
 
     <!-- Credits strip -->
     <div class="mobile-credits-strip">
-      <div class="mobile-credits-text">Preostalo: <span id="mobile-remaining-credits">—</span> treninga</div>
+      <div class="mobile-credits-text">Iskorišteno: <span id="mobile-remaining-credits">—</span></div>
       <div class="mobile-package-chip" id="mobile-package-name-chip">—</div>
     </div>
 
@@ -737,6 +745,11 @@
       <div style="margin-top:10px; text-align:right;">
         <button onclick="markAllNotificationsAsRead()" style="background:none; border:1px solid #b22222; color:#b22222; border-radius:20px; padding:5px 14px; font-size:1.05rem; font-family:'Montserrat',sans-serif; font-weight:600; cursor:pointer;">Označi pročitano</button>
       </div>
+    </div>
+
+    <!-- Zaleđeni račun Banner (Mobile) -->
+    <div id="frozen-banner-mobile" style="display:none; background-color:#b22222; color:white; padding:12px 18px; font-weight:600; font-size:1.15rem; text-align:center; flex-shrink:0; border-bottom: 1px solid rgba(255,255,255,0.2);">
+      🔒 Vaš račun je ZALEĐEN. Rezervacije i lista čekanja su onemogućene.
     </div>
 
     <!-- Panels -->
@@ -760,13 +773,16 @@
             <span class="m-value" id="mobile-package-name">—</span>
           </div>
           <div class="m-row">
-            <span class="m-label">Preostalo treninga</span>
+            <span class="m-label">Iskorišteno treninga</span>
             <span class="m-value" id="mobile-credits-profil">—</span>
           </div>
           <div class="m-row">
             <span class="m-label">Vrijedi do</span>
             <span class="m-value" id="mobile-package-expires">—</span>
           </div>
+        </div>
+        <div style="margin-top:15px; margin-bottom:20px;">
+          <button class="mobile-btn-book" onclick="openRequestPackageModal()">Zatraži novi paket</button>
         </div>
         <div class="mobile-section-title">Moji zakazani termini</div>
         <div id="mobile-upcoming-list">
@@ -815,6 +831,7 @@
     let userPackageVal  = "";
     let mobileDateVal   = "";
     let userBookedDates = [];
+    let isUserFrozen    = false;
 
     if (!userId || !username) {
       window.location.href = "prijava.html";
@@ -885,21 +902,58 @@
             mNotifBar.classList.remove('visible');
           }
 
+          // Check frozen status
+          isUserFrozen = data.user.status === "frozen";
+          if (isUserFrozen) {
+            document.getElementById("frozen-banner-desktop").style.display = "block";
+            document.getElementById("frozen-banner-mobile").style.display = "block";
+          } else {
+            document.getElementById("frozen-banner-desktop").style.display = "none";
+            document.getElementById("frozen-banner-mobile").style.display = "none";
+          }
+
           // 1. Membership info — desktop
           userCreditsVal = data.user.remaining_credits || 0;
           userPackageVal = data.user.package_name || "Nema paketa";
+          const totalCredits = data.user.total_credits || 0;
+          const usedCredits = totalCredits - userCreditsVal;
           const expiresFormatted = data.user.package_expires ? formatDate(data.user.package_expires) : "Nema roka isteka";
-          const creditsFormatted = `${userCreditsVal} od ${data.user.total_credits}`;
+          const creditsFormatted = `${usedCredits} / ${totalCredits}`;
 
           document.getElementById("package-name").textContent      = userPackageVal;
-          document.getElementById("remaining-credits").textContent  = creditsFormatted;
+          const remainingEl = document.getElementById("remaining-credits");
+          remainingEl.textContent  = creditsFormatted;
+          if (userCreditsVal === 0) {
+            remainingEl.style.color = "#b22222";
+            remainingEl.style.fontWeight = "800";
+          } else {
+            remainingEl.style.color = "var(--primary-gold-dark)";
+            remainingEl.style.fontWeight = "700";
+          }
           document.getElementById("package-expires").textContent    = expiresFormatted;
 
           // Membership info — mobile
-          document.getElementById("mobile-remaining-credits").textContent  = userCreditsVal;
+          const mobRemainingEl = document.getElementById("mobile-remaining-credits");
+          mobRemainingEl.textContent = creditsFormatted;
+          if (userCreditsVal === 0) {
+            mobRemainingEl.style.color = "#b22222";
+            mobRemainingEl.style.fontWeight = "800";
+          } else {
+            mobRemainingEl.style.color = "var(--primary-gold)";
+            mobRemainingEl.style.fontWeight = "800";
+          }
           document.getElementById("mobile-package-name-chip").textContent  = userPackageVal;
           document.getElementById("mobile-package-name").textContent       = userPackageVal;
-          document.getElementById("mobile-credits-profil").textContent     = creditsFormatted;
+          
+          const mobCreditsProfilEl = document.getElementById("mobile-credits-profil");
+          mobCreditsProfilEl.textContent = creditsFormatted;
+          if (userCreditsVal === 0) {
+            mobCreditsProfilEl.style.color = "#b22222";
+            mobCreditsProfilEl.style.fontWeight = "800";
+          } else {
+            mobCreditsProfilEl.style.color = "var(--primary-gold)";
+            mobCreditsProfilEl.style.fontWeight = "700";
+          }
           document.getElementById("mobile-package-expires").textContent    = expiresFormatted;
 
           // Store booked dates (only active ones where status is 0)
@@ -1097,6 +1151,13 @@
         if (session.user_booked > 0) {
           cardClass += " user-booked";
           buttonHtml = `<span class="badge badge-present" style="text-align:center; font-size:1.15rem; width:100%; display:block; border-radius:20px;">Prijavljen/a</span>`;
+        } else if (isUserFrozen) {
+          if (session.user_waitlisted > 0) {
+            cardClass += " user-waitlisted";
+            buttonHtml = `<button class="btn-cancel" style="width:100%; border-color:var(--primary-gold-dark); color:var(--primary-gold-dark);" onclick="leaveWaitlist(${session.id})">Makni me s liste</button>`;
+          } else {
+            buttonHtml = `<button class="btn-book" style="opacity:0.5; cursor:not-allowed; width:100%;" disabled>Zaleđeno</button>`;
+          }
         } else if (freeSpots <= 0) {
           if (session.user_waitlisted > 0) {
             cardClass += " user-waitlisted";
@@ -1187,6 +1248,12 @@
         let rightHtml = "";
         if (session.user_booked > 0) {
           rightHtml = `<div class="mobile-badge-booked">Prijavljen/a ✓</div>`;
+        } else if (isUserFrozen) {
+          if (session.user_waitlisted > 0) {
+            rightHtml = `<button class="mobile-btn-cancel" style="border-color:var(--primary-gold-dark); color:var(--primary-gold-dark);" onclick="leaveWaitlist(${session.id})">Makni me</button>`;
+          } else {
+            rightHtml = `<button class="mobile-btn-book" style="opacity:0.5;" disabled>Zaleđeno</button>`;
+          }
         } else if (freeSpots <= 0) {
           if (session.user_waitlisted > 0) {
             rightHtml = `<button class="mobile-btn-cancel" style="border-color:var(--primary-gold-dark); color:var(--primary-gold-dark);" onclick="leaveWaitlist(${session.id})">Makni me</button>`;
@@ -1384,6 +1451,38 @@
       } catch (err) { console.error("Greška pri čitanju svih obavijesti:", err); }
     }
 
+    // ---- Request Package Helpers ----
+    function openRequestPackageModal() {
+      document.getElementById("request-package-modal").style.display = "flex";
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeRequestPackageModal() {
+      document.getElementById("request-package-modal").style.display = "none";
+      document.body.style.overflow = "auto";
+    }
+
+    async function submitRequestPackage(event) {
+      event.preventDefault();
+      const packageName = document.getElementById("request-package-select").value;
+      try {
+        const res = await fetch(`${API_BASE}/api/client/request-package`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: parseInt(userId), package_name: packageName })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert("Zahtjev za paket je uspješno poslan! Administrator će vas kontaktirati.");
+          closeRequestPackageModal();
+        } else {
+          alert(data.error || "Greška pri slanju zahtjeva.");
+        }
+      } catch (err) {
+        alert("Greška u komunikaciji sa poslužiteljem.");
+      }
+    }
+
     // Questionnaire form submit handler
     window.addEventListener("DOMContentLoaded", () => {
       const qForm = document.getElementById("questionnaire-form");
@@ -1500,6 +1599,42 @@
             Spremi i nastavi
           </button>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL ZA ZAHTJEV NOVOG PAKETA -->
+  <div id="request-package-modal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.85); backdrop-filter: blur(5px); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
+    <div class="modal-content" style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--primary-gold); padding: 30px; max-width: 500px; width: 100%; box-shadow: var(--shadow-lg);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+        <h3 style="margin: 0; color: var(--primary-gold-dark); font-size: 1.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Zatraži novi paket</h3>
+        <button class="close-btn" onclick="closeRequestPackageModal()" style="font-size: 2.4rem; background: none; border: none; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <form id="request-package-form" onsubmit="submitRequestPackage(event)">
+        <div class="form-group" style="margin-bottom: 20px; display: flex; flex-direction: column;">
+          <label for="request-package-select" style="font-size: 1.15rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 8px;">Odaberi paket</label>
+          <select id="request-package-select" required style="width: 100%; padding: 12px; font-size: 1.30rem; border: 1px solid var(--border-color); border-radius: 6px; background: white; font-family: inherit;">
+            <optgroup label="Grupni treninzi">
+              <option value="Grupni 1 trening">Grupni Drop-In (1 trening) - 25 €</option>
+              <option value="Grupni 4 treninga">Grupni Paket 4 (4 treninga) - 80 €</option>
+              <option value="Grupni 8 treninga" selected>Grupni Paket 8 (8 treninga) - 120 €</option>
+              <option value="Grupni 12 treninga">Grupni Paket 12 (12 treninga) - 160 €</option>
+            </optgroup>
+            <optgroup label="Poluindividualni treninzi">
+              <option value="Poluindividualni 1 trening">Poluindividualni Paket 1 (1 trening) - 35 €</option>
+              <option value="Poluindividualni 4 treninga">Poluindividualni Paket 4 (4 treninga) - 120 €</option>
+              <option value="Poluindividualni 8 treninga">Poluindividualni Paket 8 (8 treninga) - 220 €</option>
+              <option value="Poluindividualni 12 treninga">Poluindividualni Paket 12 (12 treninga) - 300 €</option>
+            </optgroup>
+            <optgroup label="Privatni treninzi">
+              <option value="Privatni 1 trening">Privatni Paket 1 (1 trening) - 40 €</option>
+              <option value="Privatni 4 treninga">Privatni Paket 4 (4 treninga) - 150 €</option>
+              <option value="Privatni 8 treninga">Privatni Paket 8 (8 treninga) - 280 €</option>
+              <option value="Privatni 12 treninga">Privatni Paket 12 (12 treninga) - 390 €</option>
+            </optgroup>
+          </select>
+        </div>
+        <button type="submit" class="btn-submit" style="width: 100%; display: flex; justify-content: center; font-size: 1.3rem;">Pošalji zahtjev</button>
       </form>
     </div>
   </div>

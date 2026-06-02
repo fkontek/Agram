@@ -8,13 +8,13 @@ hamburger.addEventListener('click',() => {
     mobile_menu.classList.toggle('active');
 });
 
-document.addEventListener('scroll',()=> {
+const headerSection = document.getElementById('header');
+document.addEventListener('scroll', () => {
     var scroll_position = window.scrollY;
-    if(scroll_position > 250) {
-        header.style.backgroundColor = '#29323c';
-    }
-    else{
-        header.style.backgroundColor = 'transparent';
+    if (scroll_position > 50) {
+        headerSection.classList.add('scrolled');
+    } else {
+        headerSection.classList.remove('scrolled');
     }
 });
 

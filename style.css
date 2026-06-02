@@ -265,6 +265,34 @@ p {
   transform: scale(1.05);
 }
 
+/* Scrolled header styling */
+#header.scrolled .header {
+  background-color: rgba(26, 21, 16, 0.95) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(197, 168, 128, 0.15);
+}
+
+#header.scrolled .nav-bar {
+  padding: 5px 30px;
+}
+
+#header.scrolled .brand h1 {
+  font-size: 1.9rem;
+}
+
+#header.scrolled .hamburger {
+  transform: scale(0.75);
+}
+
+#header.scrolled .nav-list ul a {
+  padding: 10px 20px;
+}
+
+/* Scroll margin adjustments to prevent header overlap */
+#services, #raspored, #cjenik, #galerija, #collaboration, #about, #contact, #instagram-feed {
+  scroll-margin-top: 90px;
+}
+
 /* Hero section */
 #hero {
   background-image: url(./img/ulaz.jpg);
@@ -466,7 +494,6 @@ p {
 #raspored {
   background-color: var(--light-bg);
   padding: 20px 0;
-  scroll-margin-top: 8vh;
 }
 
 #raspored .container {
@@ -547,7 +574,6 @@ p {
 #cjenik {
   background: var(--light-bg);
   padding: 20px 0;
-  scroll-margin-top: 8vh;
 }
 
 .cjenik.container {
@@ -806,7 +832,6 @@ p {
 #collaboration {
   background: var(--light-bg);
   padding: 20px 0;
-  scroll-margin-top: 8vh;
 }
 
 #collaboration .collaboration {
@@ -981,7 +1006,6 @@ p {
 #contact {
   background: var(--light-bg);
   padding: 20px 0;
-  scroll-margin-top: 8vh;
 }
 
 #contact .contact {
