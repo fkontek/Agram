@@ -130,6 +130,25 @@ p {
   font-weight: 600;
 }
 
+/* Logo icon in header */
+.brand a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.logo-icon {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+#header.scrolled .logo-icon {
+  height: 32px;
+}
+
 /* Header section */
 #header {
   position: fixed;
