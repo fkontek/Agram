@@ -139,14 +139,15 @@ p {
 }
 
 .logo-icon {
-  height: 40px;
+  height: 55px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
+  transition: var(--transition-normal);
 }
 
 #header.scrolled .logo-icon {
-  height: 32px;
+  height: 44px;
 }
 
 /* Header section */
@@ -160,12 +161,12 @@ p {
 }
 
 #header .header {
-  min-height: 8vh;
-  background-color: rgba(26, 21, 16, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: var(--transition-normal);
+  min-height: 6vh;
+  background-color: rgba(26, 21, 16, 0.80);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background-color 0.4s ease, box-shadow 0.4s ease, min-height 0.4s ease;
 }
 
 #header .nav-bar {
@@ -174,9 +175,9 @@ p {
   justify-content: space-between;
   width: 100%;
   height: 100%;
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 10px 30px;
+  padding: 8px 30px;
 }
 
 /* Hamburger for Mobile devices */
@@ -284,11 +285,14 @@ p {
   transform: scale(1.05);
 }
 
-/* Scrolled header styling */
+/* Scrolled header styling — postaje transparentniji kad se skrola */
 #header.scrolled .header {
-  background-color: rgba(26, 21, 16, 0.95) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-  border-bottom: 1px solid rgba(197, 168, 128, 0.15);
+  background-color: rgba(26, 21, 16, 0.35) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(197, 168, 128, 0.08);
+  min-height: 5vh;
 }
 
 #header.scrolled .nav-bar {
