@@ -130,16 +130,16 @@ p {
   font-weight: 600;
 }
 
-/* Logo link — zasebni element ulijevo od brand teksta */
-.logo-link {
+/* Brand: logo + tekst u jednom flex redu */
+.brand a {
   display: flex;
   align-items: center;
+  gap: 14px;
   text-decoration: none;
-  flex-shrink: 0;
 }
 
 .logo-icon {
-  height: 55px;
+  height: 50px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
@@ -147,14 +147,7 @@ p {
 }
 
 #header.scrolled .logo-icon {
-  height: 44px;
-}
-
-/* Brand tekst bez loga */
-.brand a {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
+  height: 40px;
 }
 
 /* Header section */
@@ -174,7 +167,6 @@ p {
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   transition: background-color 0.4s ease, box-shadow 0.4s ease, min-height 0.4s ease;
-  position: relative;
 }
 
 #header .nav-bar {
@@ -186,12 +178,6 @@ p {
   max-width: 1200px;
   margin: 0 auto;
   padding: 8px 30px;
-  position: relative;
-}
-
-/* Na mobilnom logo-link je skriven, logo ostaje u brand bloku samo na desktopu */
-.logo-link {
-  display: none;
 }
 
 /* Hamburger for Mobile devices */
@@ -1292,25 +1278,6 @@ p {
 
 /* Media query for desktop menu */
 @media only screen and (min-width: 1024px) {
-  /* Logo je apsolutno pozicioniran na lijevom rubu punoširinskog headera */
-  .logo-link {
-    display: flex;
-    position: absolute;
-    left: 2.5%;
-    top: 50%;
-    transform: translateY(-50%);
-    flex: none;
-  }
-
-  #header .nav-bar {
-    gap: 0;
-  }
-
-  .brand {
-    flex: 1;
-    text-align: center;
-  }
-
   #header .hamburger {
     display: none;
   }
