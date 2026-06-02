@@ -969,10 +969,7 @@
                 <option value="privatni">Privatni (Max 1)</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="session-capacity">Kapacitet (Reformera)</label>
-              <input type="number" id="session-capacity" value="4" min="1" max="4" required />
-            </div>
+            <input type="hidden" id="session-capacity" value="4" />
             <div class="form-group">
               <label for="session-date">Datum</label>
               <input type="date" id="session-date" required />
@@ -1206,10 +1203,7 @@
                   <option value="privatni">Privatni (Max 1)</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label for="mobile-session-capacity" style="font-size: 1.05rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Kapacitet (Reformera)</label>
-                <input type="number" id="mobile-session-capacity" value="4" min="1" max="4" required style="padding: 10px; font-size: 1.25rem; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit;" />
-              </div>
+              <input type="hidden" id="mobile-session-capacity" value="4" />
               <div class="form-group">
                 <label for="mobile-session-date" style="font-size: 1.05rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Datum</label>
                 <input type="date" id="mobile-session-date" required style="padding: 10px; font-size: 1.25rem; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit;" />
@@ -2195,7 +2189,11 @@
       const title = document.getElementById("session-title").value;
       const instructor = document.getElementById("session-instructor").value;
       const type = document.getElementById("session-type").value;
-      const capacity = document.getElementById("session-capacity").value;
+      
+      let capacity = 4;
+      if (type === "poluindividualni") capacity = 2;
+      else if (type === "privatni") capacity = 1;
+
       const date = document.getElementById("session-date").value;
       const time = document.getElementById("session-time").value;
 
@@ -2487,7 +2485,11 @@
           const title = document.getElementById("mobile-session-title").value;
           const instructor = document.getElementById("mobile-session-instructor").value;
           const type = document.getElementById("mobile-session-type").value;
-          const capacity = document.getElementById("mobile-session-capacity").value;
+          
+          let capacity = 4;
+          if (type === "poluindividualni") capacity = 2;
+          else if (type === "privatni") capacity = 1;
+
           const date = document.getElementById("mobile-session-date").value;
           const time = document.getElementById("mobile-session-time").value;
 
