@@ -176,22 +176,19 @@ describe('JWT Authentication integration tests', () => {
     expect(data.clients).toBeDefined();
   });
 
-  it('scheduled cron trigger runs successfully and triggers daily report', async () => {
-    // 1. Prepare today's date formatted to YYYY-MM-DD
+  it('scheduled cron trigger runs successfully and triggers weekly report', async () => {
+    // 1. Prepare Monday date
     const d = new Date();
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: "Europe/Zagreb",
-      year: "numeric", month: "2-digit", day: "2-digit"
-    });
-    const parts = formatter.formatToParts(d);
-    const partVal = type => parts.find(p => p.type === type).value;
-    const todayStr = `${partVal('year')}-${partVal('month')}-${partVal('day')}`;
+    const currentDay = d.getDay();
+    const daysToSubtract = currentDay === 0 ? 6 : (currentDay - 1);
+    const monday = new Date(d.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
+    const mondayStr = monday.toISOString().split('T')[0];
 
-    // 2. Insert a mock session for today
+    // 2. Insert a mock session for the week
     await env.DB.prepare(`
       INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
       VALUES (999, 'Test Pilates', 'Adrijana', ?, '17:00', 4, 'grupni')
-    `).bind(todayStr).run();
+    `).bind(mondayStr).run();
 
     // 3. Insert a checked-in booking for this session (status = 1)
     await env.DB.prepare(`
@@ -212,5 +209,38 @@ describe('JWT Authentication integration tests', () => {
     const session = await env.DB.prepare("SELECT title FROM Sessions WHERE id = 999").first();
     expect(session).toBeDefined();
     expect(session.title).toBe('Test Pilates');
+  });
+
+  it('admin endpoint /api/admin/send-daily-report sends daily report email on demand (200)', async () => {
+    // 1. Login as admin
+    const loginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'adminuser', password: 'adminpass' })
+    });
+    const loginRes = await worker.fetch(loginReq, env, createExecutionContext());
+    const loginData = await loginRes.json();
+    const token = loginData.token;
+
+    // 2. Call send-daily-report endpoint
+    const d = new Date();
+    const todayStr = d.toISOString().split('T')[0];
+
+    const req = new Request('http://example.com/api/admin/send-daily-report', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ date: todayStr })
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.message).toContain('Dnevno izvješće');
   });
 });

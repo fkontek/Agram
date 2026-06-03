@@ -327,11 +327,156 @@ async function autoConfirmBookings(env) {
   }
 }
 
+// Calculate Monday and Friday date of the current week (Croatia time)
+function getWeeklyReportDates() {
+  const croatiaNow = getCroatiaNow();
+  const currentDay = croatiaNow.getDay(); // 0 = Sun, 1 = Mon, ..., 5 = Fri, 6 = Sat
+  
+  // We want Monday of the current week
+  const daysToSubtract = currentDay === 0 ? 6 : (currentDay - 1);
+  
+  const monday = new Date(croatiaNow.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
+  const friday = new Date(monday.getTime() + 4 * 24 * 60 * 60 * 1000);
+  
+  return {
+    mondayStr: formatDate(monday),
+    fridayStr: formatDate(friday),
+    mondayFormatted: formatDate(monday).split('-').reverse().join('.') + '.',
+    fridayFormatted: formatDate(friday).split('-').reverse().join('.') + '.'
+  };
+}
+
+// Generate and send weekly check-in report email to admin
+async function sendWeeklyReportEmail(env) {
+  try {
+    const dates = getWeeklyReportDates();
+    
+    // 1. Get all sessions for the week
+    const sessionsRes = await env.DB.prepare(`
+      SELECT id, title, date, time, instructor, type 
+      FROM Sessions 
+      WHERE date >= ? AND date <= ?
+      ORDER BY date ASC, time ASC
+    `).bind(dates.mondayStr, dates.fridayStr).all();
+
+    const sessions = sessionsRes.results || [];
+
+    if (sessions.length === 0) {
+      console.log(`No sessions scheduled between ${dates.mondayStr} and ${dates.fridayStr}. Skipping weekly report.`);
+      return true;
+    }
+
+    // 2. Get checked-in attendees for the week (status = 1)
+    const attendeesRes = await env.DB.prepare(`
+      SELECT b.session_id, c.username, c.full_name, c.email
+      FROM Bookings b
+      JOIN Clients c ON b.user_id = c.id
+      JOIN Sessions s ON b.session_id = s.id
+      WHERE s.date >= ? AND s.date <= ? AND b.status = 1
+    `).bind(dates.mondayStr, dates.fridayStr).all();
+
+    const attendees = attendeesRes.results || [];
+
+    // Group sessions by date
+    const grouped = {};
+    sessions.forEach(session => {
+      if (!grouped[session.date]) {
+        grouped[session.date] = [];
+      }
+      grouped[session.date].push(session);
+    });
+
+    const dayNames = {
+      1: "Ponedjeljak",
+      2: "Utorak",
+      3: "Srijeda",
+      4: "Četvrtak",
+      5: "Petak",
+      6: "Subota",
+      0: "Nedjelja"
+    };
+
+    let reportHtml = "";
+
+    // Sort dates
+    const sortedDates = Object.keys(grouped).sort();
+    
+    sortedDates.forEach(dateStr => {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const localDate = new Date(y, m - 1, d);
+      const dayName = dayNames[localDate.getDay()] || "Nepoznato";
+      const dateFormatted = `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}.${y}.`;
+
+      reportHtml += `
+        <div style="margin-top: 12px; margin-bottom: 4px; font-weight: bold; color: #a98e65; font-size: 0.95rem; text-transform: uppercase; border-bottom: 1px solid #ebdcc5; padding-bottom: 2px;">
+          ${dayName} (${dateFormatted})
+        </div>
+      `;
+
+      grouped[dateStr].forEach(session => {
+        const sessionAttendees = attendees.filter(a => a.session_id === session.id);
+        
+        let attendeesListHtml = "";
+        if (sessionAttendees.length === 0) {
+          attendeesListHtml = `<li style="color: #7c7267; font-style: italic; list-style-type: none; margin-left: 0; padding-left: 0;">Nije bilo odrađenih dolazaka.</li>`;
+        } else {
+          attendeesListHtml = sessionAttendees.map(att => {
+            const displayName = att.full_name ? `${att.full_name} (${att.username})` : att.username;
+            return `<li style="margin-bottom: 4px;"><b>${displayName}</b></li>`;
+          }).join('');
+        }
+
+        reportHtml += `
+          <div style="background-color: #ffffff; padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(197, 168, 128, 0.15); margin-bottom: 6px; margin-top: 4px;">
+            <div style="font-size: 0.85rem; color: #2c251e; margin-bottom: 2px;">
+              <span style="font-weight: bold; border-left: 2px solid #c5a880; padding-left: 6px;">${session.time}h — ${session.title}</span>
+              <span style="color: #7c7267; font-size: 0.75rem; margin-left: 5px;">(Trener: ${session.instructor})</span>
+            </div>
+            <ul style="margin: 0; padding-left: 15px; font-size: 0.8rem; color: #2c251e; line-height: 1.2rem;">
+              ${attendeesListHtml}
+            </ul>
+          </div>
+        `;
+      });
+    });
+
+    const adminEmail = env.ADMIN_REPORT_EMAIL || "adrijana.kontek@gmail.com";
+    const subject = `Agram Pilates - Tjedno izvješće o dolascima (${dates.mondayFormatted} - ${dates.fridayFormatted})`;
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; padding: 15px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
+        <h2 style="color: #a98e65; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-size: 1.1rem;">
+          Tjedno izvješće o dolascima
+        </h2>
+        <p style="font-size: 0.85rem; font-weight: bold; color: #7c7267; margin: 0 0 12px 0;">
+          Razdoblje: ${dates.mondayFormatted} do ${dates.fridayFormatted}
+        </p>
+        
+        <div>
+          ${reportHtml}
+        </div>
+        
+        <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 20px; margin-bottom: 10px;">
+        <p style="font-size: 10px; color: #7c7267; text-align: center; margin: 0;">
+          Ova poruka je poslana automatski iz sustava Agram Pilates.
+        </p>
+      </div>
+    `;
+
+    await sendEmail(env, adminEmail, subject, htmlContent);
+    console.log(`Weekly report email sent successfully to ${adminEmail}`);
+    return true;
+  } catch (e) {
+    console.error("Error sending weekly report email:", e);
+    return false;
+  }
+}
+
 // Generate and send daily check-in report email to admin
-async function sendDailyReportEmail(env) {
+async function sendDailyReportEmail(env, dateStr = null) {
   try {
     const croatiaNow = getCroatiaNow();
-    const todayStr = formatDate(croatiaNow); // YYYY-MM-DD
+    const todayStr = dateStr || formatDate(croatiaNow); // YYYY-MM-DD
     const dateFormatted = todayStr.split('-').reverse().join('.') + '.';
 
     // 1. Get all sessions for today
@@ -373,19 +518,17 @@ async function sendDailyReportEmail(env) {
       } else {
         attendeesListHtml = sessionAttendees.map(att => {
           const displayName = att.full_name ? `${att.full_name} (${att.username})` : att.username;
-          return `<li style="margin-bottom: 6px;"><b>${displayName}</b></li>`;
+          return `<li style="margin-bottom: 4px;"><b>${displayName}</b></li>`;
         }).join('');
       }
 
       sessionsHtml += `
-        <div style="background-color: #ffffff; padding: 15px; border-radius: 6px; border: 1px solid rgba(197, 168, 128, 0.2); margin-bottom: 15px;">
-          <h3 style="color: #2c251e; margin-top: 0; margin-bottom: 6px; font-size: 1.2rem; border-left: 3px solid #c5a880; padding-left: 8px;">
-            ${session.time}h — ${session.title}
-          </h3>
-          <p style="margin: 0 0 12px 0; color: #7c7267; font-size: 0.9rem;">
-            Trener: ${session.instructor} | Tip: ${session.type}
-          </p>
-          <ul style="margin: 0; padding-left: 20px; font-size: 1.05rem; color: #2c251e;">
+        <div style="background-color: #ffffff; padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(197, 168, 128, 0.15); margin-bottom: 6px;">
+          <div style="font-size: 0.85rem; color: #2c251e; margin-bottom: 2px;">
+            <span style="font-weight: bold; border-left: 2px solid #c5a880; padding-left: 6px;">${session.time}h — ${session.title}</span>
+            <span style="color: #7c7267; font-size: 0.75rem; margin-left: 5px;">(Trener: ${session.instructor})</span>
+          </div>
+          <ul style="margin: 0; padding-left: 15px; font-size: 0.8rem; color: #2c251e; line-height: 1.2rem;">
             ${attendeesListHtml}
           </ul>
         </div>
@@ -396,20 +539,20 @@ async function sendDailyReportEmail(env) {
     const subject = `Agram Pilates - Dnevno izvješće o dolascima za ${dateFormatted}`;
     
     const htmlContent = `
-      <div style="font-family: Arial, sans-serif; padding: 25px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 8px; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #a98e65; border-bottom: 2px solid #ebdcc5; padding-bottom: 10px; margin-top: 0; text-transform: uppercase; letter-spacing: 0.5px; font-size: 1.4rem;">
+      <div style="font-family: Arial, sans-serif; padding: 15px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
+        <h2 style="color: #a98e65; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-size: 1.1rem;">
           Dnevno izvješće o dolascima
         </h2>
-        <p style="font-size: 1.1rem; font-weight: bold; color: #7c7267; margin-top: 15px; margin-bottom: 20px;">
+        <p style="font-size: 0.85rem; font-weight: bold; color: #7c7267; margin: 0 0 12px 0;">
           Datum: ${dateFormatted}
         </p>
         
-        <div style="margin-top: 20px;">
+        <div>
           ${sessionsHtml}
         </div>
         
-        <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px; margin-bottom: 15px;">
-        <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">
+        <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 20px; margin-bottom: 10px;">
+        <p style="font-size: 10px; color: #7c7267; text-align: center; margin: 0;">
           Ova poruka je poslana automatski iz sustava Agram Pilates.
         </p>
       </div>
@@ -1681,6 +1824,24 @@ export default {
         return jsonResponse({ success: true, message: "Obavijest/radionica je uspješno objavljena!" });
       }
 
+      // ADMIN: SEND DAILY REPORT EMAIL ON DEMAND
+      if (request.method === "POST" && url.pathname === "/api/admin/send-daily-report") {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser || authUser.is_admin !== 1) {
+          return jsonResponse({ success: false, error: "Nemate administratorska prava." }, 403);
+        }
+
+        const { date } = await request.json();
+        const dateStr = date || formatDate(getCroatiaNow());
+        
+        const success = await sendDailyReportEmail(env, dateStr);
+        if (success) {
+          return jsonResponse({ success: true, message: `Dnevno izvješće za ${dateStr.split('-').reverse().join('.')}. je poslano na e-mail.` });
+        } else {
+          return jsonResponse({ success: false, error: "Greška pri slanju e-maila." }, 500);
+        }
+      }
+
       // ADMIN: GET INSTAGRAM CONFIG STATUS
       if (request.method === "GET" && url.pathname === "/api/admin/instagram/status") {
         const tokenObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_access_token'").first();
@@ -1931,12 +2092,12 @@ export default {
       promises.push(syncInstagramFeed(env));
     }
     
-    // 2. Daily Report Email: runs daily in the evening
-    if (!event.cron || event.cron === "15 20,21 * * *") {
+    // 2. Weekly Report Email: runs automatically on Fridays in the evening
+    if (!event.cron || event.cron === "15 20,21 * * 5") {
       const croatiaNow = getCroatiaNow();
-      // Only execute if it's 22:15 local time (hour 22), or if running locally/tests without cron property
-      if (croatiaNow.getHours() === 22 || !event.cron) {
-        promises.push(sendDailyReportEmail(env));
+      // Only execute if it's Friday and local time is 22:15 (hour 22), or if running locally/tests without cron property
+      if ((croatiaNow.getDay() === 5 && croatiaNow.getHours() === 22) || !event.cron) {
+        promises.push(sendWeeklyReportEmail(env));
       }
     }
     

@@ -1050,11 +1050,18 @@
     <div id="tab-evidencija" class="tab-content active">
       <div class="admin-card">
         <h2>Odaberi datum evidencije</h2>
-        <div class="form-grid">
-          <div class="form-group" style="max-width: 250px;">
+        <div style="display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap;">
+          <div class="form-group" style="max-width: 250px; flex: 1; min-width: 180px; margin-bottom: 0;">
             <label for="overview-date">Datum</label>
-            <input type="date" id="overview-date" onchange="loadDailyOverview()" />
+            <input type="date" id="overview-date" onchange="loadDailyOverview()" style="width: 100%; box-sizing: border-box;" />
           </div>
+          <button class="btn-submit" onclick="sendDailyReportOnDemand()" id="send-report-btn" style="height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 20px; margin-bottom: 0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+            Pošalji izvješće na mail
+          </button>
         </div>
       </div>
 
@@ -1350,12 +1357,21 @@
       <!-- Panel 1: Evidencija -->
       <div class="mobile-panel active" id="mobile-panel-evidencija">
         <div
-          style="background: white; padding: 15px; border-radius: 16px; border: 1px solid rgba(197,168,128,0.2); margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-          <label for="mobile-overview-date"
-            style="font-size: 1.15rem; font-weight: 700; color: #2c251e; text-transform: uppercase; display: block; margin-bottom: 8px;">Odaberi
-            datum evidencije</label>
-          <input type="date" id="mobile-overview-date" onchange="syncDateAndLoad(this.value)"
-            style="width: 100%; padding: 12px; font-size: 1.3rem; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; background: var(--light-bg); outline: none;" />
+          style="background: white; padding: 15px; border-radius: 16px; border: 1px solid rgba(197,168,128,0.2); margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 12px;">
+          <div>
+            <label for="mobile-overview-date"
+              style="font-size: 1.15rem; font-weight: 700; color: #2c251e; text-transform: uppercase; display: block; margin-bottom: 8px;">Odaberi
+              datum evidencije</label>
+            <input type="date" id="mobile-overview-date" onchange="syncDateAndLoad(this.value)"
+              style="width: 100%; padding: 12px; font-size: 1.3rem; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; background: var(--light-bg); outline: none; box-sizing: border-box;" />
+          </div>
+          <button class="mobile-btn-book" onclick="sendDailyReportOnDemand()" id="mobile-send-report-btn" style="font-size: 1.15rem; padding: 10px 14px; border-radius: 20px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+            Pošalji izvješće na mail
+          </button>
         </div>
         <div class="mobile-section-title">Termini i dolasci</div>
         <div id="mobile-overview-container">
@@ -2204,6 +2220,53 @@
         }
       } catch (err) {
         console.error("Overview error:", err);
+      }
+    }
+
+    // Send daily report email on demand
+    async function sendDailyReportOnDemand() {
+      const dateVal = document.getElementById("overview-date").value;
+      if (!dateVal) {
+        alert("Molimo odaberite datum za izvješće.");
+        return;
+      }
+
+      const btn = document.getElementById("send-report-btn");
+      const mobBtn = document.getElementById("mobile-send-report-btn");
+      const originalText = btn ? btn.innerHTML : "Pošalji izvješće na mail";
+      const mobOriginalText = mobBtn ? mobBtn.innerHTML : "Pošalji izvješće na mail";
+
+      const setButtonLoading = (loading) => {
+        if (btn) {
+          btn.disabled = loading;
+          btn.innerHTML = loading ? "Slanje..." : originalText;
+        }
+        if (mobBtn) {
+          mobBtn.disabled = loading;
+          mobBtn.innerHTML = loading ? "Slanje..." : mobOriginalText;
+        }
+      };
+
+      setButtonLoading(true);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/send-daily-report`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ date: dateVal })
+        });
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+          alert(data.message || "Izvješće je uspješno poslano!");
+        } else {
+          alert(data.error || "Greška pri slanju izvješća.");
+        }
+      } catch (err) {
+        alert("Greška pri povezivanju s poslužiteljem.");
+        console.error(err);
+      } finally {
+        setButtonLoading(false);
       }
     }
 
