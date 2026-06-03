@@ -1842,6 +1842,106 @@ export default {
         }
       }
 
+      // ADMIN: MANUALLY BOOK CLIENT TO SESSION
+      if (request.method === "POST" && url.pathname === "/api/admin/book-client-manual") {
+        const { session_id, client_id } = await request.json();
+        
+        if (!session_id || !client_id) {
+          return jsonResponse({ success: false, error: "Svi parametri su obavezni (session_id, client_id)." }, 400);
+        }
+
+        // 1. Get Client credits and check expiration
+        const client = await env.DB.prepare(
+          "SELECT id, username, email, remaining_credits, package_expires, package_name, status FROM Clients WHERE id = ?"
+        ).bind(client_id).first();
+
+        if (!client) {
+          return jsonResponse({ success: false, error: "Klijent nije pronađen." }, 404);
+        }
+
+        if (client.status === "frozen") {
+          return jsonResponse({ success: false, error: "Klijentova članarina je zaleđena. Nije moguće rezervirati termine." }, 400);
+        }
+
+        // Check if client has remaining credits
+        if (client.remaining_credits <= 0) {
+          return jsonResponse({ success: false, error: "Klijent nema preostalih treninga (kredita) u paketu." }, 400);
+        }
+
+        const todayStr = formatDate(getCroatiaNow());
+        if (client.package_expires && client.package_expires < todayStr) {
+          return jsonResponse({ success: false, error: `Klijentov paket (${client.package_name}) je istekao dana ${client.package_expires.split('-').reverse().join('.')}.` }, 400);
+        }
+
+        // 2. Check Session capacity and if client is already booked
+        const session = await env.DB.prepare("SELECT * FROM Sessions WHERE id = ?").bind(session_id).first();
+        if (!session) {
+          return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
+        }
+
+        // Check if user already has an active booking on this session's date
+        const existingBookingToday = await env.DB.prepare(`
+          SELECT b.id FROM Bookings b 
+          JOIN Sessions s ON b.session_id = s.id 
+          WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
+        `).bind(client_id, session.date).first();
+        
+        if (existingBookingToday) {
+          return jsonResponse({ success: false, error: "Klijent već ima rezerviran termin za ovaj dan." }, 400);
+        }
+
+        const bookingCountObj = await env.DB.prepare(
+          "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
+        ).bind(session_id).first();
+        const bookedCount = bookingCountObj ? bookingCountObj.count : 0;
+
+        if (bookedCount >= session.capacity) {
+          return jsonResponse({ success: false, error: "Termin je već popunjen." }, 400);
+        }
+
+        const existingBooking = await env.DB.prepare(
+          "SELECT id FROM Bookings WHERE session_id = ? AND user_id = ? AND status >= 0"
+        ).bind(session_id, client_id).first();
+        if (existingBooking) {
+          return jsonResponse({ success: false, error: "Klijent je već prijavljen na ovaj termin." }, 400);
+        }
+
+        // 3. Make booking, deduct credit, and add client notification
+        const dateFormatted = session.date.split('-').reverse().join('.') + '.';
+        const notificationMsg = `Studio Vam je rezervirao termin '${session.title}' dana ${dateFormatted} u ${session.time}h.`;
+
+        await env.DB.batch([
+          env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 0)").bind(session_id, client_id),
+          env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(client_id),
+          env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(client_id, notificationMsg)
+        ]);
+
+        await logActivity(env, `Admin je ručno rezervirao termin '${session.title}' (${dateFormatted} u ${session.time}h) za klijenta '${client.username}'.`);
+
+        // If they had exactly 1 credit remaining, they used their last credit! Send notification email.
+        if (client.remaining_credits === 1 && client.email) {
+          const emailSubject = "Agram Pilates - Iskoristili ste sve treninge iz paketa";
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+              <h2 style="color: #a98e65;">Svi treninzi su iskorišteni</h2>
+              <p>Bok <b>${client.username}</b>,</p>
+              <p>Obavještavamo Vas da je studio upravo rezervirao termin <b>'${session.title}'</b> za Vas čime ste iskoristili zadnji preostali trening iz Vašeg paketa <b>${client.package_name}</b>.</p>
+              <p>Kako biste mogli nastaviti s vježbanjem i rezervirati nove termine, molimo Vas da odaberete novi paket unutar aplikacije.</p>
+              <p style="margin-top: 30px;">
+                <a href="https://pilates-reformer-agram.com/dashboard.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
+                  Otvori Profil i odaberi paket
+                </a>
+              </p>
+              <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+              <p style="font-size: 11px; color: #7c7267;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
+            </div>
+          `;
+          ctx.waitUntil(sendEmail(env, client.email, emailSubject, emailHtml));
+        }
+
+        return jsonResponse({ success: true, message: "Rezervacija je uspješno kreirana od strane administratora!" });
+      }
+
       // ADMIN: GET INSTAGRAM CONFIG STATUS
       if (request.method === "GET" && url.pathname === "/api/admin/instagram/status") {
         const tokenObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_access_token'").first();

@@ -243,4 +243,87 @@ describe('JWT Authentication integration tests', () => {
     expect(data.success).toBe(true);
     expect(data.message).toContain('Dnevno izvješće');
   });
+
+  it('admin endpoint /api/admin/book-client-manual books a client manually (200)', async () => {
+    // 1. Login as admin
+    const loginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'adminuser', password: 'adminpass' })
+    });
+    const loginRes = await worker.fetch(loginReq, env, createExecutionContext());
+    const loginData = await loginRes.json();
+    const token = loginData.token;
+
+    // Create a new session
+    const d = new Date();
+    const dateStr = d.toISOString().split('T')[0];
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (1001, 'Reformer test', 'Adrijana', ?, '08:00', 4, 'grupni')
+    `).bind(dateStr).run();
+
+    // Call book-client-manual
+    const req = new Request('http://example.com/api/admin/book-client-manual', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ session_id: 1001, client_id: 1 })
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+
+    // Verify booking was created
+    const booking = await env.DB.prepare("SELECT * FROM Bookings WHERE session_id = 1001 AND user_id = 1").first();
+    expect(booking).toBeDefined();
+    expect(booking.status).toBe(0);
+
+    // Verify remaining credits decreased from 10 to 9
+    const client = await env.DB.prepare("SELECT remaining_credits FROM Clients WHERE id = 1").first();
+    expect(client.remaining_credits).toBe(9);
+
+    // Verify notification was created
+    const notif = await env.DB.prepare("SELECT * FROM ClientNotifications WHERE user_id = 1 ORDER BY id DESC LIMIT 1").first();
+    expect(notif).toBeDefined();
+    expect(notif.message).toContain("Studio Vam je rezervirao termin 'Reformer test'");
+  });
+
+  it('admin endpoint /api/admin/book-client-manual fails if client has no credits (400)', async () => {
+    // Set credits to 0 for client
+    await env.DB.prepare("UPDATE Clients SET remaining_credits = 0 WHERE id = 1").run();
+
+    // Login as admin
+    const loginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'adminuser', password: 'adminpass' })
+    });
+    const loginRes = await worker.fetch(loginReq, env, createExecutionContext());
+    const loginData = await loginRes.json();
+    const token = loginData.token;
+
+    const req = new Request('http://example.com/api/admin/book-client-manual', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ session_id: 1001, client_id: 1 })
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    expect(data.error).toContain("nema preostalih treninga");
+  });
 });
