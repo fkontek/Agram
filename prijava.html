@@ -294,6 +294,7 @@
             username: data.user.username,
             email: data.user.email,
             is_admin: data.user.is_admin,
+            token: data.token,
             password_used: password // keep old password to verify change
           };
 
@@ -302,7 +303,7 @@
             document.getElementById("change-password-modal").style.display = "flex";
           } else {
             // Save to session and redirect
-            saveSessionAndRedirect(data.user);
+            saveSessionAndRedirect(data.user, data.token);
           }
         } else {
           alert(data.error || "Pogrešno korisničko ime ili lozinka.");
@@ -351,7 +352,7 @@
             email: tempUserSession.email,
             is_admin: tempUserSession.is_admin
           };
-          saveSessionAndRedirect(updatedUser);
+          saveSessionAndRedirect(updatedUser, tempUserSession.token);
         } else {
           alert(data.error || "Greška pri promjeni lozinke.");
         }
@@ -392,7 +393,8 @@
       }
     });
 
-    function saveSessionAndRedirect(user) {
+    function saveSessionAndRedirect(user, token) {
+      sessionStorage.setItem("auth_token", token);
       sessionStorage.setItem("user_id", user.id);
       sessionStorage.setItem("username", user.username);
       sessionStorage.setItem("email", user.email);

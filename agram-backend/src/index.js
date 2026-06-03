@@ -17,6 +17,108 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+// Base64Url encoding/decoding helpers
+function arrayBufferToBase64Url(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function base64UrlToArrayBuffer(base64url) {
+  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4) {
+    base64 += "=";
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+async function signHMAC(message, secret) {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(message);
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign("HMAC", key, messageData);
+  return arrayBufferToBase64Url(signature);
+}
+
+async function verifyHMAC(message, signature, secret) {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(message);
+  const signatureData = base64UrlToArrayBuffer(signature);
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"]
+  );
+
+  return await crypto.subtle.verify("HMAC", key, signatureData, messageData);
+}
+
+async function createJWT(payload, secret) {
+  const header = { alg: "HS256", typ: "JWT" };
+  const headerPart = arrayBufferToBase64Url(new TextEncoder().encode(JSON.stringify(header)));
+  const payloadPart = arrayBufferToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const message = `${headerPart}.${payloadPart}`;
+  const signaturePart = await signHMAC(message, secret);
+  return `${message}.${signaturePart}`;
+}
+
+async function verifyJWT(token, secret) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+
+  const [headerPart, payloadPart, signaturePart] = parts;
+  const message = `${headerPart}.${payloadPart}`;
+
+  const isValid = await verifyHMAC(message, signaturePart, secret);
+  if (!isValid) return null;
+
+  try {
+    const payload = JSON.parse(new TextDecoder().decode(base64UrlToArrayBuffer(payloadPart)));
+    if (payload.exp && typeof payload.exp === "number") {
+      const now = Math.floor(Date.now() / 1000);
+      if (now > payload.exp) {
+        return null;
+      }
+    }
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function getAuthUser(request, env) {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+  const token = authHeader.substring(7);
+  const secret = env.JWT_SECRET || "dev-secret-key-change-this-in-prod";
+  return await verifyJWT(token, secret);
+}
+
 // Hashing utility for SHA-256
 async function hashPassword(password) {
   const encoder = new TextEncoder();
@@ -339,11 +441,14 @@ export default {
           return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401);
         }
 
-        if (user.status === "pending") {
-          return jsonResponse({ success: false, error: "Vaš profil još nije odobren od strane administratora." }, 403);
-        }
+        const token = await createJWT({
+          user_id: user.id,
+          is_admin: user.is_admin,
+          username: user.username,
+          exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 // 30 days
+        }, env.JWT_SECRET || "dev-secret-key-change-this-in-prod");
 
-        return jsonResponse({ success: true, user });
+        return jsonResponse({ success: true, user, token });
       }
 
       // REGISTER (Public registration, status 'pending' awaiting admin approval)
@@ -463,10 +568,11 @@ export default {
 
       // GET AVAILABLE SESSIONS (with client booking status)
       if (request.method === "GET" && url.pathname === "/api/sessions") {
-        const userId = url.searchParams.get("user_id");
-        if (!userId) {
-          return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
         }
+        const userId = authUser.user_id;
 
         await autoConfirmBookings(env);
 
@@ -496,10 +602,15 @@ export default {
 
       // BOOK A SESSION
       if (request.method === "POST" && url.pathname === "/api/book") {
-        const { user_id, session_id } = await request.json();
-        if (!user_id || !session_id) {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+        const { session_id } = await request.json();
+        if (!session_id) {
           return jsonResponse({ success: false, error: "Svi parametri su obavezni." }, 400);
         }
+        const user_id = authUser.user_id;
 
         // 1. Get Client credits and check expiration
         const client = await env.DB.prepare(
@@ -592,10 +703,15 @@ export default {
 
       // CANCEL A BOOKING (12-hour rule)
       if (request.method === "POST" && url.pathname === "/api/cancel-booking") {
-        const { user_id, session_id } = await request.json();
-        if (!user_id || !session_id) {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+        const { session_id } = await request.json();
+        if (!session_id) {
           return jsonResponse({ success: false, error: "Svi parametri su obavezni." }, 400);
         }
+        const user_id = authUser.user_id;
 
         // 1. Check if booking exists
         const booking = await env.DB.prepare(
@@ -648,10 +764,15 @@ export default {
 
       // JOIN WAITLIST
       if (request.method === "POST" && url.pathname === "/api/waitlist/join") {
-        const { user_id, session_id } = await request.json();
-        if (!user_id || !session_id) {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+        const { session_id } = await request.json();
+        if (!session_id) {
           return jsonResponse({ success: false, error: "Svi parametri su obavezni." }, 400);
         }
+        const user_id = authUser.user_id;
 
         // 1. Check if client exists
         const client = await env.DB.prepare("SELECT username, status FROM Clients WHERE id = ?").bind(user_id).first();
@@ -708,10 +829,15 @@ export default {
 
       // LEAVE WAITLIST
       if (request.method === "POST" && url.pathname === "/api/waitlist/leave") {
-        const { user_id, session_id } = await request.json();
-        if (!user_id || !session_id) {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+        const { session_id } = await request.json();
+        if (!session_id) {
           return jsonResponse({ success: false, error: "Svi parametri su obavezni." }, 400);
         }
+        const user_id = authUser.user_id;
 
         const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
         const session = await env.DB.prepare("SELECT title, date, time FROM Sessions WHERE id = ?").bind(session_id).first();
@@ -730,10 +856,11 @@ export default {
 
       // CLIENT DASHBOARD DATA (Get current bookings and history)
       if (request.method === "GET" && url.pathname === "/api/client/dashboard") {
-        const userId = url.searchParams.get("user_id");
-        if (!userId) {
-          return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
         }
+        const userId = authUser.user_id;
 
         await autoConfirmBookings(env);
 
@@ -789,10 +916,12 @@ export default {
 
       // CLIENT: MARK NOTIFICATIONS AS READ
       if (request.method === "POST" && url.pathname === "/api/client/notifications/read") {
-        const { user_id, notification_ids } = await request.json();
-        if (!user_id) {
-          return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
         }
+        const { notification_ids } = await request.json();
+        const user_id = authUser.user_id;
 
         if (notification_ids && notification_ids.length > 0) {
           const placeholders = notification_ids.map(() => "?").join(",");
@@ -810,10 +939,11 @@ export default {
 
       // QR CODE CHECK-IN
       if (request.method === "POST" && url.pathname === "/api/check-in") {
-        const { user_id } = await request.json();
-        if (!user_id) {
-          return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
         }
+        const user_id = authUser.user_id;
 
         const nowCroatia = getCroatiaNow();
         const todayStr = formatDate(nowCroatia);
@@ -913,10 +1043,15 @@ export default {
 
       // CLIENT: SAVE HEALTH QUESTIONNAIRE
       if (request.method === "POST" && url.pathname === "/api/client/questionnaire") {
-        const { user_id, answers } = await request.json();
-        if (!user_id || !answers) {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+        const { answers } = await request.json();
+        if (!answers) {
           return jsonResponse({ success: false, error: "Nedostaju parametri." }, 400);
         }
+        const user_id = authUser.user_id;
 
         const answersStr = JSON.stringify(answers);
         await env.DB.prepare("UPDATE Clients SET questionnaire = ? WHERE id = ?").bind(answersStr, user_id).run();
@@ -930,6 +1065,17 @@ export default {
         return jsonResponse({ success: true, message: "Upitnik uspješno spremljen." });
       }
 
+
+      // ADMIN ONLY ENDPOINTS PROTECTION
+      if (url.pathname.startsWith("/api/admin/")) {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+        if (!authUser.is_admin) {
+          return jsonResponse({ success: false, error: "Nemate administratorska prava." }, 403);
+        }
+      }
 
       // --- ADMIN ONLY ENDPOINTS (Wife's dashboard) ---
 
@@ -1493,10 +1639,15 @@ export default {
 
       // CLIENT: REQUEST NEW PACKAGE
       if (request.method === "POST" && url.pathname === "/api/client/request-package") {
-        const { user_id, package_name } = await request.json();
-        if (!user_id || !package_name) {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+        const { package_name } = await request.json();
+        if (!package_name) {
           return jsonResponse({ success: false, error: "Nedostaju parametri." }, 400);
         }
+        const user_id = authUser.user_id;
 
         const client = await env.DB.prepare("SELECT username, email, remaining_credits FROM Clients WHERE id = ?").bind(user_id).first();
         if (!client) {
