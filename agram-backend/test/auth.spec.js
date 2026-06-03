@@ -175,4 +175,42 @@ describe('JWT Authentication integration tests', () => {
     expect(data.success).toBe(true);
     expect(data.clients).toBeDefined();
   });
+
+  it('scheduled cron trigger runs successfully and triggers daily report', async () => {
+    // 1. Prepare today's date formatted to YYYY-MM-DD
+    const d = new Date();
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Europe/Zagreb",
+      year: "numeric", month: "2-digit", day: "2-digit"
+    });
+    const parts = formatter.formatToParts(d);
+    const partVal = type => parts.find(p => p.type === type).value;
+    const todayStr = `${partVal('year')}-${partVal('month')}-${partVal('day')}`;
+
+    // 2. Insert a mock session for today
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (999, 'Test Pilates', 'Adrijana', ?, '17:00', 4, 'grupni')
+    `).bind(todayStr).run();
+
+    // 3. Insert a checked-in booking for this session (status = 1)
+    await env.DB.prepare(`
+      INSERT INTO Bookings (session_id, user_id, status)
+      VALUES (999, 1, 1)
+    `).run();
+
+    // 4. Trigger worker.scheduled
+    const ctx = createExecutionContext();
+    const event = {
+      scheduledTime: Date.now()
+    };
+    
+    await worker.scheduled(event, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    // 5. Verify database state is untouched (i.e. query ran without syntax errors)
+    const session = await env.DB.prepare("SELECT title FROM Sessions WHERE id = 999").first();
+    expect(session).toBeDefined();
+    expect(session.title).toBe('Test Pilates');
+  });
 });

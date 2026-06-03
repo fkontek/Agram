@@ -327,6 +327,103 @@ async function autoConfirmBookings(env) {
   }
 }
 
+// Generate and send daily check-in report email to admin
+async function sendDailyReportEmail(env) {
+  try {
+    const croatiaNow = getCroatiaNow();
+    const todayStr = formatDate(croatiaNow); // YYYY-MM-DD
+    const dateFormatted = todayStr.split('-').reverse().join('.') + '.';
+
+    // 1. Get all sessions for today
+    const sessionsRes = await env.DB.prepare(`
+      SELECT id, title, time, instructor, type 
+      FROM Sessions 
+      WHERE date = ? 
+      ORDER BY time ASC
+    `).bind(todayStr).all();
+
+    const sessions = sessionsRes.results || [];
+
+    // If there are no sessions, we skip sending
+    if (sessions.length === 0) {
+      console.log(`No sessions scheduled for ${todayStr}. Skipping daily report email.`);
+      return true;
+    }
+
+    // 2. Get checked-in attendees for all sessions of today (status = 1 means checked-in / attended)
+    const attendeesRes = await env.DB.prepare(`
+      SELECT b.session_id, c.username, c.full_name, c.email
+      FROM Bookings b
+      JOIN Clients c ON b.user_id = c.id
+      JOIN Sessions s ON b.session_id = s.id
+      WHERE s.date = ? AND b.status = 1
+    `).bind(todayStr).all();
+
+    const attendees = attendeesRes.results || [];
+
+    // 3. Build HTML report
+    let sessionsHtml = "";
+    
+    sessions.forEach(session => {
+      const sessionAttendees = attendees.filter(a => a.session_id === session.id);
+      
+      let attendeesListHtml = "";
+      if (sessionAttendees.length === 0) {
+        attendeesListHtml = `<li style="color: #7c7267; font-style: italic; list-style-type: none; margin-left: 0; padding-left: 0;">Nije bilo odrađenih dolazaka.</li>`;
+      } else {
+        attendeesListHtml = sessionAttendees.map(att => {
+          const displayName = att.full_name ? `${att.full_name} (${att.username})` : att.username;
+          return `<li style="margin-bottom: 6px;"><b>${displayName}</b></li>`;
+        }).join('');
+      }
+
+      sessionsHtml += `
+        <div style="background-color: #ffffff; padding: 15px; border-radius: 6px; border: 1px solid rgba(197, 168, 128, 0.2); margin-bottom: 15px;">
+          <h3 style="color: #2c251e; margin-top: 0; margin-bottom: 6px; font-size: 1.2rem; border-left: 3px solid #c5a880; padding-left: 8px;">
+            ${session.time}h — ${session.title}
+          </h3>
+          <p style="margin: 0 0 12px 0; color: #7c7267; font-size: 0.9rem;">
+            Trener: ${session.instructor} | Tip: ${session.type}
+          </p>
+          <ul style="margin: 0; padding-left: 20px; font-size: 1.05rem; color: #2c251e;">
+            ${attendeesListHtml}
+          </ul>
+        </div>
+      `;
+    });
+
+    const adminEmail = env.ADMIN_REPORT_EMAIL || "adrijana.kontek@gmail.com";
+    const subject = `Agram Pilates - Dnevno izvješće o dolascima za ${dateFormatted}`;
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; padding: 25px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 8px; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #a98e65; border-bottom: 2px solid #ebdcc5; padding-bottom: 10px; margin-top: 0; text-transform: uppercase; letter-spacing: 0.5px; font-size: 1.4rem;">
+          Dnevno izvješće o dolascima
+        </h2>
+        <p style="font-size: 1.1rem; font-weight: bold; color: #7c7267; margin-top: 15px; margin-bottom: 20px;">
+          Datum: ${dateFormatted}
+        </p>
+        
+        <div style="margin-top: 20px;">
+          ${sessionsHtml}
+        </div>
+        
+        <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px; margin-bottom: 15px;">
+        <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">
+          Ova poruka je poslana automatski iz sustava Agram Pilates.
+        </p>
+      </div>
+    `;
+
+    await sendEmail(env, adminEmail, subject, htmlContent);
+    console.log(`Daily report email sent successfully for ${todayStr} to ${adminEmail}`);
+    return true;
+  } catch (e) {
+    console.error("Error sending daily report email:", e);
+    return false;
+  }
+}
+
 // Synchronize Instagram Feed
 async function syncInstagramFeed(env) {
   try {
@@ -1827,6 +1924,24 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(syncInstagramFeed(env));
+    const promises = [];
+    
+    // 1. Instagram Feed Sync: runs on 12-hour schedule
+    if (!event.cron || event.cron === "0 */12 * * *") {
+      promises.push(syncInstagramFeed(env));
+    }
+    
+    // 2. Daily Report Email: runs daily in the evening
+    if (!event.cron || event.cron === "15 20,21 * * *") {
+      const croatiaNow = getCroatiaNow();
+      // Only execute if it's 22:15 local time (hour 22), or if running locally/tests without cron property
+      if (croatiaNow.getHours() === 22 || !event.cron) {
+        promises.push(sendDailyReportEmail(env));
+      }
+    }
+    
+    if (promises.length > 0) {
+      ctx.waitUntil(Promise.all(promises));
+    }
   }
 };
