@@ -392,6 +392,28 @@
       color: #b22222;
     }
 
+    /* Tablet and desktop responsive tables */
+    .table-responsive-desktop {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-bottom: 30px;
+    }
+
+    .table-responsive-desktop table {
+      margin-bottom: 0;
+    }
+
+    /* Tablet layout optimization */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      body {
+        padding: 20px 15px;
+      }
+      .container {
+        padding: 25px;
+      }
+    }
+
     @media (max-width: 768px) {
       .container {
         padding: 25px;
@@ -1048,20 +1070,22 @@
       <div id="pending-clients-section" class="admin-card"
         style="display: none; border-color: #b22222; background-color: rgba(178, 34, 34, 0.02);">
         <h2 style="color: #b22222;">Zahtjevi za registraciju (Klijenti na čekanju)</h2>
-        <table id="pending-clients-table">
-          <thead>
-            <tr>
-              <th>Korisničko ime</th>
-              <th>Email</th>
-              <th>Akcije</th>
-            </tr>
-          </thead>
-          <tbody id="pending-clients-tbody">
-            <tr>
-              <td colspan="3">Učitavanje...</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-responsive-desktop">
+          <table id="pending-clients-table">
+            <thead>
+              <tr>
+                <th>Korisničko ime</th>
+                <th>Email</th>
+                <th>Akcije</th>
+              </tr>
+            </thead>
+            <tbody id="pending-clients-tbody">
+              <tr>
+                <td colspan="3">Učitavanje...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Zahtjevi za pakete (Na čekanju) -->
@@ -1131,23 +1155,25 @@
       </div>
 
       <h2>Popis klijenata i članarina</h2>
-      <table id="clients-table">
-        <thead>
-          <tr>
-            <th>Klijent</th>
-            <th>Paket</th>
-            <th>Preostalo</th>
-            <th>Istječe</th>
-            <th>Odrađeno</th>
-            <th>Akcije</th>
-          </tr>
-        </thead>
-        <tbody id="clients-tbody">
-          <tr>
-            <td colspan="6">Učitavanje klijenata...</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-responsive-desktop">
+        <table id="clients-table">
+          <thead>
+            <tr>
+              <th>Klijent</th>
+              <th>Paket</th>
+              <th>Preostalo</th>
+              <th>Istječe</th>
+              <th>Odrađeno</th>
+              <th>Akcije</th>
+            </tr>
+          </thead>
+          <tbody id="clients-tbody">
+            <tr>
+              <td colspan="6">Učitavanje klijenata...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- TAB 3: RASPORED TERMINA -->
@@ -2059,47 +2085,49 @@
               attendeesTableHtml = `<p style="font-size: 1.3rem; color: var(--text-muted); font-style: italic; margin-top: 10px;">Nema prijavljenih korisnika za ovaj termin.</p>`;
             } else {
               attendeesTableHtml = `
-                <table style="margin-top: 15px; margin-bottom: 0;">
-                  <thead>
-                    <tr>
-                      <th>Klijent</th>
-                      <th>Preostalo treninga</th>
-                      <th>Status dolaska</th>
-                      <th>Akcija</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${sessionAttendees.map(att => {
-                let statusBadge = "";
-                let actionButton = "";
+                <div class="table-responsive-desktop" style="margin-top: 15px;">
+                  <table style="margin: 0;">
+                    <thead>
+                      <tr>
+                        <th>Klijent</th>
+                        <th>Preostalo treninga</th>
+                        <th>Status dolaska</th>
+                        <th>Akcija</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${sessionAttendees.map(att => {
+                  let statusBadge = "";
+                  let actionButton = "";
 
-                if (att.status === 1) {
-                  statusBadge = `<span class="badge badge-present">Odradio</span>`;
-                  actionButton = `<span style="color: var(--text-muted); font-style: italic; font-size: 1.2rem;">Upisano</span>`;
-                } else if (att.status === -1) {
-                  statusBadge = `<span class="badge badge-absent">Nedolazak</span>`;
-                  actionButton = `<span style="color: #b22222; font-size: 1.2rem;">Kasno otkazano</span>`;
-                } else {
-                  statusBadge = `<span class="badge badge-reserved">Rezervirano</span>`;
-                  actionButton = `
-                          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="btn-action btn-checkin" onclick="manualCheckIn(${att.booking_id})">Upiši dolazak</button>
-                            <button class="btn-action btn-delete" onclick="adminCancelBooking(${att.booking_id})">Otkaži klijentu</button>
-                          </div>
+                  if (att.status === 1) {
+                    statusBadge = `<span class="badge badge-present">Odradio</span>`;
+                    actionButton = `<span style="color: var(--text-muted); font-style: italic; font-size: 1.2rem;">Upisano</span>`;
+                  } else if (att.status === -1) {
+                    statusBadge = `<span class="badge badge-absent">Nedolazak</span>`;
+                    actionButton = `<span style="color: #b22222; font-size: 1.2rem;">Kasno otkazano</span>`;
+                  } else {
+                    statusBadge = `<span class="badge badge-reserved">Rezervirano</span>`;
+                    actionButton = `
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                              <button class="btn-action btn-checkin" onclick="manualCheckIn(${att.booking_id})">Upiši dolazak</button>
+                              <button class="btn-action btn-delete" onclick="adminCancelBooking(${att.booking_id})">Otkaži klijentu</button>
+                            </div>
+                          `;
+                  }
+
+                  return `
+                          <tr>
+                            <td><strong>${att.username}</strong><br><span style="font-size: 1.15rem; color: var(--text-muted);">${att.email}</span></td>
+                            <td>${att.remaining_credits}</td>
+                            <td>${statusBadge}</td>
+                            <td>${actionButton}</td>
+                          </tr>
                         `;
-                }
-
-                return `
-                        <tr>
-                          <td><strong>${att.username}</strong><br><span style="font-size: 1.15rem; color: var(--text-muted);">${att.email}</span></td>
-                          <td>${att.remaining_credits}</td>
-                          <td>${statusBadge}</td>
-                          <td>${actionButton}</td>
-                        </tr>
-                      `;
-              }).join('')}
-                  </tbody>
-                </table>
+                }).join('')}
+                    </tbody>
+                  </table>
+                </div>
               `;
             }
 
@@ -2260,7 +2288,7 @@
               <td>${client.package_expires ? formatDateStr(client.package_expires) : "Nema"}</td>
               <td><span class="badge badge-present">${client.attended_count} dolazaka</span></td>
               <td>
-                <div style="display: flex; gap: 6px;">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; min-width: 160px;">
                   <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
                   <button class="btn-action btn-edit" style="border-color: var(--primary-gold-dark);" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})">Karton</button>
                   <button class="btn-action ${client.status === 'frozen' ? 'btn-checkin' : 'btn-delete'}" style="${client.status === 'frozen' ? 'background-color: #2e7559; border-color: #2e7559;' : ''}" onclick="toggleFreezeClient(${client.id}, '${client.username}', '${client.status}')">
