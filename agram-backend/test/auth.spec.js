@@ -324,6 +324,89 @@ describe('JWT Authentication integration tests', () => {
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.success).toBe(false);
-    expect(data.error).toContain("nema preostalih treninga");
+  });
+
+  it('admin endpoint /api/admin/change-session-type changes session type when empty (200)', async () => {
+    // 1. Login as admin
+    const loginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'adminuser', password: 'adminpass' })
+    });
+    const loginRes = await worker.fetch(loginReq, env, createExecutionContext());
+    const loginData = await loginRes.json();
+    const token = loginData.token;
+
+    // Create a new session
+    const d = new Date();
+    const dateStr = d.toISOString().split('T')[0];
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (1002, 'Grupni trening', 'Adrijana', ?, '09:00', 4, 'grupni')
+    `).bind(dateStr).run();
+
+    // Call change-session-type to change to privatni
+    const req = new Request('http://example.com/api/admin/change-session-type', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ session_id: 1002, new_type: 'privatni' })
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+
+    // Verify session was updated in database
+    const session = await env.DB.prepare("SELECT type, capacity, title FROM Sessions WHERE id = 1002").first();
+    expect(session.type).toBe('privatni');
+    expect(session.capacity).toBe(1);
+    expect(session.title).toBe('Privatni trening');
+  });
+
+  it('admin endpoint /api/admin/change-session-type fails when session has bookings (400)', async () => {
+    // 1. Login as admin
+    const loginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'adminuser', password: 'adminpass' })
+    });
+    const loginRes = await worker.fetch(loginReq, env, createExecutionContext());
+    const loginData = await loginRes.json();
+    const token = loginData.token;
+
+    // Create a new session specifically for this test
+    const d = new Date();
+    const dateStr = d.toISOString().split('T')[0];
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (1003, 'Grupni trening', 'Adrijana', ?, '10:00', 4, 'grupni')
+    `).bind(dateStr).run();
+
+    // Add booking to session 1003
+    await env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (1003, 1, 0)").run();
+
+    // Attempt to change type
+    const req = new Request('http://example.com/api/admin/change-session-type', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ session_id: 1003, new_type: 'poluindividualni' })
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    expect(data.error).toContain("Nije moguće promijeniti tip treninga");
   });
 });

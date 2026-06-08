@@ -156,6 +156,43 @@
       transform: translateX(-4px);
     }
 
+    .password-wrapper {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .password-wrapper input {
+      width: 100%;
+      margin-bottom: 0 !important;
+      padding-right: 45px;
+    }
+    .toggle-password-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent !important;
+      border: none !important;
+      cursor: pointer;
+      color: var(--primary-gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      transform-origin: center;
+      transition: color var(--transition-fast);
+    }
+    .toggle-password-btn:hover {
+      color: var(--primary-gold-dark) !important;
+      background: transparent !important;
+      transform: translateY(-50%) !important;
+      box-shadow: none !important;
+    }
+    .toggle-password-btn svg {
+      pointer-events: none;
+    }
+
     /* Responsive adjustments */
     @media (max-width: 768px) {
       .auth-container {
@@ -166,9 +203,22 @@
         padding: 30px 20px;
       }
     }
+    @keyframes pulseLogo {
+      0% { transform: scale(0.97); opacity: 0.85; }
+      50% { transform: scale(1.02); opacity: 1; }
+      100% { transform: scale(0.97); opacity: 0.85; }
+    }
   </style>
 </head>
 <body>
+  <!-- SPLASH SCREEN OVERLAY -->
+  <div id="app-splash-screen" style="position: fixed; inset: 0; background: #1a1510; display: flex; justify-content: center; align-items: center; z-index: 999999; transition: opacity 0.4s ease, visibility 0.4s ease;">
+    <!-- Blurred background image -->
+    <div style="position: absolute; inset: 0; background: url('./img/AGRAM_profilna_1.jpg') no-repeat center center/cover; opacity: 0.18; filter: blur(8px); transform: scale(1.05);"></div>
+    <!-- Logo in center -->
+    <img src="./img/AGRAM_PILATES_logotip_wordmark_pijesak.png" alt="Agram Pilates" style="position: relative; max-width: 80%; max-height: 180px; object-fit: contain; animation: pulseLogo 1.8s infinite ease-in-out;" />
+  </div>
+
   <div class="auth-logo">
     Pilates-Reformer <span>studio Agram</span>
   </div>
@@ -182,7 +232,12 @@
         <input type="text" id="username" name="username" required placeholder="Unesi korisničko ime ili e-mail" />
       
         <label for="password">Lozinka</label>
-        <input type="password" id="password" name="password" required placeholder="••••••••" />
+        <div class="password-wrapper">
+          <input type="password" id="password" name="password" required placeholder="••••••••" />
+          <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('password', this)" title="Prikaži/Sakrij lozinku">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
       
         <button type="submit">Prijava</button>
         <a href="#" onclick="openForgotPasswordModal(event)" style="color: var(--primary-gold); font-size: 1.15rem; margin-top: 15px; text-align: center; text-decoration: none; display: block;">Zaboravio/la sam lozinku</a>
@@ -216,10 +271,20 @@
       </p>
       <form id="change-password-form">
         <label for="new_pass">Nova lozinka</label>
-        <input type="password" id="new_pass" required placeholder="Unesite novu lozinku" />
+        <div class="password-wrapper">
+          <input type="password" id="new_pass" required placeholder="Unesite novu lozinku" />
+          <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('new_pass', this)" title="Prikaži/Sakrij lozinku">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
         
         <label for="confirm_pass">Potvrdite lozinku</label>
-        <input type="password" id="confirm_pass" required placeholder="Ponovite novu lozinku" />
+        <div class="password-wrapper">
+          <input type="password" id="confirm_pass" required placeholder="Ponovite novu lozinku" />
+          <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('confirm_pass', this)" title="Prikaži/Sakrij lozinku">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
         
         <button type="submit">Spremi lozinku</button>
       </form>
@@ -470,6 +535,29 @@
       } catch (err) {
         alert("Greška u komunikaciji sa serverom.");
       }
+    // Toggle password visibility
+    function togglePasswordVisibility(inputId, btnEl) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      if (input.type === "password") {
+        input.type = "text";
+        btnEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+      } else {
+        input.type = "password";
+        btnEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+      }
+    }
+
+    // Auto-hide splash screen on page load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const splash = document.getElementById("app-splash-screen");
+        if (splash) {
+          splash.style.opacity = "0";
+          splash.style.visibility = "hidden";
+          setTimeout(() => splash.remove(), 400);
+        }
+      }, 350);
     });
   </script>
   <script>

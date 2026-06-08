@@ -247,6 +247,91 @@
     .session-spots { font-size: 1.15rem; color: var(--text-muted); }
     .session-instructor { font-size: 1.1rem; color: var(--text-muted); font-style: italic; }
 
+    /* ---- Notification Items ---- */
+    .notif-item {
+      padding: 12px 15px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      transition: var(--transition-fast);
+    }
+    .notif-item:last-child {
+      margin-bottom: 0;
+    }
+    .notif-item-content {
+      font-size: 1.25rem;
+      line-height: 1.7rem;
+      flex: 1;
+    }
+    .notif-item-time {
+      font-size: 1.0rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .notif-close-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      padding: 6px;
+      border-radius: 50%;
+      transition: var(--transition-fast);
+      flex-shrink: 0;
+    }
+
+    /* Positive (Green) */
+    .notif-positive {
+      background-color: rgba(46, 125, 50, 0.05);
+      border: 1px solid rgba(46, 125, 50, 0.22);
+    }
+    .notif-positive .notif-item-content {
+      color: #1b5e20;
+    }
+    .notif-positive .notif-close-btn {
+      color: rgba(46, 125, 50, 0.7);
+    }
+    .notif-positive .notif-close-btn:hover {
+      color: #1b5e20;
+      background-color: rgba(46, 125, 50, 0.1);
+    }
+
+    /* Negative (Red) */
+    .notif-negative {
+      background-color: rgba(178, 34, 34, 0.04);
+      border: 1px solid rgba(178, 34, 34, 0.2);
+    }
+    .notif-negative .notif-item-content {
+      color: #b22222;
+    }
+    .notif-negative .notif-close-btn {
+      color: rgba(178, 34, 34, 0.7);
+    }
+    .notif-negative .notif-close-btn:hover {
+      color: #b22222;
+      background-color: rgba(178, 34, 34, 0.1);
+    }
+
+    /* Neutral (Gold/Brown) */
+    .notif-neutral {
+      background-color: rgba(197, 168, 128, 0.05);
+      border: 1px solid rgba(197, 168, 128, 0.25);
+    }
+    .notif-neutral .notif-item-content {
+      color: var(--text-dark);
+    }
+    .notif-neutral .notif-close-btn {
+      color: var(--text-muted);
+    }
+    .notif-neutral .notif-close-btn:hover {
+      color: var(--primary-gold-dark);
+      background-color: rgba(197, 168, 128, 0.1);
+    }
+
     /* ==================== MOBILE APP ==================== */
     .mobile-app { display: none; width: 100%; }
 
@@ -338,19 +423,17 @@
 
       /* ---- Notifications bar ---- */
       .mobile-notif-bar {
-        background: rgba(178,34,34,0.12);
-        border-bottom: 1px solid rgba(178,34,34,0.25);
+        background: rgba(197, 168, 128, 0.1);
+        border-bottom: 1px solid rgba(197, 168, 128, 0.2);
         padding: 12px 18px;
         flex-shrink: 0;
         display: none;
-        --text-dark: #f7e8e8;
-        --text-muted: rgba(255, 255, 255, 0.5);
       }
       .mobile-notif-bar.visible { display: block; }
       .mobile-notif-title {
         font-size: 1.15rem;
         font-weight: 700;
-        color: #b22222;
+        color: var(--primary-gold-dark);
         display: flex;
         align-items: center;
         gap: 6px;
@@ -359,16 +442,20 @@
         letter-spacing: 0.4px;
       }
       #mobile-notifications-list li {
-        font-size: 1.2rem;
-        color: #2c251e;
-        padding: 8px 0;
-        border-bottom: 1px dashed rgba(178,34,34,0.15);
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 8px;
+        padding: 0;
+        border: none;
+        background: none;
+        display: block;
       }
-      #mobile-notifications-list li:last-child { border-bottom: none; }
+      #mobile-notifications-list li.notif-item {
+        font-size: 1.15rem;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        border-bottom: none;
+        align-items: center;
+        display: flex;
+      }
+      #mobile-notifications-list li.notif-item:last-child { margin-bottom: 0; }
 
       /* ---- Panels ---- */
       .mobile-panels {
@@ -627,9 +714,21 @@
       .mobile-nav-btn svg { width: 22px; height: 22px; }
       .mobile-nav-btn span { font-size: 0.9rem; }
     }
+    @keyframes pulseLogo {
+      0% { transform: scale(0.97); opacity: 0.85; }
+      50% { transform: scale(1.02); opacity: 1; }
+      100% { transform: scale(0.97); opacity: 0.85; }
+    }
   </style>
 </head>
 <body>
+  <!-- SPLASH SCREEN OVERLAY -->
+  <div id="app-splash-screen" style="position: fixed; inset: 0; background: #1a1510; display: flex; justify-content: center; align-items: center; z-index: 999999; transition: opacity 0.4s ease, visibility 0.4s ease;">
+    <!-- Blurred background image -->
+    <div style="position: absolute; inset: 0; background: url('./img/AGRAM_profilna_1.jpg') no-repeat center center/cover; opacity: 0.18; filter: blur(8px); transform: scale(1.05);"></div>
+    <!-- Logo in center -->
+    <img src="./img/AGRAM_PILATES_logotip_wordmark_pijesak.png" alt="Agram Pilates" style="position: relative; max-width: 80%; max-height: 180px; object-fit: contain; animation: pulseLogo 1.8s infinite ease-in-out;" />
+  </div>
 
   <!-- ============================= -->
   <!--        DESKTOP LAYOUT         -->
@@ -642,15 +741,22 @@
       🔒 Vaš račun je trenutno ZALEĐEN. Rezervacije novih termina i prijava na listu čekanja su privremeno onemogućeni.
     </div>
 
+    <!-- Banner za prvi dolazak (bez paketa) -->
+    <div id="no-package-banner-desktop" style="display:none; position:relative; background-color:rgba(197, 168, 128, 0.12); border:1px solid rgba(197, 168, 128, 0.4); color:var(--text-dark); padding:20px 45px 20px 20px; border-radius:var(--radius-md); margin-bottom:25px; font-size:1.3rem; line-height:2rem; text-align:left;">
+      <button onclick="dismissWelcomeNotice()" style="position:absolute; right:15px; top:15px; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.8rem; line-height:1; padding:5px;" title="Zatvori">&times;</button>
+      <h3 style="margin:0 0 8px 0; color:var(--primary-gold-dark); font-weight:700; font-size:1.45rem;">Prvi dolazak u naš studio:</h3>
+      Prvi dolazak na termin odrađuje se uz prethodni telefonski dogovor. Tada zajednički odlučujemo je li Vam potreban uvodni privatni sat ili možete odmah zatražiti paket.
+    </div>
+
     <!-- Obavijesti -->
-    <div class="info-box" id="notifications-box" style="display:none; background-color:rgba(178,34,34,0.03); border:1px solid rgba(178,34,34,0.2); margin-bottom:25px;">
-      <h2 style="color:#b22222; margin-bottom:10px;">
+    <div class="info-box" id="notifications-box" style="display:none; background-color:rgba(197,168,128,0.05); border:1px solid rgba(197,168,128,0.25); margin-bottom:25px;">
+      <h2 style="color:var(--primary-gold-dark); margin-bottom:10px;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Obavijesti studija
       </h2>
       <ul id="notifications-list" style="list-style:none; padding-left:0; margin:0;"></ul>
       <div style="text-align:right; margin-top:15px;">
-        <button class="btn-cancel" onclick="markAllNotificationsAsRead()" style="font-size:1.1rem; padding:4px 12px; border-radius:12px;">Označi sve pročitano</button>
+        <button onclick="markAllNotificationsAsRead()" style="background:none; border:1px solid var(--primary-gold-dark); color:var(--primary-gold-dark); border-radius:20px; padding:5px 14px; font-size:1.05rem; font-family:'Montserrat',sans-serif; font-weight:600; cursor:pointer; transition:var(--transition-fast);" onmouseover="this.style.backgroundColor='rgba(197,168,128,0.1)'" onmouseout="this.style.backgroundColor='transparent'">Označi sve pročitano</button>
       </div>
     </div>
 
@@ -748,13 +854,20 @@
       </div>
       <ul id="mobile-notifications-list" style="list-style:none; padding:0; margin:0;"></ul>
       <div style="margin-top:10px; text-align:right;">
-        <button onclick="markAllNotificationsAsRead()" style="background:none; border:1px solid #b22222; color:#b22222; border-radius:20px; padding:5px 14px; font-size:1.05rem; font-family:'Montserrat',sans-serif; font-weight:600; cursor:pointer;">Označi pročitano</button>
+        <button onclick="markAllNotificationsAsRead()" style="background:none; border:1px solid var(--primary-gold-dark); color:var(--primary-gold-dark); border-radius:20px; padding:5px 14px; font-size:1.05rem; font-family:'Montserrat',sans-serif; font-weight:600; cursor:pointer;">Označi pročitano</button>
       </div>
     </div>
 
     <!-- Zaleđeni račun Banner (Mobile) -->
     <div id="frozen-banner-mobile" style="display:none; background-color:#b22222; color:white; padding:12px 18px; font-weight:600; font-size:1.15rem; text-align:center; flex-shrink:0; border-bottom: 1px solid rgba(255,255,255,0.2);">
       🔒 Vaš račun je ZALEĐEN. Rezervacije i lista čekanja su onemogućene.
+    </div>
+
+    <!-- Banner za prvi dolazak (bez paketa) (Mobile) -->
+    <div id="no-package-banner-mobile" style="display:none; position:relative; background-color:rgba(197, 168, 128, 0.12); border-bottom:1px solid rgba(197, 168, 128, 0.3); color:var(--text-dark); padding:14px 40px 14px 18px; font-size:1.15rem; line-height:1.75rem; text-align:left; flex-shrink:0;">
+      <button onclick="dismissWelcomeNotice()" style="position:absolute; right:12px; top:12px; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.6rem; line-height:1; padding:4px;" title="Zatvori">&times;</button>
+      <strong style="color:var(--primary-gold-dark); display:block; margin-bottom:4px; font-size:1.2rem;">Prvi dolazak u naš studio:</strong>
+      Prvi dolazak na termin odrađuje se uz prethodni telefonski dogovor. Tada zajednički odlučujemo je li Vam potreban uvodni privatni sat ili možete odmah zatražiti paket.
     </div>
 
     <!-- Panels -->
@@ -839,6 +952,26 @@
     let userBookedDates = [];
     let isUserFrozen    = false;
 
+    // Splash screen kontrola
+    let splashMinTimePassed = false;
+    let dataLoaded = false;
+
+    function hideSplashScreen() {
+      if (splashMinTimePassed && dataLoaded) {
+        const splash = document.getElementById("app-splash-screen");
+        if (splash) {
+          splash.style.opacity = "0";
+          splash.style.visibility = "hidden";
+          setTimeout(() => splash.remove(), 400);
+        }
+      }
+    }
+
+    setTimeout(() => {
+      splashMinTimePassed = true;
+      hideSplashScreen();
+    }, 450);
+
     if (!userId || !username || !authToken) {
       window.location.href = "prijava.html";
     } else {
@@ -890,15 +1023,14 @@
           if (unread.length > 0) {
             const notifHtml = unread.map(notif => {
               const relTime = formatRelativeTime(notif.created_at);
+              const statusClass = getNotificationStatusClass(notif.message);
               return `
-                <li style="border-bottom:1px dashed rgba(178,34,34,0.15); padding:10px 0; display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                  <div style="font-size:1.3rem; color:var(--text-dark); line-height:1.8rem;">
+                <li class="notif-item ${statusClass}">
+                  <div class="notif-item-content">
                     ${notif.message}
-                    <div style="font-size:1.05rem; color:var(--text-muted); margin-top:4px;" title="${notif.created_at}">${relTime}</div>
+                    <div class="notif-item-time" title="${notif.created_at}">${relTime}</div>
                   </div>
-                  <button onclick="markSingleNotificationAsRead(${notif.id})"
-                    style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; padding:5px; border-radius:50%; transition:var(--transition-fast);"
-                    onmouseover="this.style.color='#b22222';" onmouseout="this.style.color='var(--text-muted)';" title="Zatvori">
+                  <button class="notif-close-btn" onclick="markSingleNotificationAsRead(${notif.id})" title="Zatvori">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </li>`;
@@ -928,6 +1060,17 @@
           // 1. Membership info — desktop
           userCreditsVal = data.user.remaining_credits || 0;
           userPackageVal = data.user.package_name || "Nema paketa";
+          
+          const hasNoPackage = userPackageVal === "Nema paketa" || userPackageVal === "Nema aktivnog paketa";
+          const isDismissed = localStorage.getItem("agram_welcome_notice_dismissed_" + username) === "true";
+          if (hasNoPackage && !isDismissed) {
+            document.getElementById("no-package-banner-desktop").style.display = "block";
+            document.getElementById("no-package-banner-mobile").style.display = "block";
+          } else {
+            document.getElementById("no-package-banner-desktop").style.display = "none";
+            document.getElementById("no-package-banner-mobile").style.display = "none";
+          }
+
           const totalCredits = data.user.total_credits || 0;
           const usedCredits = totalCredits - userCreditsVal;
           const expiresFormatted = data.user.package_expires ? formatDate(data.user.package_expires) : "Nema roka isteka";
@@ -1186,7 +1329,18 @@
         }
       } catch (err) {
         console.error("Load sessions error:", err);
+      } finally {
+        dataLoaded = true;
+        hideSplashScreen();
       }
+    }
+
+    function dismissWelcomeNotice() {
+      localStorage.setItem("agram_welcome_notice_dismissed_" + username, "true");
+      const bannerD = document.getElementById("no-package-banner-desktop");
+      const bannerM = document.getElementById("no-package-banner-mobile");
+      if (bannerD) bannerD.style.display = "none";
+      if (bannerM) bannerM.style.display = "none";
     }
 
     // ---- Render desktop schedule ----
@@ -1486,6 +1640,20 @@
         if (diffDays === 1)                           return "jučer";
         return `prije ${diffDays} dana`;
       } catch (e) { return dateStr; }
+    }
+
+    function getNotificationStatusClass(message) {
+      if (!message) return 'notif-neutral';
+      const msgLower = message.toLowerCase();
+      // Only red if admin cancelled booking or session deleted
+      if (msgLower.includes('otkazao') || msgLower.includes('otkazan')) {
+        return 'notif-negative';
+      }
+      // Green if package approved or admin manually booked a session
+      if (msgLower.includes('odobren') || msgLower.includes('odobrio') || msgLower.includes('rezervirao')) {
+        return 'notif-positive';
+      }
+      return 'notif-neutral';
     }
 
     // ---- Notification helpers ----

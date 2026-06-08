@@ -1803,6 +1803,56 @@ export default {
         return jsonResponse({ success: true, message: "Termin je uspješno otkazan i izbrisan, a krediti su vraćeni prijavljenim korisnicima!" });
       }
 
+      // ADMIN: CHANGE SESSION TYPE
+      if (request.method === "POST" && url.pathname === "/api/admin/change-session-type") {
+        const { session_id, new_type } = await request.json();
+        
+        if (!session_id || !new_type) {
+          return jsonResponse({ success: false, error: "ID termina i novi tip su obavezni." }, 400);
+        }
+
+        const validTypes = ["grupni", "poluindividualni", "privatni"];
+        if (!validTypes.includes(new_type)) {
+          return jsonResponse({ success: false, error: "Neispravan tip treninga." }, 400);
+        }
+
+        const session = await env.DB.prepare("SELECT * FROM Sessions WHERE id = ?").bind(session_id).first();
+        if (!session) {
+          return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
+        }
+
+        // Provjeri ima li aktivnih rezervacija
+        const activeBookings = await env.DB.prepare(
+          "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
+        ).bind(session_id).first();
+
+        if (activeBookings && activeBookings.count > 0) {
+          return jsonResponse({
+            success: false,
+            error: "Nije moguće promijeniti tip treninga jer u ovom terminu već postoje prijavljeni klijenti. Molimo Vas da prvo ručno otkažete ili prebacite klijente u neki drugi termin."
+          }, 400);
+        }
+
+        let newCapacity = 4;
+        let newTitle = "Grupni trening";
+
+        if (new_type === "poluindividualni") {
+          newCapacity = 2;
+          newTitle = "Poluindividualni trening";
+        } else if (new_type === "privatni") {
+          newCapacity = 1;
+          newTitle = "Privatni trening";
+        }
+
+        await env.DB.prepare(
+          "UPDATE Sessions SET type = ?, capacity = ?, title = ? WHERE id = ?"
+        ).bind(new_type, newCapacity, newTitle, session_id).run();
+
+        await logActivity(env, `Admin je promijenio tip termina ID ${session_id} iz '${session.type}' u '${new_type}' (${newTitle}, kapacitet: ${newCapacity}).`);
+
+        return jsonResponse({ success: true, message: "Tip termina je uspješno promijenjen!" });
+      }
+
       // ADMIN: CREATE NEWS OR WORKSHOP
       if (request.method === "POST" && url.pathname === "/api/admin/create-news") {
         const { title, content, image_url, is_workshop } = await request.json();

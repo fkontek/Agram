@@ -1094,12 +1094,22 @@
       background-color: rgba(197, 168, 128, 0.15);
     }
 
-    .manual-autocomplete-no-results {
-      padding: 10px 12px;
-      color: var(--text-muted);
-      font-style: italic;
-      font-size: 1.25rem;
+    .client-link-btn {
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+      color: var(--primary-gold-dark);
+      font-size: inherit;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: underline;
+      transition: color var(--transition-fast);
       text-align: left;
+    }
+    .client-link-btn:hover {
+      color: var(--text-dark);
     }
 
     @media (max-width: 768px) {
@@ -1271,9 +1281,9 @@
             <tr>
               <th>Klijent</th>
               <th>Paket</th>
-              <th>Preostalo</th>
+              <th>Slobodno za rezervaciju</th>
               <th>Istječe</th>
-              <th>Odrađeno</th>
+              <th>Odrađeno dolazaka</th>
               <th>Akcije</th>
             </tr>
           </thead>
@@ -1893,8 +1903,10 @@
               id="q-modal-name" style="color: var(--primary-gold-dark);"></strong></p>
           <p style="margin: 0 0 5px 0; font-size: 1.25rem; color: var(--text-dark);">Korisničko ime: <span
               id="q-modal-username" style="font-weight: 600;"></span></p>
-          <p style="margin: 0; font-size: 1.25rem; color: var(--text-dark);">Email: <span id="q-modal-email"
+          <p style="margin: 0 0 5px 0; font-size: 1.25rem; color: var(--text-dark);">Email: <span id="q-modal-email"
               style="font-weight: 600;"></span></p>
+          <p style="margin: 0; font-size: 1.25rem; color: var(--text-dark);">Aktivni paket: <span id="q-modal-package"
+              style="font-weight: 600; color: var(--primary-gold-dark);"></span></p>
         </div>
         <div id="q-answers-container"
           style="display: flex; flex-direction: column; gap: 15px; font-size: 1.3rem; line-height: 1.8rem; color: var(--text-dark);">
@@ -1903,6 +1915,35 @@
       </div>
       <button onclick="closeQuestionnaireModal()" class="btn-submit"
         style="width: 100%; margin-top: 20px; display: flex; justify-content: center;">Zatvori</button>
+    </div>
+  </div>
+
+  <!-- PROMJENA TIPA TRENINGA MODAL -->
+  <div id="change-session-type-modal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3>Promijeni tip treninga</h3>
+        <button class="close-btn" onclick="closeChangeSessionTypeModal()">&times;</button>
+      </div>
+      <form id="change-session-type-form" onsubmit="submitChangeSessionType(event)">
+        <input type="hidden" id="change-session-id" value="" />
+        
+        <p style="font-size: 1.25rem; color: var(--text-dark); margin-bottom: 15px; line-height: 1.8rem;">
+          Odaberite novi tip za ovaj termin. Promjena će automatski prilagoditi naziv i maksimalan kapacitet termina.
+        </p>
+
+        <label for="change-session-type-select" style="font-size: 1.15rem; font-weight: 600; color: var(--primary-gold-dark); text-transform: uppercase;">Tip treninga</label>
+        <select id="change-session-type-select" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 1.3rem; outline: none; background: white; font-family: inherit;">
+          <option value="grupni">Grupni trening (Kapacitet: 4)</option>
+          <option value="poluindividualni">Poluindividualni trening (Kapacitet: 2)</option>
+          <option value="privatni">Privatni trening (Kapacitet: 1)</option>
+        </select>
+
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <button type="button" onclick="closeChangeSessionTypeModal()" class="btn-submit" style="background: transparent; border: 1.5px solid var(--primary-gold-dark); color: var(--text-dark); flex: 1;">Odustani</button>
+          <button type="submit" class="btn-submit" style="flex: 1;">Spremi</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -2237,7 +2278,7 @@
 
                   return `
                           <tr>
-                            <td><strong>${att.username}</strong><br><span style="font-size: 1.15rem; color: var(--text-muted);">${att.email}</span></td>
+                            <td><button class="client-link-btn" onclick="viewClientQuestionnaireByUsername('${att.username}')">${att.username}</button><br><span style="font-size: 1.15rem; color: var(--text-muted);">${att.email}</span></td>
                             <td>${att.remaining_credits}</td>
                             <td>${statusBadge}</td>
                             <td>${actionButton}</td>
@@ -2279,7 +2320,10 @@
                   <h3 style="margin: 0; color: var(--primary-gold-dark); font-size: 1.7rem;">${session.title}</h3>
                   <span style="font-size: 1.25rem; font-weight: 600; color: var(--text-dark);">${session.time}h | Tip: ${session.type} | Popunjenost: ${session.booked_count} od ${session.capacity}</span>
                 </div>
-                <button class="btn-action btn-delete" onclick="deleteSession(${session.id})">Otkaži termin</button>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn-action btn-checkin" style="background-color: var(--primary-gold-dark); border-color: var(--primary-gold-dark); color: white;" onclick="openChangeSessionTypeModal(${session.id}, ${session.booked_count}, '${session.type}')">Promijeni</button>
+                  <button class="btn-action btn-delete" onclick="deleteSession(${session.id})">Otkaži termin</button>
+                </div>
               </div>
               ${attendeesTableHtml}
               ${manualBookHtml}
@@ -2313,7 +2357,7 @@
                   <div class="mobile-attendee-row">
                     <div class="mobile-attendee-info">
                       <div>
-                        <span class="mobile-attendee-name">${att.username}</span>
+                        <button class="client-link-btn" style="font-size:1.25rem;" onclick="viewClientQuestionnaireByUsername('${att.username}')">${att.username}</button>
                         <span class="mobile-attendee-credits">(Kredita: ${att.remaining_credits})</span>
                       </div>
                       ${statusBadge}
@@ -2359,7 +2403,10 @@
                   <div style="font-size: 1.1rem; color: var(--text-muted); margin-top: 2px;">Trener: ${session.instructor || 'Adrijana'}</div>
                   <div style="font-size: 1.15rem; font-weight: 600; color: var(--primary-gold-dark); margin-top: 4px;">Popunjenost: ${session.booked_count} od ${session.capacity}</div>
                 </div>
-                <button class="mobile-btn-action mobile-btn-delete-session" onclick="deleteSession(${session.id})">Ukloni</button>
+                <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0;">
+                  <button class="mobile-btn-action" style="background-color: var(--primary-gold-dark); border-color: var(--primary-gold-dark); color: white; width: 75px;" onclick="openChangeSessionTypeModal(${session.id}, ${session.booked_count}, '${session.type}')">Promijeni</button>
+                  <button class="mobile-btn-action mobile-btn-delete-session" style="width: 75px;" onclick="deleteSession(${session.id})">Ukloni</button>
+                </div>
               </div>
               <div class="mobile-session-attendees">
                 ${mobileAttendeesHtml}
@@ -2496,11 +2543,11 @@
               tr.style.backgroundColor = "rgba(178, 34, 34, 0.05)";
             }
             tr.innerHTML = `
-              <td><strong>${client.full_name || client.username}</strong> ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</td>
+              <td><button class="client-link-btn" onclick="viewClientQuestionnaireByUsername('${client.username}')">${client.full_name || client.username}</button> ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</td>
               <td>${client.package_name || "Nema"}</td>
-              <td><span style="font-weight: 700; color: var(--primary-gold-dark);">${client.remaining_credits}</span> / ${client.total_credits}</td>
+              <td><span style="font-weight: 700; color: var(--primary-gold-dark);">${client.remaining_credits}</span></td>
               <td>${client.package_expires ? formatDateStr(client.package_expires) : "Nema"}</td>
-              <td><span class="badge badge-present">${client.attended_count} dolazaka</span></td>
+              <td><span class="badge badge-present">${client.attended_count} / ${client.total_credits || 0}</span></td>
               <td>
                 <div style="display: flex; gap: 6px; flex-wrap: wrap; min-width: 160px;">
                   <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
@@ -2538,16 +2585,19 @@
         card.innerHTML = `
           <div class="mobile-client-header">
             <div>
-              <div class="mobile-client-username">${client.full_name || client.username} ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</div>
+              <div class="mobile-client-username">
+                <button class="client-link-btn" style="font-size: 1.35rem;" onclick="viewClientQuestionnaireByUsername('${client.username}')">${client.full_name || client.username}</button>
+                ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}
+              </div>
             </div>
           </div>
           <div class="mobile-client-package-info">
             <div>Paket: <strong>${client.package_name || 'Nema'}</strong></div>
-            <div>Treninga: <strong>${client.remaining_credits} / ${client.total_credits}</strong></div>
+            <div>Slobodno za rezervaciju: <strong style="color: var(--primary-gold-dark);">${client.remaining_credits}</strong></div>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 1.15rem; color: var(--text-muted); margin-top: 4px;">
             <div>Istječe: ${client.package_expires ? formatDateStr(client.package_expires) : 'Nema'}</div>
-            <div>Ukupno odrađeno: <strong>${client.attended_count}</strong></div>
+            <div>Odrađeno dolazaka: <strong>${client.attended_count} / ${client.total_credits || 0}</strong></div>
           </div>
           <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(197,168,128,0.1); padding-top: 8px; flex-wrap: wrap;">
             <button class="mobile-btn-action" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; min-width: 70px; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Uredi</button>
@@ -3407,6 +3457,7 @@
       document.getElementById("q-modal-name").textContent = client.full_name || client.username || "—";
       document.getElementById("q-modal-username").textContent = client.username || "—";
       document.getElementById("q-modal-email").textContent = client.email || "—";
+      document.getElementById("q-modal-package").textContent = client.package_name || "Nema aktivnog paketa";
 
       const container = document.getElementById("q-answers-container");
       container.innerHTML = "";
@@ -3461,6 +3512,93 @@
 
     function closeQuestionnaireModal() {
       document.getElementById("view-questionnaire-modal").style.display = "none";
+    }
+
+    function viewClientQuestionnaireByUsername(username) {
+      if (!username) return;
+      
+      // Make sure we have loaded clients list
+      if (!allClientsMobile || allClientsMobile.length === 0) {
+        // If not loaded yet, fetch silently
+        loadClientsDataSilently().then(() => {
+          const client = allClientsMobile.find(c => c.username === username);
+          if (client) {
+            viewClientQuestionnaire(client);
+          } else {
+            alert("Klijent nije pronađen.");
+          }
+        });
+        return;
+      }
+      
+      const client = allClientsMobile.find(c => c.username === username);
+      if (client) {
+        viewClientQuestionnaire(client);
+      } else {
+        alert("Klijent nije pronađen.");
+      }
+    }
+
+    // Helper to fetch clients silently if not loaded
+    async function loadClientsDataSilently() {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/clients`, { headers: authHeaders() });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          allClientsMobile = data.clients || [];
+        }
+      } catch (err) {
+        console.error("Greška pri tihom učitavanju klijenata:", err);
+      }
+    }
+
+    function openChangeSessionTypeModal(sessionId, bookedCount, currentType) {
+      if (bookedCount > 0) {
+        alert("Nije moguće promijeniti tip treninga jer u ovom terminu već postoje prijavljeni klijenti. Molimo Vas da prvo ručno otkažete ili prebacite klijente u neki drugi termin.");
+        return;
+      }
+      
+      document.getElementById("change-session-id").value = sessionId;
+      document.getElementById("change-session-type-select").value = currentType || "grupni";
+      document.getElementById("change-session-type-modal").style.display = "flex";
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeChangeSessionTypeModal() {
+      document.getElementById("change-session-type-modal").style.display = "none";
+      document.body.style.overflow = "auto";
+    }
+
+    async function submitChangeSessionType(e) {
+      if (e) e.preventDefault();
+      
+      const sessionId = document.getElementById("change-session-id").value;
+      const newType = document.getElementById("change-session-type-select").value;
+      
+      if (!sessionId || !newType) {
+        alert("Greška: nedostaju podaci za promjenu tipa termina.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/change-session-type`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ session_id: parseInt(sessionId), new_type: newType })
+        });
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+          alert("Tip treninga je uspješno promijenjen!");
+          closeChangeSessionTypeModal();
+          loadDailyOverview();
+        } else {
+          alert(data.error || "Greška pri promjeni tipa termina.");
+        }
+      } catch (err) {
+        console.error("Change session type error:", err);
+        alert("Greška u komunikaciji sa serverom.");
+      }
     }
 
     async function deleteClient(clientId, username) {
