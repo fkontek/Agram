@@ -135,7 +135,6 @@ p {
   text-transform: uppercase;
   color: var(--text-light);
   letter-spacing: 1px;
-  transition: font-size var(--transition-normal);
 }
 
 .brand h1 span {
@@ -149,7 +148,9 @@ p {
   align-items: center;
   gap: 30px; /* Elegant gap between symbol and wordmark */
   text-decoration: none;
-  transition: gap var(--transition-normal);
+  transition: transform var(--transition-normal);
+  transform-origin: left center;
+  will-change: transform;
 }
 
 .logo-box {
@@ -167,15 +168,10 @@ p {
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
-  transition: height var(--transition-normal);
 }
 
 #header.scrolled .brand-link {
-  gap: 15px; /* Smanjen razmak kada je zaglavlje skrolano */
-}
-
-#header.scrolled .logo-icon {
-  height: 45px;
+  transform: scale(0.82);
 }
 
 /* Header section */
@@ -195,7 +191,7 @@ p {
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   padding: 0; /* Clear padding inheritance from .container to prevent oversized header */
-  transition: background-color 0.4s ease, box-shadow 0.4s ease, min-height 0.4s ease;
+  transition: background-color 0.4s ease, box-shadow 0.4s ease;
 }
 
 #header .nav-bar {
@@ -322,15 +318,10 @@ p {
   -webkit-backdrop-filter: blur(18px);
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15);
   border-bottom: 1px solid rgba(197, 168, 128, 0.08);
-  min-height: 5vh;
 }
 
 #header.scrolled .nav-bar {
   padding: 5px 30px;
-}
-
-#header.scrolled .brand h1 {
-  font-size: 1.7rem;
 }
 
 #header.scrolled .hamburger {
@@ -415,11 +406,14 @@ p {
   top: 0;
   left: 0;
   height: 100%;
-  width: 0%;
+  width: 100%;
   border-radius: var(--radius-sm);
   background-color: var(--primary-gold);
-  animation: text_reveal_box 0.8s ease;
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: text_reveal_box 0.8s ease forwards;
   animation-delay: 0.3s;
+  will-change: transform;
 }
 
 #hero h1:nth-child(1) span {
@@ -1280,14 +1274,20 @@ p {
 
 /* Keyframes */
 @keyframes text_reveal_box {
-  50% {
-    width: 100%;
-    left: 0;
+  0% {
+    transform: scaleX(0);
+    transform-origin: left;
   }
-
+  50% {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+  50.01% {
+    transform-origin: right;
+  }
   100% {
-    width: 0;
-    left: 100%;
+    transform: scaleX(0);
+    transform-origin: right;
   }
 }
 
@@ -1372,15 +1372,7 @@ p {
   .brand h1 {
     font-size: 1.6rem;
   }
-  #header.scrolled .logo-icon {
-    height: 40px;
-  }
-  #header.scrolled .brand h1 {
-    font-size: 1.4rem;
-  }
-  #header.scrolled .brand-link {
-    gap: 10px;
-  }
+
 
   .container {
     padding: 30px 20px;
@@ -1443,15 +1435,7 @@ p {
   .brand h1 {
     font-size: 1.35rem;
   }
-  #header.scrolled .logo-icon {
-    height: 35px;
-  }
-  #header.scrolled .brand h1 {
-    font-size: 1.15rem;
-  }
-  #header.scrolled .brand-link {
-    gap: 8px;
-  }
+
 
   #hero h1 {
     font-size: 3.4rem;
@@ -1753,22 +1737,30 @@ p {
 
 /* Skeleton Loaders */
 .instagram-skeleton {
+  position: relative;
+  overflow: hidden;
   aspect-ratio: 1 / 1;
   border-radius: var(--radius-md);
-  background: linear-gradient(90deg, #ebdcc5 25%, #ebdcc5dd 50%, #ebdcc5 75%);
-  background-size: 200% 100%;
-  animation: loading-shimmer 1.5s infinite;
+  background-color: #ebdcc5;
   box-shadow: var(--shadow-sm);
   border: 1px solid rgba(197, 168, 128, 0.15);
 }
 
-@keyframes loading-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
+.instagram-skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transform: translateX(-100%);
+  animation: loading-shimmer 1.5s infinite;
+}
 
+@keyframes loading-shimmer {
   100% {
-    background-position: -200% 0;
+    transform: translateX(100%);
   }
 }
 
