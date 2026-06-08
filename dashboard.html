@@ -864,9 +864,9 @@
     </div>
 
     <!-- Banner za prvi dolazak (bez paketa) (Mobile) -->
-    <div id="no-package-banner-mobile" style="display:none; position:relative; background-color:rgba(197, 168, 128, 0.12); border-bottom:1px solid rgba(197, 168, 128, 0.3); color:var(--text-dark); padding:14px 40px 14px 18px; font-size:1.15rem; line-height:1.75rem; text-align:left; flex-shrink:0;">
+    <div id="no-package-banner-mobile" style="display:none; position:relative; background-color:rgba(197, 168, 128, 0.12); border-bottom:1px solid rgba(197, 168, 128, 0.3); color:var(--text-light); padding:14px 40px 14px 18px; font-size:1.15rem; line-height:1.75rem; text-align:left; flex-shrink:0;">
       <button onclick="dismissWelcomeNotice()" style="position:absolute; right:12px; top:12px; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.6rem; line-height:1; padding:4px;" title="Zatvori">&times;</button>
-      <strong style="color:var(--primary-gold-dark); display:block; margin-bottom:4px; font-size:1.2rem;">Prvi dolazak u naš studio:</strong>
+      <strong style="color:var(--primary-gold); display:block; margin-bottom:4px; font-size:1.2rem;">Prvi dolazak u naš studio:</strong>
       Prvi dolazak na termin odrađuje se uz prethodni telefonski dogovor. Tada zajednički odlučujemo je li Vam potreban uvodni privatni sat ili možete odmah zatražiti paket.
     </div>
 
@@ -1291,6 +1291,9 @@
           }
 
           // Build desktop tabs
+          let prevSelectedDate = selectedDateVal;
+          let hasPrevSelected = prevSelectedDate && uniqueDates.includes(prevSelectedDate);
+
           uniqueDates.forEach((dateStr, index) => {
             const btn = document.createElement("button");
             btn.className = "day-tab";
@@ -1301,13 +1304,21 @@
               renderDaySchedule(dateStr);
             };
             tabsEl.appendChild(btn);
-            if (index === 0) {
+            if (hasPrevSelected) {
+              if (dateStr === prevSelectedDate) {
+                btn.classList.add("active");
+                selectedDateVal = dateStr;
+              }
+            } else if (index === 0) {
               btn.classList.add("active");
               selectedDateVal = dateStr;
             }
           });
 
           // Build mobile day selector
+          let prevMobileDate = mobileDateVal;
+          let hasPrevMobile = prevMobileDate && uniqueDates.includes(prevMobileDate);
+
           uniqueDates.forEach((dateStr, index) => {
             const btn = document.createElement("button");
             btn.className = "mobile-day-btn";
@@ -1318,7 +1329,12 @@
               renderMobileDaySchedule(dateStr);
             };
             mTabsEl.appendChild(btn);
-            if (index === 0) {
+            if (hasPrevMobile) {
+              if (dateStr === prevMobileDate) {
+                btn.classList.add("active");
+                mobileDateVal = dateStr;
+              }
+            } else if (index === 0) {
               btn.classList.add("active");
               mobileDateVal = dateStr;
             }
@@ -1759,6 +1775,19 @@
           }
         });
       }
+
+      // Auto-refresh dashboard data to sync with admin changes
+      setInterval(() => {
+        if (document.visibilityState === "visible") {
+          loadDashboardData();
+        }
+      }, 15000);
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          loadDashboardData();
+        }
+      });
     });
   </script>
 
@@ -1864,7 +1893,7 @@
             </optgroup>
           </select>
         </div>
-        <button type="submit" class="btn-submit" style="width: 100%; display: flex; justify-content: center; font-size: 1.3rem;">Pošalji zahtjev</button>
+        <button type="submit" class="btn-book" style="width: 100%; display: flex; justify-content: center; font-size: 1.35rem; padding: 12px; border-radius: 6px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Pošalji zahtjev</button>
       </form>
     </div>
   </div>
