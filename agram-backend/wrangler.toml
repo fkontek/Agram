@@ -8,9 +8,9 @@ database_name = "agram-auth"
 database_id = "d6f3326b-950c-4789-91f6-428b316b9f95"
 
 [vars]
-EMAIL_SANDBOX_MODE = "true"
+EMAIL_SANDBOX_MODE = "false"
 EMAIL_REDIRECT_TO = "filip.kontek@gmail.com"
-# EMAIL_FROM_ADDRESS = "Agram Pilates <info@pilates-reformer-agram.com>" # Odkomentirati kad verificiraš domenu
+EMAIL_FROM_ADDRESS = "Agram Pilates <info@pilates-reformer-agram.com>"
 
 [env.test]
 name = "agram-backend-test"
