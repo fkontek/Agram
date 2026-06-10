@@ -6,7 +6,7 @@ import worker from '../src';
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS Clients (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, is_admin INTEGER DEFAULT 0, credits INTEGER DEFAULT 0, must_change_password INTEGER DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, package_name TEXT, total_credits INTEGER DEFAULT 0, remaining_credits INTEGER DEFAULT 0, package_expires TEXT, status TEXT DEFAULT 'approved', questionnaire TEXT DEFAULT NULL, full_name TEXT);
 CREATE TABLE IF NOT EXISTS Sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, instructor TEXT, date TEXT NOT NULL, time TEXT NOT NULL, capacity INTEGER DEFAULT 5, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, type TEXT DEFAULT 'grupni');
-CREATE TABLE IF NOT EXISTS Bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL, user_id INTEGER NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, status INTEGER DEFAULT 0, FOREIGN KEY (session_id) REFERENCES Sessions(id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES Clients(id) ON DELETE CASCADE, UNIQUE(session_id, user_id));
+CREATE TABLE IF NOT EXISTS Bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL, user_id INTEGER NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, status INTEGER DEFAULT 0, reminder_sent INTEGER DEFAULT 0, FOREIGN KEY (session_id) REFERENCES Sessions(id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES Clients(id) ON DELETE CASCADE, UNIQUE(session_id, user_id));
 CREATE TABLE IF NOT EXISTS News (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, content TEXT NOT NULL, image_url TEXT, is_workshop INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS WorkshopSignups (id INTEGER PRIMARY KEY AUTOINCREMENT, news_id INTEGER NOT NULL, user_id INTEGER NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (news_id) REFERENCES News(id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES Clients(id) ON DELETE CASCADE, UNIQUE(news_id, user_id));
 CREATE TABLE IF NOT EXISTS ActivityLogs (id INTEGER PRIMARY KEY AUTOINCREMENT, details TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
@@ -408,5 +408,39 @@ describe('JWT Authentication integration tests', () => {
     const data = await res.json();
     expect(data.success).toBe(false);
     expect(data.error).toContain("Nije moguće promijeniti tip treninga");
+  });
+
+  it('scheduled cron trigger runs successfully and sends daily booking reminders', async () => {
+    // 1. Prepare tomorrow's date
+    const d = new Date();
+    const tomorrow = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    // 2. Insert a mock session for tomorrow
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (888, 'Tomorrow Pilates', 'Adrijana', ?, '10:00', 4, 'grupni')
+    `).bind(tomorrowStr).run();
+
+    // 3. Insert a reserved booking for tomorrow (status = 0, reminder_sent = 0)
+    await env.DB.prepare(`
+      INSERT INTO Bookings (session_id, user_id, status, reminder_sent)
+      VALUES (888, 1, 0, 0)
+    `).run();
+
+    // 4. Trigger worker.scheduled
+    const ctx = createExecutionContext();
+    const event = {
+      cron: "0 */12 * * *",
+      scheduledTime: Date.now()
+    };
+    
+    await worker.scheduled(event, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    // 5. Verify that booking reminder_sent was updated to 1
+    const booking = await env.DB.prepare("SELECT reminder_sent FROM Bookings WHERE session_id = 888 AND user_id = 1").first();
+    expect(booking).toBeDefined();
+    expect(booking.reminder_sent).toBe(1);
   });
 });

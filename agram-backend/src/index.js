@@ -497,7 +497,7 @@ async function sendDailyReportEmail(env, dateStr = null) {
 
     // 2. Get checked-in attendees for all sessions of today (status = 1 means checked-in / attended)
     const attendeesRes = await env.DB.prepare(`
-      SELECT b.session_id, c.username, c.full_name, c.email
+      SELECT b.session_id, c.username, c.full_name, c.email, c.total_credits, c.remaining_credits
       FROM Bookings b
       JOIN Clients c ON b.user_id = c.id
       JOIN Sessions s ON b.session_id = s.id
@@ -518,7 +518,10 @@ async function sendDailyReportEmail(env, dateStr = null) {
       } else {
         attendeesListHtml = sessionAttendees.map(att => {
           const displayName = att.full_name ? `${att.full_name} (${att.username})` : att.username;
-          return `<li style="margin-bottom: 4px;"><b>${displayName}</b></li>`;
+          const total = att.total_credits || 0;
+          const remaining = att.remaining_credits || 0;
+          const done = total - remaining;
+          return `<li style="margin-bottom: 4px;"><b>${displayName}</b> - odrađeno ${done}/${total} treninga.</li>`;
         }).join('');
       }
 
@@ -564,6 +567,59 @@ async function sendDailyReportEmail(env, dateStr = null) {
   } catch (e) {
     console.error("Error sending daily report email:", e);
     return false;
+  }
+}
+
+// Send 24-hour email reminders to clients for tomorrow's bookings
+async function sendBookingReminders(env) {
+  try {
+    const croatiaNow = getCroatiaNow();
+    const tomorrow = new Date(croatiaNow.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowStr = formatDate(tomorrow);
+    
+    // Find all bookings for tomorrow where status is Reserved (0) and reminder hasn't been sent (0)
+    const activeBookings = await env.DB.prepare(`
+      SELECT b.id as booking_id, c.username, c.email, s.title, s.time, s.date
+      FROM Bookings b
+      JOIN Clients c ON b.user_id = c.id
+      JOIN Sessions s ON b.session_id = s.id
+      WHERE s.date = ? AND b.status = 0 AND b.reminder_sent = 0
+    `).bind(tomorrowStr).all();
+
+    const bookings = activeBookings.results || [];
+    const updates = [];
+
+    for (const b of bookings) {
+      if (b.email) {
+        const dateFormatted = b.date.split('-').reverse().join('.') + '.';
+        const emailSubject = `Podsjetnik na trening: ${b.title}`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Podsjetnik na trening</h2>
+            <p>Bok <b>${b.username}</b>,</p>
+            <p>Podsjećamo te da sutra imaš rezerviran termin:</p>
+            <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
+              <tr><td><b>Termin:</b></td><td>${b.title}</td></tr>
+              <tr><td><b>Datum i vrijeme:</b></td><td>Sutra (${dateFormatted}) u ${b.time}h</td></tr>
+            </table>
+            <p style="margin-top: 20px;">
+              Vidimo se!
+            </p>
+            <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+            <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
+          </div>
+        `;
+        await sendEmail(env, b.email, emailSubject, emailHtml);
+      }
+      updates.push(env.DB.prepare("UPDATE Bookings SET reminder_sent = 1 WHERE id = ?").bind(b.booking_id));
+    }
+
+    if (updates.length > 0) {
+      await env.DB.batch(updates);
+      await logActivity(env, `Poslano ${updates.length} podsjetnika na treninge za datum ${tomorrowStr.split('-').reverse().join('.')}.`);
+    }
+  } catch (e) {
+    console.error("Error sending booking reminders:", e);
   }
 }
 
@@ -820,8 +876,11 @@ export default {
         const todayStr = formatDate(nowCroatia);
         // Get current time in HH:MM format for filtering past sessions today
         const currentTimeStr = `${String(nowCroatia.getHours()).padStart(2, '0')}:${String(nowCroatia.getMinutes()).padStart(2, '0')}`;
-        // Calculate max date: today + 6 days (rolling 7 days total)
-        const maxDate = new Date(nowCroatia.getTime() + 6 * 24 * 60 * 60 * 1000);
+        // Calculate max date: Sunday of the week after next (3 full weeks)
+        const currentDayOfWeek = nowCroatia.getDay();
+        const daysToSunday = (7 - currentDayOfWeek) % 7;
+        const daysToAdd = daysToSunday + 14; // Sunday of the week after next
+        const maxDate = new Date(nowCroatia.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
         const maxDateStr = formatDate(maxDate);
         
         // Fetch sessions up to today + 6 days, excluding past sessions from today
@@ -916,6 +975,45 @@ export default {
 
         const dateStr = session.date.split('-').reverse().join('.') + '.';
         await logActivity(env, `Klijent '${client.username}' je rezervirao termin '${session.title}' (${dateStr} u ${session.time}h).`);
+
+        // Send booking confirmation email with Google Calendar link
+        if (client.email) {
+          const dateStrFormatted = session.date.split('-').reverse().join('.') + '.';
+          const emailSubject = `Potvrda rezervacije: ${session.title}`;
+          
+          // Generate Google Calendar Link
+          const dateFormattedNoDashes = session.date.replace(/-/g, '');
+          const timeFormattedNoColons = session.time.replace(/:/g, '');
+          const startHour = parseInt(session.time.split(':')[0], 10);
+          const startMinute = session.time.split(':')[1];
+          const endHour = String(startHour + 1).padStart(2, '0');
+          const endTimeFormatted = `${endHour}${startMinute}`;
+          
+          const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Agram Pilates - ' + session.title)}&dates=${dateFormattedNoDashes}T${timeFormattedNoColons}00/${dateFormattedNoDashes}T${endTimeFormatted}00&ctz=Europe/Zagreb&details=${encodeURIComponent('Potvrda rezervacije za termin u Agram Pilates studiju.')}`;
+          
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
+              <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Uspješna rezervacija termina!</h2>
+              <p>Bok <b>${client.username}</b>,</p>
+              <p>Potvrđujemo da ste uspješno rezervirali sljedeći termin:</p>
+              <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
+                <tr><td><b>Termin:</b></td><td>${session.title}</td></tr>
+                <tr><td><b>Datum i vrijeme:</b></td><td>${dateStrFormatted} u ${session.time}h</td></tr>
+                <tr><td><b>Trener:</b></td><td>${session.instructor || 'Adrijana'}</td></tr>
+              </table>
+              
+              <p style="margin-top: 25px; margin-bottom: 25px; text-align: center;">
+                <a href="${googleCalUrl}" target="_blank" style="background-color: #c5a880; color: white; padding: 12px 20px; text-decoration: none; border-radius: 20px; font-weight: bold; display: inline-block;">
+                  Dodaj svoj termin u google kalendar
+                </a>
+              </p>
+              
+              <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+              <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
+            </div>
+          `;
+          ctx.waitUntil(sendEmail(env, client.email, emailSubject, emailHtml));
+        }
 
         // If they had exactly 1 credit remaining, they used their last credit! Send notification email.
         if (client.remaining_credits === 1 && client.email) {
@@ -2240,6 +2338,11 @@ export default {
     // 1. Instagram Feed Sync: runs on 12-hour schedule
     if (!event.cron || event.cron === "0 */12 * * *") {
       promises.push(syncInstagramFeed(env));
+    }
+
+    // 1.5. Daily Booking Reminders: runs on 12-hour schedule as well
+    if (!event.cron || event.cron === "0 */12 * * *") {
+      promises.push(sendBookingReminders(env));
     }
     
     // 2. Weekly Report Email: runs automatically on Fridays in the evening
