@@ -960,6 +960,52 @@
       loadDashboardData();
     }
 
+    // Horizontal scroll support for schedule tabs using mouse wheel and drag-to-scroll
+    window.addEventListener('DOMContentLoaded', () => {
+      const scrollContainer = document.querySelector('.schedule-tabs-container');
+      if (scrollContainer) {
+        // 1. Wheel scroll support
+        scrollContainer.addEventListener('wheel', (e) => {
+          if (e.deltaY !== 0) {
+            e.preventDefault();
+            scrollContainer.scrollLeft += e.deltaY;
+          }
+        }, { passive: false });
+
+        // 2. Drag-to-scroll support (mouse dragging)
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        scrollContainer.addEventListener('mousedown', (e) => {
+          isDown = true;
+          scrollContainer.style.cursor = 'grabbing';
+          startX = e.pageX - scrollContainer.offsetLeft;
+          scrollLeft = scrollContainer.scrollLeft;
+        });
+
+        scrollContainer.addEventListener('mouseleave', () => {
+          isDown = false;
+          scrollContainer.style.cursor = 'grab';
+        });
+
+        scrollContainer.addEventListener('mouseup', () => {
+          isDown = false;
+          scrollContainer.style.cursor = 'grab';
+        });
+
+        scrollContainer.addEventListener('mousemove', (e) => {
+          if (!isDown) return;
+          e.preventDefault();
+          const x = e.pageX - scrollContainer.offsetLeft;
+          const walk = (x - startX) * 1.5; // Scroll speed multiplier
+          scrollContainer.scrollLeft = scrollLeft - walk;
+        });
+
+        scrollContainer.style.cursor = 'grab';
+      }
+    });
+
     function authHeaders() {
       return {
         "Content-Type": "application/json",
