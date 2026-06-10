@@ -616,7 +616,6 @@ async function sendBookingReminders(env) {
 
     if (updates.length > 0) {
       await env.DB.batch(updates);
-      await logActivity(env, `Poslano ${updates.length} podsjetnika na treninge za datum ${tomorrowStr.split('-').reverse().join('.')}.`);
     }
   } catch (e) {
     console.error("Error sending booking reminders:", e);
