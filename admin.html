@@ -1904,6 +1904,8 @@
               id="q-modal-username" style="font-weight: 600;"></span></p>
           <p style="margin: 0 0 5px 0; font-size: 1.25rem; color: var(--text-dark);">Email: <span id="q-modal-email"
               style="font-weight: 600;"></span></p>
+          <p style="margin: 0 0 5px 0; font-size: 1.25rem; color: var(--text-dark);">Kontakt broj: <span id="q-modal-phone"
+              style="font-weight: 600;"></span></p>
           <p style="margin: 0; font-size: 1.25rem; color: var(--text-dark);">Aktivni paket: <span id="q-modal-package"
               style="font-weight: 600; color: var(--primary-gold-dark);"></span></p>
         </div>
@@ -3239,7 +3241,7 @@
               const tr = document.createElement("tr");
               tr.innerHTML = `
                 <td><strong>${client.full_name || client.username}</strong><br><span style="font-size: 1.1rem; color: var(--text-muted);">Korisničko ime: ${client.username}</span></td>
-                <td>${client.email}</td>
+                <td>${client.email}${client.phone ? `<br><span style="font-size: 1.15rem; color: var(--text-muted);">Tel: ${client.phone}</span>` : ''}</td>
                 <td>
                   <button class="btn-action btn-checkin" onclick="approveClient(${client.id}, '${client.username}')">Odobri</button>
                   <button class="btn-action btn-delete" style="margin-left: 8px;" onclick="rejectClient(${client.id}, '${client.username}')">Odbaci</button>
@@ -3263,6 +3265,7 @@
                     <div class="mobile-client-username">${client.full_name || client.username}</div>
                     <div style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 4px;">Korisničko ime: ${client.username}</div>
                     <div class="mobile-client-email">${client.email}</div>
+                    ${client.phone ? `<div style="font-size: 1.15rem; color: var(--text-muted); margin-top: 2px;">Tel: ${client.phone}</div>` : ''}
                   </div>
                 </div>
                 <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(178,34,34,0.1); padding-top: 8px;">
@@ -3456,6 +3459,7 @@
       document.getElementById("q-modal-name").textContent = client.full_name || client.username || "—";
       document.getElementById("q-modal-username").textContent = client.username || "—";
       document.getElementById("q-modal-email").textContent = client.email || "—";
+      document.getElementById("q-modal-phone").textContent = client.phone || "—";
       document.getElementById("q-modal-package").textContent = client.package_name || "Nema aktivnog paketa";
 
       const container = document.getElementById("q-answers-container");

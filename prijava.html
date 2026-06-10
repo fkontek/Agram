@@ -30,15 +30,15 @@
 
     .auth-container {
       width: 100%;
-      max-width: 800px;
+      max-width: 480px;
       display: flex;
-      flex-direction: row;
+      flex-direction: column;
       gap: 30px;
       margin-top: 20px;
     }
 
     .auth-card {
-      flex: 1;
+      width: 100%;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(197, 168, 128, 0.15);
       border-radius: var(--radius-lg);
@@ -54,7 +54,6 @@
     .auth-card:hover {
       border-color: rgba(197, 168, 128, 0.35);
       background: rgba(255, 255, 255, 0.05);
-      transform: translateY(-4px);
     }
 
     .auth-logo {
@@ -69,6 +68,42 @@
     .auth-logo span {
       color: var(--primary-gold);
       font-weight: 600;
+    }
+
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 25px;
+      border-bottom: 1px solid rgba(197, 168, 128, 0.2);
+      width: 100%;
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 1.3rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      text-align: center;
+      transition: var(--transition-normal);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+
+    .auth-tab:hover {
+      color: var(--text-light);
+      background: rgba(255, 255, 255, 0.02);
+      transform: none;
+      box-shadow: none;
+    }
+
+    .auth-tab.active {
+      color: var(--primary-gold);
+      border-bottom-color: var(--primary-gold);
     }
 
     h2 {
@@ -141,6 +176,70 @@
       transform: translateY(0);
     }
 
+    .btn-start-register {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 15px 20px;
+      background: rgba(197, 168, 128, 0.08);
+      border: 1px dashed var(--primary-gold);
+      color: var(--primary-gold);
+      border-radius: var(--radius-sm);
+      font-size: 1.3rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: var(--transition-normal);
+      margin-top: 10px;
+      margin-bottom: 15px;
+    }
+
+    .btn-start-register:hover {
+      background: rgba(197, 168, 128, 0.18);
+      color: var(--text-light);
+      border-style: solid;
+      transform: none;
+      box-shadow: 0 4px 15px rgba(197, 168, 128, 0.15);
+    }
+
+    .register-fields {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.45s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+      will-change: max-height, opacity;
+    }
+
+    .register-fields.expanded {
+      max-height: 1000px;
+      opacity: 1;
+    }
+
+    .chevron-rotate {
+      transform: rotate(180deg);
+    }
+
+    .feedback-msg {
+      font-size: 1.15rem;
+      margin-top: -15px;
+      margin-bottom: 15px;
+      font-weight: 600;
+      min-height: 18px;
+      display: none;
+      padding-left: 2px;
+    }
+    .feedback-success {
+      color: #2e7559;
+    }
+    .feedback-error {
+      color: #b22222;
+    }
+    .feedback-warning {
+      color: #d1a110;
+    }
+
     .back-home {
       margin-top: 40px;
       color: rgba(255, 255, 255, 0.5);
@@ -196,8 +295,8 @@
     /* Responsive adjustments */
     @media (max-width: 768px) {
       .auth-container {
-        flex-direction: column;
-        gap: 30px;
+        max-width: 100%;
+        gap: 20px;
       }
       .auth-card {
         padding: 30px 20px;
@@ -218,43 +317,65 @@
   </div>
 
   <div class="auth-container">
-    <!-- Prijava Form -->
     <div class="auth-card">
-      <h2>Prijava</h2>
-      <form id="login-form">
-        <label for="username">Korisničko ime ili E-mail</label>
-        <input type="text" id="username" name="username" required placeholder="Unesi korisničko ime ili e-mail" />
-      
-        <label for="password">Lozinka</label>
-        <div class="password-wrapper">
-          <input type="password" id="password" name="password" required placeholder="••••••••" />
-          <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('password', this)" title="Prikaži/Sakrij lozinku">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-      
-        <button type="submit">Prijava</button>
-        <a href="#" onclick="openForgotPasswordModal(event)" style="color: var(--primary-gold); font-size: 1.15rem; margin-top: 15px; text-align: center; text-decoration: none; display: block;">Zaboravio/la sam lozinku</a>
-      </form>
-    </div>
-    
-    <!-- Registracija Form -->
-    <div class="auth-card">
-      <h2>Registracija</h2>
-      <form id="register-form">
-        <label for="full_name">Puno ime i prezime</label>
-        <input type="text" id="full_name" name="full_name" required placeholder="Npr. Ivan Horvat" />
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab active" onclick="switchTab('login')">Prijava</button>
+        <button id="tab-register" class="auth-tab" onclick="switchTab('register')">Registracija</button>
+      </div>
 
-        <label for="new_username">Korisničko ime</label>
-        <input type="text" id="new_username" name="new_username" required placeholder="Odaberi korisničko ime" />
+      <!-- Prijava Form -->
+      <div id="login-container">
+        <h2>Prijava</h2>
+        <form id="login-form">
+          <label for="username">Korisničko ime ili E-mail</label>
+          <input type="text" id="username" name="username" required placeholder="Unesi korisničko ime ili e-mail" />
+        
+          <label for="password">Lozinka</label>
+          <div class="password-wrapper">
+            <input type="password" id="password" name="password" required placeholder="••••••••" />
+            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('password', this)" title="Prikaži/Sakrij lozinku">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        
+          <button type="submit">Prijava</button>
+          <a href="#" onclick="openForgotPasswordModal(event)" style="color: var(--primary-gold); font-size: 1.15rem; margin-top: 15px; text-align: center; text-decoration: none; display: block;">Zaboravio/la sam lozinku</a>
+        </form>
+      </div>
       
-        <label for="email">E-mail adresa</label>
-        <input type="email" id="email" name="email" required placeholder="primjer@mail.com" />
-      
-        <button type="submit">Pošalji zahtjev</button>
-      </form>
+      <!-- Registracija Form -->
+      <div id="register-container" style="display: none;">
+        <h2>Registracija</h2>
+        <button type="button" id="start-register-btn" class="btn-start-register" onclick="expandRegisterForm()">
+          <span>Započni registraciju</span>
+          <svg id="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.4s ease;"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+
+        <div id="register-fields-wrapper" class="register-fields">
+          <form id="register-form">
+            <label for="first_name">Ime</label>
+            <input type="text" id="first_name" name="first_name" required placeholder="Npr. Ivan" />
+
+            <label for="last_name">Prezime</label>
+            <input type="text" id="last_name" name="last_name" required placeholder="Npr. Horvat" />
+
+            <label for="new_username">Korisničko ime</label>
+            <input type="text" id="new_username" name="new_username" required placeholder="Odaberi korisničko ime" />
+            <div id="username-feedback" class="feedback-msg"></div>
+          
+            <label for="email">E-mail adresa</label>
+            <input type="email" id="email" name="email" required placeholder="primjer@mail.com" />
+            <div id="email-feedback" class="feedback-msg"></div>
+
+            <label for="phone">Kontakt broj</label>
+            <input type="tel" id="phone" name="phone" required placeholder="Npr. +38591234567" />
+          
+            <button type="submit" style="margin-top: 10px;">Pošalji zahtjev</button>
+          </form>
+        </div>
+      </div>
     </div>
-  </div>
 
   <!-- Modal za promjenu lozinke -->
   <div id="change-password-modal" style="display: none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.95); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
@@ -425,15 +546,17 @@
     // REGISTER LOGIC
     document.getElementById("register-form").addEventListener("submit", async function (e) {
       e.preventDefault();
-      const fullName = document.getElementById("full_name").value;
+      const first_name = document.getElementById("first_name").value;
+      const last_name = document.getElementById("last_name").value;
       const username = document.getElementById("new_username").value;
       const email = document.getElementById("email").value;
+      const phone = document.getElementById("phone").value;
 
       try {
         const res = await fetch(`${API_BASE}/api/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ full_name: fullName, username, email })
+          body: JSON.stringify({ first_name, last_name, username, email, phone })
         });
 
         const data = await res.json();
@@ -444,6 +567,14 @@
           
           // Reset register form and prefill login username
           e.target.reset();
+          document.getElementById("username-feedback").style.display = "none";
+          document.getElementById("email-feedback").style.display = "none";
+          
+          // Collapse register form
+          expandRegisterForm();
+          
+          // Switch to login tab and prefill username
+          switchTab("login");
           document.getElementById("username").value = username;
           document.getElementById("password").focus();
         } else {
@@ -452,6 +583,117 @@
       } catch (err) {
         alert("Greška u komunikaciji sa serverom.");
       }
+    });
+
+    // Switch between Login and Register tabs
+    function switchTab(tab) {
+      const loginTab = document.getElementById("tab-login");
+      const registerTab = document.getElementById("tab-register");
+      const loginContainer = document.getElementById("login-container");
+      const registerContainer = document.getElementById("register-container");
+
+      if (tab === "login") {
+        loginTab.classList.add("active");
+        registerTab.classList.remove("active");
+        loginContainer.style.display = "block";
+        registerContainer.style.display = "none";
+      } else {
+        loginTab.classList.remove("active");
+        registerTab.classList.add("active");
+        loginContainer.style.display = "none";
+        registerContainer.style.display = "block";
+      }
+    }
+
+    // Toggle registration fields container expansion
+    function expandRegisterForm() {
+      const wrapper = document.getElementById("register-fields-wrapper");
+      const startBtn = document.getElementById("start-register-btn");
+      const chevron = document.getElementById("chevron-icon");
+      
+      wrapper.classList.toggle("expanded");
+      chevron.classList.toggle("chevron-rotate");
+      
+      const isExpanded = wrapper.classList.contains("expanded");
+      startBtn.querySelector("span").textContent = isExpanded ? "Sakrij obrazac" : "Započni registraciju";
+      startBtn.style.marginBottom = isExpanded ? "25px" : "15px";
+    }
+
+    // Debounce helper
+    function debounce(func, delay = 500) {
+      let timeoutId;
+      return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          func.apply(this, args);
+        }, delay);
+      };
+    }
+
+    // Real-time checks
+    const checkUsernameAvailability = debounce(async (username) => {
+      const feedback = document.getElementById("username-feedback");
+      if (!username || username.trim().length < 3) {
+        feedback.style.display = "none";
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/check-username?username=${encodeURIComponent(username.trim())}`);
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+          feedback.style.display = "block";
+          if (data.available) {
+            feedback.textContent = "✓ Korisničko ime je slobodno";
+            feedback.className = "feedback-msg feedback-success";
+          } else {
+            feedback.textContent = "✗ Korisničko ime je već zauzeto";
+            feedback.className = "feedback-msg feedback-error";
+          }
+        }
+      } catch (err) {
+        console.error("Error checking username:", err);
+      }
+    }, 500);
+
+    const checkEmailExistence = debounce(async (email) => {
+      const feedback = document.getElementById("email-feedback");
+      if (!email || !email.includes("@")) {
+        feedback.style.display = "none";
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/check-email?email=${encodeURIComponent(email.trim())}`);
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+          feedback.style.display = "block";
+          if (data.exists) {
+            if (data.status === "pending") {
+              feedback.textContent = "⚠ Zahtjev za registraciju s ovim e-mailom već čeka odobrenje.";
+              feedback.className = "feedback-msg feedback-warning";
+            } else {
+              feedback.innerHTML = `⚠ Već imate račun. <a href="#" onclick="openForgotPasswordModal(event)" style="color: var(--primary-gold); font-weight: 700; text-decoration: underline;">Resetiraj lozinku?</a>`;
+              feedback.className = "feedback-msg feedback-warning";
+            }
+          } else {
+            feedback.textContent = "✓ E-mail je slobodan za registraciju";
+            feedback.className = "feedback-msg feedback-success";
+          }
+        }
+      } catch (err) {
+        console.error("Error checking email:", err);
+      }
+    }, 500);
+
+    document.getElementById("new_username").addEventListener("input", (e) => {
+      checkUsernameAvailability(e.target.value);
+    });
+
+    document.getElementById("email").addEventListener("input", (e) => {
+      checkEmailExistence(e.target.value);
     });
 
     function saveSessionAndRedirect(user, token) {

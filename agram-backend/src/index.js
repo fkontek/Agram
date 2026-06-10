@@ -729,8 +729,8 @@ export default {
         }
 
         const hashedPassword = await hashPassword(password);
-        const user = await env.DB.prepare(
-          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name FROM Clients WHERE (username = ? OR email = ?) AND password = ?"
+                const user = await env.DB.prepare(
+          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name, first_name, last_name, phone FROM Clients WHERE (username = ? OR email = ?) AND password = ?"
         ).bind(username, username, hashedPassword).first();
 
         if (!user) {
@@ -747,27 +747,58 @@ export default {
         return jsonResponse({ success: true, user, token });
       }
 
+      // CHECK USERNAME AVAILABILITY
+      if (request.method === "GET" && url.pathname === "/api/check-username") {
+        const username = url.searchParams.get("username");
+        if (!username) {
+          return jsonResponse({ success: false, error: "Korisničko ime je obavezno." }, 400);
+        }
+        const existing = await env.DB.prepare("SELECT id FROM Clients WHERE username = ?").bind(username).first();
+        return jsonResponse({ success: true, available: !existing });
+      }
+
+      // CHECK EMAIL EXISTENCE
+      if (request.method === "GET" && url.pathname === "/api/check-email") {
+        const email = url.searchParams.get("email");
+        if (!email) {
+          return jsonResponse({ success: false, error: "E-mail je obavezan." }, 400);
+        }
+        const existing = await env.DB.prepare("SELECT id, status FROM Clients WHERE email = ?").bind(email).first();
+        if (existing) {
+          return jsonResponse({ success: true, exists: true, status: existing.status });
+        }
+        return jsonResponse({ success: true, exists: false });
+      }
+
       // REGISTER (Public registration, status 'pending' awaiting admin approval)
       if (request.method === "POST" && url.pathname === "/api/register") {
-        const { full_name, username, email } = await request.json();
+        const { first_name, last_name, username, email, phone } = await request.json();
         
-        if (!username || !email) {
-          return jsonResponse({ success: false, error: "Korisničko ime i e-mail su obavezni." }, 400);
+        if (!first_name || !last_name || !username || !email || !phone) {
+          return jsonResponse({ success: false, error: "Sva polja su obavezna (ime, prezime, korisničko ime, e-mail i kontakt broj)." }, 400);
         }
 
-        // Check if username/email already exists
-        const existing = await env.DB.prepare("SELECT id FROM Clients WHERE username = ? OR email = ?").bind(username, email).first();
-        if (existing) {
-          return jsonResponse({ success: false, error: "Korisnik s tim korisničkim imenom ili e-mailom već postoji." }, 400);
+        // Check if username already exists
+        const existingUsername = await env.DB.prepare("SELECT id FROM Clients WHERE username = ?").bind(username).first();
+        if (existingUsername) {
+          return jsonResponse({ success: false, error: "Korisničko ime je već zauzeto." }, 400);
         }
 
-        // Insert client with 'pending' status, 'PENDING' password, null questionnaire, and full_name
+        // Check if email already exists
+        const existingEmail = await env.DB.prepare("SELECT id FROM Clients WHERE email = ?").bind(email).first();
+        if (existingEmail) {
+          return jsonResponse({ success: false, error: "Korisnik s ovom e-mail adresom već ima račun." }, 400);
+        }
+
+        const fullName = `${first_name.trim()} ${last_name.trim()}`;
+
+        // Insert client with 'pending' status, 'PENDING' password, null questionnaire, full_name, first_name, last_name, phone
         await env.DB.prepare(`
-          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name)
-          VALUES (?, ?, 'PENDING', 0, 1, 'Nema aktivnog paketa', 0, 0, NULL, 'pending', NULL, ?)
-        `).bind(username, email, full_name || null).run();
+          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name, first_name, last_name, phone)
+          VALUES (?, ?, 'PENDING', 0, 1, 'Nema aktivnog paketa', 0, 0, NULL, 'pending', NULL, ?, ?, ?, ?)
+        `).bind(username, email, fullName, first_name.trim(), last_name.trim(), phone.trim()).run();
 
-        await logActivity(env, `Novi klijent '${full_name || username}' je poslao zahtjev za registraciju.`);
+        await logActivity(env, `Novi klijent '${fullName}' je poslao zahtjev za registraciju.`);
 
         return jsonResponse({
           success: true,
@@ -1225,7 +1256,7 @@ export default {
 
         // 3. Current user details
         const userDetails = await env.DB.prepare(
-          "SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire, status FROM Clients WHERE id = ?"
+          "SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire, status, full_name, first_name, last_name, phone FROM Clients WHERE id = ?"
         ).bind(userId).first();
 
         // 3.5. Check for pending package requests
@@ -1420,7 +1451,7 @@ export default {
       // ADMIN: GET PENDING CLIENTS
       if (request.method === "GET" && url.pathname === "/api/admin/pending-clients") {
         const { results } = await env.DB.prepare(
-          "SELECT id, username, email, created_at, full_name FROM Clients WHERE status = 'pending' ORDER BY created_at DESC"
+          "SELECT id, username, email, created_at, full_name, first_name, last_name, phone FROM Clients WHERE status = 'pending' ORDER BY created_at DESC"
         ).all();
         return jsonResponse({ success: true, clients: results });
       }
@@ -1514,7 +1545,7 @@ export default {
       // ADMIN: GET LIST OF APPROVED CLIENTS
       if (request.method === "GET" && url.pathname === "/api/admin/clients") {
         const { results } = await env.DB.prepare(`
-          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, questionnaire, status, full_name,
+          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, questionnaire, status, full_name, first_name, last_name, phone,
                  (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 1) as attended_count
           FROM Clients
           WHERE is_admin = 0 AND status IN ('approved', 'frozen')
@@ -1561,10 +1592,22 @@ export default {
           expiresStr = formatDate(expiresDate);
         }
 
+        let firstName = null;
+        let lastName = null;
+        if (full_name) {
+          const nameParts = full_name.trim().split(/\s+/);
+          firstName = nameParts[0] || null;
+          if (nameParts.length > 1) {
+            lastName = nameParts.slice(1).join(" ");
+          } else {
+            lastName = "";
+          }
+        }
+
         // Insert client
         const result = await env.DB.prepare(`
-          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, full_name)
-          VALUES (?, ?, ?, 0, 1, ?, ?, ?, ?, ?)
+          INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, full_name, first_name, last_name)
+          VALUES (?, ?, ?, 0, 1, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
           username, 
           email, 
@@ -1573,7 +1616,9 @@ export default {
           parseInt(total_credits) || 0, 
           parseInt(total_credits) || 0, 
           expiresStr,
-          full_name || null
+          full_name || null,
+          firstName,
+          lastName
         ).run();
 
         // Send Email via Resend
