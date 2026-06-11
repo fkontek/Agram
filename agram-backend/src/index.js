@@ -1292,10 +1292,11 @@ export default {
           LIMIT 20
         `).bind(userId, todayStr).all();
 
-        // 3. Current user details
-        const userDetails = await env.DB.prepare(
-          "SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire, status, full_name, first_name, last_name, phone FROM Clients WHERE id = ?"
-        ).bind(userId).first();
+        const userDetails = await env.DB.prepare(`
+          SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire, status, full_name, first_name, last_name, phone,
+                 (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 1) as attended_count
+          FROM Clients WHERE id = ?
+        `).bind(userId).first();
 
         // 3.5. Check for pending package requests
         const pendingRequest = await env.DB.prepare(

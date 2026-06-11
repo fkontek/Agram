@@ -763,7 +763,8 @@
             Status članarine
           </h2>
           <p>Aktivni paket: <strong id="package-name">Učitavanje...</strong></p>
-          <p>Iskorišteno treninga: <strong id="remaining-credits">Učitavanje...</strong></p>
+          <p>Rezervirano: <strong id="remaining-credits">Učitavanje...</strong></p>
+          <p>Odrađeno: <strong id="attended-credits">Učitavanje...</strong></p>
           <p>Članarina vrijedi do: <strong id="package-expires">Učitavanje...</strong></p>
           <div style="margin-top:20px; text-align:center;">
             <button id="request-package-btn" class="btn-book" onclick="openRequestPackageModal()" style="width:100%; padding:10px 14px; font-size:1.25rem;">Zatraži novi paket</button>
@@ -836,7 +837,7 @@
 
     <!-- Credits strip -->
     <div class="mobile-credits-strip">
-      <div class="mobile-credits-text">Iskorišteno: <span id="mobile-remaining-credits">—</span></div>
+      <div class="mobile-credits-text">Rezervirano: <span id="mobile-remaining-credits">—</span> | Odrađeno: <span id="mobile-attended-credits">—</span></div>
       <div class="mobile-package-chip" id="mobile-package-name-chip">—</div>
     </div>
 
@@ -885,8 +886,12 @@
             <span class="m-value" id="mobile-package-name">—</span>
           </div>
           <div class="m-row">
-            <span class="m-label">Iskorišteno treninga</span>
+            <span class="m-label">Rezervirano</span>
             <span class="m-value" id="mobile-credits-profil">—</span>
+          </div>
+          <div class="m-row">
+            <span class="m-label">Odrađeno</span>
+            <span class="m-value" id="mobile-attended-profil">—</span>
           </div>
           <div class="m-row">
             <span class="m-label">Vrijedi do</span>
@@ -1102,6 +1107,15 @@
           const expiresFormatted = data.user.package_expires ? formatDate(data.user.package_expires) : "Nema roka isteka";
           const creditsFormatted = `${usedCredits} / ${totalCredits}`;
 
+          // Find the last attended training info
+          const lastAttended = (data.history || []).find(h => h.status === 1);
+          let lastAttendedText = "";
+          if (lastAttended) {
+            lastAttendedText = ` (${formatCroatianDate(lastAttended.date)} u ${lastAttended.time}h)`;
+          }
+          const attendedFormatted = `${data.user.attended_count || 0} / ${totalCredits}${lastAttendedText}`;
+          const attendedShortFormatted = `${data.user.attended_count || 0} / ${totalCredits}`;
+
           document.getElementById("package-name").textContent      = userPackageVal;
           const remainingEl = document.getElementById("remaining-credits");
           remainingEl.textContent  = creditsFormatted;
@@ -1112,6 +1126,14 @@
             remainingEl.style.color = "var(--primary-gold-dark)";
             remainingEl.style.fontWeight = "700";
           }
+
+          const attendedEl = document.getElementById("attended-credits");
+          if (attendedEl) {
+            attendedEl.textContent = attendedFormatted;
+            attendedEl.style.color = "var(--primary-gold-dark)";
+            attendedEl.style.fontWeight = "700";
+          }
+
           document.getElementById("package-expires").textContent    = expiresFormatted;
 
           // Membership info — mobile
@@ -1124,6 +1146,14 @@
             mobRemainingEl.style.color = "var(--primary-gold)";
             mobRemainingEl.style.fontWeight = "800";
           }
+
+          const mobAttendedEl = document.getElementById("mobile-attended-credits");
+          if (mobAttendedEl) {
+            mobAttendedEl.textContent = attendedShortFormatted;
+            mobAttendedEl.style.color = "var(--primary-gold)";
+            mobAttendedEl.style.fontWeight = "800";
+          }
+
           document.getElementById("mobile-package-name-chip").textContent  = userPackageVal;
           document.getElementById("mobile-package-name").textContent       = userPackageVal;
           
@@ -1136,7 +1166,15 @@
             mobCreditsProfilEl.style.color = "var(--primary-gold)";
             mobCreditsProfilEl.style.fontWeight = "700";
           }
-           document.getElementById("mobile-package-expires").textContent    = expiresFormatted;
+
+          const mobAttendedProfilEl = document.getElementById("mobile-attended-profil");
+          if (mobAttendedProfilEl) {
+            mobAttendedProfilEl.textContent = attendedFormatted;
+            mobAttendedProfilEl.style.color = "var(--primary-gold)";
+            mobAttendedProfilEl.style.fontWeight = "700";
+          }
+
+          document.getElementById("mobile-package-expires").textContent    = expiresFormatted;
 
           // Enable/disable package request buttons based on credits and pending requests
           const reqBtn = document.getElementById("request-package-btn");
