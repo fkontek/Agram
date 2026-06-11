@@ -222,72 +222,87 @@ async function sendEmail(env, to, subject, htmlContent) {
   }
 }
 
-// Notify waitlist when a session spot opens up
+// Auto-book first eligible waitlisted user when a session spot opens up
 async function notifyWaitlist(env, sessionId) {
   try {
     // 1. Get session details
-    const session = await env.DB.prepare("SELECT title, date, time FROM Sessions WHERE id = ?").bind(sessionId).first();
+    const session = await env.DB.prepare("SELECT id, title, date, time, capacity FROM Sessions WHERE id = ?").bind(sessionId).first();
     if (!session) return;
 
-    // 2. Find all waitlisted users
+    // 2. Check if there is actually a free spot
+    const countObj = await env.DB.prepare(
+      "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
+    ).bind(sessionId).first();
+    const bookedCount = countObj ? countObj.count : 0;
+    if (bookedCount >= session.capacity) return; // No free spot
+
+    // 3. Find waitlisted users ordered by FIFO (earliest first)
     const waitlisted = await env.DB.prepare(`
-      SELECT w.user_id, c.username, c.email
+      SELECT w.id as waitlist_id, w.user_id, c.username, c.email, c.remaining_credits, c.package_expires, c.package_name, c.status
       FROM Waitlists w
       JOIN Clients c ON w.user_id = c.id
       WHERE w.session_id = ?
+      ORDER BY w.created_at ASC
     `).bind(sessionId).all();
 
-    if (!waitlisted.results || waitlisted.results.length === 0) {
-      return;
-    }
+    if (!waitlisted.results || waitlisted.results.length === 0) return;
 
     const dateStr = session.date.split('-').reverse().join('.') + '.';
-    const subject = `Slobodan termin: ${session.title}`;
-    
-    const emailContent = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
-        <h2 style="color: #a98e65;">Oslobodilo se mjesto!</h2>
-        <p>Obavještavamo Vas da se oslobodilo mjesto za termin na koji ste bili prijavljeni na listi čekanja:</p>
-        <table style="border-spacing: 10px;">
-          <tr><td><b>Termin:</b></td><td>${session.title}</td></tr>
-          <tr><td><b>Datum i vrijeme:</b></td><td>${dateStr} u ${session.time}h</td></tr>
-        </table>
-        <p style="margin-top: 20px;">
-          Termin je sada otvoren za rezervaciju svim klijentima. Ako i dalje želite sudjelovati, prijavite se što prije putem aplikacije jer se mjesta popunjavaju po principu tko prvi rezervira.
-        </p>
-        <p style="margin-top: 30px;">
-          <a href="https://pilates-reformer-agram.com/dashboard.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
-            Rezerviraj termin
-          </a>
-        </p>
-        <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
-        <p style="font-size: 11px; color: #7c7267;">Ova poruka je poslana automatski klijentima na listi čekanja.</p>
-      </div>
-    `;
+    const todayStr = formatDate(getCroatiaNow());
 
-    const notificationsQueries = [];
-    
-    // Send emails and build batch queries for in-app notifications
+    // 4. Try to auto-book the first eligible user
+    let bookedUser = null;
     for (const user of waitlisted.results) {
-      // Send email
-      await sendEmail(env, user.email, subject, emailContent);
-      
-      // Build query for in-app notification
-      const inAppMsg = `Oslobodilo se mjesto za termin '${session.title}' (${dateStr} u ${session.time}h) za koji ste bili na listi čekanja. Rezervirajte ga odmah!`;
-      notificationsQueries.push(
-        env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(user.user_id, inAppMsg)
-      );
+      // Skip frozen users
+      if (user.status === "frozen") continue;
+      // Skip users with no credits
+      if (user.remaining_credits <= 0) continue;
+      // Skip users with expired package
+      if (user.package_expires && user.package_expires < todayStr) continue;
+      // Skip users who already have a booking on the same day
+      const existingBookingToday = await env.DB.prepare(`
+        SELECT b.id FROM Bookings b
+        JOIN Sessions s ON b.session_id = s.id
+        WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
+      `).bind(user.user_id, session.date).first();
+      if (existingBookingToday) continue;
+
+      // This user is eligible — auto-book them!
+      bookedUser = user;
+      break;
     }
 
-    // 3. Delete the waitlist for this session
-    notificationsQueries.push(
-      env.DB.prepare("DELETE FROM Waitlists WHERE session_id = ?").bind(sessionId)
-    );
+    if (bookedUser) {
+      // Auto-book: create booking, deduct credit, remove from waitlist, notify
+      const confirmMsg = `Automatski ste dodani u termin '${session.title}' (${dateStr} u ${session.time}h) s liste čekanja. Kredit je oduzet.`;
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 0)").bind(sessionId, bookedUser.user_id),
+        env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(bookedUser.user_id),
+        env.DB.prepare("DELETE FROM Waitlists WHERE id = ?").bind(bookedUser.waitlist_id),
+        env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(bookedUser.user_id, confirmMsg)
+      ]);
 
-    // Run in-app notifications and delete waitlist in a batch
-    await env.DB.batch(notificationsQueries);
-    
-    await logActivity(env, `Poslane obavijesti za ${waitlisted.results.length} klijenta na listi čekanja za termin '${session.title}' (${dateStr} u ${session.time}h).`);
+      // Send confirmation email
+      const emailSubject = `Dodani ste u termin: ${session.title}`;
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Dodani ste u termin!</h2>
+          <p>Bok <b>${bookedUser.username}</b>,</p>
+          <p>Oslobodilo se mjesto i automatski ste dodani u termin s liste čekanja:</p>
+          <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
+            <tr><td><b>Termin:</b></td><td>${session.title}</td></tr>
+            <tr><td><b>Datum i vrijeme:</b></td><td>${dateStr} u ${session.time}h</td></tr>
+          </table>
+          <p>Oduzet Vam je 1 trening iz paketa. Vidimo se!</p>
+          <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+          <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
+        </div>
+      `;
+      await sendEmail(env, bookedUser.email, emailSubject, emailHtml);
+
+      await logActivity(env, `Wait lista → booking: ${bookedUser.username} → ${session.title} (${dateStr}, ${session.time}h)`);
+    }
+    // Note: Other waitlisted users are NOT removed — they stay for future cancellations
   } catch (e) {
     console.error("Greška u notifyWaitlist:", e);
   }
@@ -315,7 +330,7 @@ async function autoConfirmBookings(env) {
         if (diffHours < 12) {
           // Less than 12 hours remaining, auto-confirm as attended (status = 1)
           updates.push(env.DB.prepare("UPDATE Bookings SET status = 1 WHERE id = ?").bind(b.id));
-          await logActivity(env, `Sustav je automatski zabilježio dolazak (check-in) klijentu '${b.username}' jer je preostalo manje od 12 sati do treninga.`);
+          await logActivity(env, `Auto check-in: ${b.username} (manje od 12h do termina)`);
         }
       }
       if (updates.length > 0) {
@@ -797,7 +812,7 @@ export default {
           VALUES (?, ?, 'PENDING', 0, 1, 'Nema aktivnog paketa', 0, 0, NULL, 'pending', NULL, ?, ?, ?, ?)
         `).bind(username, email, fullName, first_name.trim(), last_name.trim(), phone.trim()).run();
 
-        await logActivity(env, `Novi klijent '${fullName}' je poslao zahtjev za registraciju.`);
+        await logActivity(env, `Nova registracija: ${fullName}`);
 
         return jsonResponse({
           success: true,
@@ -850,7 +865,7 @@ export default {
           "UPDATE Clients SET password = ?, must_change_password = 1 WHERE id = ?"
         ).bind(hashedTemp, client.id).run();
 
-        await logActivity(env, `Klijent '${client.username}' je zatražio ponovno postavljanje lozinke (zaboravljena lozinka).`);
+        await logActivity(env, `Reset lozinke: ${client.username}`);
 
         // Slanje maila s novom privremenom lozinkom
         const emailSubject = "Pilates Reformer Agram - Reset lozinke";
@@ -919,12 +934,14 @@ export default {
           SELECT s.*, 
                  (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.status >= 0) as booked_count,
                  (SELECT COUNT(*) FROM Bookings b WHERE b.session_id = s.id AND b.user_id = ? AND b.status >= 0) as user_booked,
-                 (SELECT COUNT(*) FROM Waitlists w WHERE w.session_id = s.id AND w.user_id = ?) as user_waitlisted
+                 (SELECT COUNT(*) FROM Waitlists w WHERE w.session_id = s.id AND w.user_id = ?) as user_waitlisted,
+                 (SELECT COUNT(*) FROM Waitlists w WHERE w.session_id = s.id) as waitlist_count,
+                 (SELECT COUNT(*) FROM Waitlists w WHERE w.session_id = s.id AND w.created_at <= (SELECT w2.created_at FROM Waitlists w2 WHERE w2.session_id = s.id AND w2.user_id = ?)) as user_waitlist_position
           FROM Sessions s
           WHERE s.date <= ?
             AND (s.date > ? OR (s.date = ? AND s.time > ?))
           ORDER BY s.date ASC, s.time ASC
-        `).bind(userId, userId, maxDateStr, todayStr, todayStr, currentTimeStr).all();
+        `).bind(userId, userId, userId, maxDateStr, todayStr, todayStr, currentTimeStr).all();
 
         return jsonResponse({ success: true, sessions: results });
       }
@@ -1004,7 +1021,7 @@ export default {
         ]);
 
         const dateStr = session.date.split('-').reverse().join('.') + '.';
-        await logActivity(env, `Klijent '${client.username}' je rezervirao termin '${session.title}' (${dateStr} u ${session.time}h).`);
+        await logActivity(env, `Rezervacija: ${client.username} → ${session.title} (${dateStr}, ${session.time}h)`);
 
         // Send booking confirmation email with Google Calendar link
         if (client.email) {
@@ -1121,7 +1138,7 @@ export default {
         if (client) {
           const dateStr = session.date.split('-').reverse().join('.') + '.';
           const cancelType = refunded ? "pravovremeno" : "neopravdano (kasno)";
-          await logActivity(env, `Klijent '${client.username}' je ${cancelType} otkazao termin '${session.title}' (${dateStr} u ${session.time}h).`);
+          await logActivity(env, `Otkazano (${cancelType}): ${client.username} → ${session.title} (${dateStr}, ${session.time}h)`);
         }
 
         // Notify waitlist when a session spot opens up
@@ -1183,10 +1200,16 @@ export default {
             "INSERT INTO Waitlists (session_id, user_id) VALUES (?, ?)"
           ).bind(session_id, user_id).run();
 
-          const dateStr = session.date.split('-').reverse().join('.') + '.';
-          await logActivity(env, `Klijent '${client.username}' se prijavio na listu čekanja za termin '${session.title}' (${dateStr} u ${session.time}h).`);
+          // Count position on waitlist
+          const posObj = await env.DB.prepare(
+            "SELECT COUNT(*) as pos FROM Waitlists WHERE session_id = ?"
+          ).bind(session_id).first();
+          const position = posObj ? posObj.pos : 1;
 
-          return jsonResponse({ success: true, message: "Uspješno ste se prijavili na listu čekanja!" });
+          const dateStr = session.date.split('-').reverse().join('.') + '.';
+          await logActivity(env, `Wait lista: ${client.username} → ${session.title} (${dateStr}, ${session.time}h) [${position}. na listi]`);
+
+          return jsonResponse({ success: true, message: `Uspješno ste se prijavili na listu čekanja! Vi ste ${position}. na listi.`, position });
         } catch (err) {
           if (err.message && err.message.includes("UNIQUE")) {
             return jsonResponse({ success: true, message: "Već ste na listi čekanja za ovaj termin." });
@@ -1216,7 +1239,7 @@ export default {
 
         if (client && session) {
           const dateStr = session.date.split('-').reverse().join('.') + '.';
-          await logActivity(env, `Klijent '${client.username}' se maknuo s liste čekanja za termin '${session.title}' (${dateStr} u ${session.time}h).`);
+          await logActivity(env, `Napustio wait listu: ${client.username} → ${session.title} (${dateStr}, ${session.time}h)`);
         }
 
         return jsonResponse({ success: true, message: "Uspješno ste se maknuli s liste čekanja." });
@@ -1337,7 +1360,7 @@ export default {
           if (diffMinutes <= 60) {
             // Confirm attendance
             await env.DB.prepare("UPDATE Bookings SET status = 1 WHERE id = ?").bind(booking.booking_id).run();
-            await logActivity(env, `Klijent '${clientName}' se prijavio (check-in) na termin '${booking.title}' u ${booking.time}h.`);
+            await logActivity(env, `Check-in: ${clientName} → ${booking.title} (${booking.time}h)`);
             return jsonResponse({ 
               success: true, 
               message: `Uspješna prijava (check-in) na termin: ${booking.title} u ${booking.time}. Dobrodošli u studio Agram!` 
@@ -1370,7 +1393,7 @@ export default {
                   env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 1)").bind(session.id, user_id),
                   env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(user_id)
                 ]);
-                await logActivity(env, `Klijent '${clientName}' se automatski prijavio na slobodni termin '${session.title}' u ${session.time}h.`);
+                await logActivity(env, `Auto check-in: ${clientName} → ${session.title} (${session.time}h)`);
 
                 // If they had exactly 1 credit remaining, they used their last credit! Send notification email.
                 if (client.remaining_credits === 1 && client.email) {
@@ -1427,7 +1450,7 @@ export default {
         // Log activity
         const user = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
         if (user) {
-          await logActivity(env, `Klijent '${user.username}' je ispunio zdravstveni upitnik.`);
+          await logActivity(env, `Ispunjen upitnik: ${user.username}`);
         }
         
         return jsonResponse({ success: true, message: "Upitnik uspješno spremljen." });
@@ -1471,7 +1494,7 @@ export default {
         const hashedTemp = await hashPassword(tempPass);
 
         await env.DB.prepare("UPDATE Clients SET status = 'approved', password = ?, must_change_password = 1 WHERE id = ?").bind(hashedTemp, client_id).run();
-        await logActivity(env, `Admin je odobrio registraciju klijentu '${client.username}' i poslao mu privremenu lozinku.`);
+        await logActivity(env, `Odobrena registracija: ${client.username}`);
 
         // Slanje maila s privremenom lozinkom
         const emailSubject = "Pilates Reformer Agram - Profil odobren";
@@ -1511,7 +1534,7 @@ export default {
         }
 
         await env.DB.prepare("DELETE FROM Clients WHERE id = ?").bind(client_id).run();
-        await logActivity(env, `Admin je odbio zahtjev za registraciju klijenta '${client.username}'.`);
+        await logActivity(env, `Odbijena registracija: ${client.username}`);
 
         return jsonResponse({ success: true, message: "Zahtjev za registraciju je odbačen." });
       }
@@ -1536,7 +1559,7 @@ export default {
           env.DB.prepare("DELETE FROM Clients WHERE id = ?").bind(client_id)
         ]);
 
-        await logActivity(env, `Admin je potpuno obrisao klijenta '${client.username}' i sve njegove povezane podatke.`);
+        await logActivity(env, `Obrisan klijent: ${client.username}`);
 
         return jsonResponse({ success: true, message: `Klijent '${client.username}' i svi njegovi podaci su obrisani.` });
       }
@@ -1707,7 +1730,7 @@ export default {
 
         if (details) {
           const dateStr = details.date.split('-').reverse().join('.') + '.';
-          await logActivity(env, `Admin je ručno upisao dolazak klijentu '${details.username}' na termin '${details.title}' (${dateStr} u ${details.time}h).`);
+          await logActivity(env, `Ručni check-in: ${details.username} → ${details.title} (${dateStr} ${details.time}h)`);
         }
 
         return jsonResponse({ success: true, message: "Dolazak klijenta je uspješno upisan!" });
@@ -1753,7 +1776,7 @@ export default {
           ]);
           
           if (details) {
-            await logActivity(env, `Admin je otkazao termin klijentu '${details.username}' za '${details.title}' (${dateStr} u ${details.time}h) - uz povrat.`);
+            await logActivity(env, `Admin otkazao (povrat): ${details.username} → ${details.title} (${dateStr} ${details.time}h)`);
           }
 
           // Notify waitlist when a session spot opens up
@@ -1772,7 +1795,7 @@ export default {
           ]);
           
           if (details) {
-            await logActivity(env, `Admin je otkazao termin klijentu '${details.username}' za '${details.title}' (${dateStr} u ${details.time}h) - bez povrata.`);
+            await logActivity(env, `Admin otkazao (bez povrata): ${details.username} → ${details.title} (${dateStr} ${details.time}h)`);
           }
 
           // Notify waitlist when a session spot opens up
@@ -1990,7 +2013,7 @@ export default {
           "UPDATE Sessions SET type = ?, capacity = ?, title = ? WHERE id = ?"
         ).bind(new_type, newCapacity, newTitle, session_id).run();
 
-        await logActivity(env, `Admin je promijenio tip termina ID ${session_id} iz '${session.type}' u '${new_type}' (${newTitle}, kapacitet: ${newCapacity}).`);
+        await logActivity(env, `Promjena tipa: ${session.type} → ${new_type} (${newTitle}, kap. ${newCapacity})`);
 
         return jsonResponse({ success: true, message: "Tip termina je uspješno promijenjen!" });
       }
@@ -2108,7 +2131,7 @@ export default {
           env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(client_id, notificationMsg)
         ]);
 
-        await logActivity(env, `Admin je ručno rezervirao termin '${session.title}' (${dateFormatted} u ${session.time}h) za klijenta '${client.username}'.`);
+        await logActivity(env, `Admin rezervacija: ${client.username} → ${session.title} (${dateFormatted}, ${session.time}h)`);
 
         // If they had exactly 1 credit remaining, they used their last credit! Send notification email.
         if (client.remaining_credits === 1 && client.email) {
@@ -2164,7 +2187,7 @@ export default {
           env.DB.prepare("INSERT OR REPLACE INTO Settings (key, value) VALUES ('instagram_token_updated_at', ?)").bind(nowStr)
         ]);
 
-        await logActivity(env, "Admin je ažurirao dugotrajni pristupni token za Instagram.");
+        await logActivity(env, "Ažuriran Instagram token");
 
         // Pokreni odmah prvu sinkronizaciju objava
         const syncSuccess = await syncInstagramFeed(env);
@@ -2217,7 +2240,7 @@ export default {
         await env.DB.prepare("INSERT INTO PackageRequests (user_id, package_name, status) VALUES (?, ?, 'pending')").bind(user_id, package_name).run();
 
         // Log activity
-        await logActivity(env, `Klijent '${client.username}' je zatražio novi paket: '${package_name}'.`);
+        await logActivity(env, `Zahtjev za paket: ${client.username} → ${package_name}`);
 
         // Send email to admin
         const adminEmail = "adrijana.kontek@gmail.com";
@@ -2317,7 +2340,7 @@ export default {
             .bind(user_id, msg)
         ]);
 
-        await logActivity(env, `Admin je odobrio zahtjev za paket '${package_name}' klijentu '${client.username}'.`);
+        await logActivity(env, `Odobren paket: ${client.username} → ${package_name}`);
 
         // Send confirmation email to client
         const emailSubject = "Agram Pilates - Paket aktiviran";
@@ -2362,7 +2385,7 @@ export default {
         ]);
 
         if (client) {
-          await logActivity(env, `Admin je odbio zahtjev za paket '${package_name}' klijentu '${client.username}'.`);
+          await logActivity(env, `Odbijen paket: ${client.username} → ${package_name}`);
         }
 
         return jsonResponse({ success: true, message: "Zahtjev je odbijen." });

@@ -1439,6 +1439,13 @@
             : `<button class="btn-book" style="width:100%;" onclick="bookSession(${session.id})">Rezerviraj</button>`;
         }
 
+        let waitlistInfoHtml = "";
+        if (session.user_waitlisted > 0) {
+          waitlistInfoHtml = `<div class="session-waitlist-status" style="margin-bottom:8px; font-size:1.05rem; font-weight:600; color:var(--primary-gold-dark);">Vi ste ${session.user_waitlist_position}. na listi (${session.waitlist_count} ukupno)</div>`;
+        } else if (session.waitlist_count > 0) {
+          waitlistInfoHtml = `<div class="session-waitlist-status" style="margin-bottom:8px; font-size:1.05rem; font-weight:400; color:var(--text-muted);">Na listi čekanja: ${session.waitlist_count}</div>`;
+        }
+
         return `
           <div class="${cardClass}">
             <div>
@@ -1451,6 +1458,7 @@
             </div>
             <div>
               <div class="session-spots" style="margin-bottom:8px; font-size:1.15rem; font-weight:500; color:var(--primary-gold-dark);">Slobodno: ${freeSpots} od ${session.capacity}</div>
+              ${waitlistInfoHtml}
               ${buttonHtml}
             </div>
           </div>`;
@@ -1534,6 +1542,13 @@
             : `<button class="mobile-btn-book" onclick="bookSession(${session.id})">Rezerviraj</button>`;
         }
 
+        let waitlistInfoHtml = "";
+        if (session.user_waitlisted > 0) {
+          waitlistInfoHtml = `<div class="mobile-session-waitlist" style="font-size: 1.05rem; color: var(--primary-gold-dark); font-weight: 600; margin-top: 2px;">Vi ste ${session.user_waitlist_position}. na listi (ukupno: ${session.waitlist_count})</div>`;
+        } else if (session.waitlist_count > 0) {
+          waitlistInfoHtml = `<div class="mobile-session-waitlist" style="font-size: 1.05rem; color: var(--text-muted); margin-top: 2px;">Na listi čekanja: ${session.waitlist_count}</div>`;
+        }
+
         return `
           <div class="${cardClass}">
             <div class="mobile-session-left">
@@ -1541,6 +1556,7 @@
               <div class="mobile-session-type">${typeLabel}</div>
               <div class="mobile-session-instructor">Trener: ${session.instructor || "Adrijana"}</div>
               <div class="mobile-session-spots">Slobodno: ${freeSpots} od ${session.capacity}</div>
+              ${waitlistInfoHtml}
             </div>
             <div class="mobile-session-right">${rightHtml}</div>
           </div>`;
@@ -1730,6 +1746,7 @@
       };
     }
 
+    const shownRemindersSession = new Set();
     function checkTomorrowBookingReminders(upcomingBookings) {
       if (!upcomingBookings || upcomingBookings.length === 0) return;
       
@@ -1742,15 +1759,28 @@
       
       const tomorrowBookings = upcomingBookings.filter(b => b.date === tomorrowStr);
       if (tomorrowBookings.length > 0) {
-        const shownReminders = JSON.parse(localStorage.getItem('shown_booking_reminders') || '{}');
+        let shownReminders = {};
+        try {
+          shownReminders = JSON.parse(sessionStorage.getItem('shown_booking_reminders') || '{}');
+        } catch (e) {
+          console.error("Error reading shown_booking_reminders:", e);
+        }
+
         tomorrowBookings.forEach(b => {
-          if (!shownReminders[b.booking_id]) {
+          if (!b.booking_id) return;
+          if (!shownReminders[b.booking_id] && !shownRemindersSession.has(b.booking_id)) {
             showReminderPopup(b);
             showBrowserNotification(b);
             shownReminders[b.booking_id] = true;
+            shownRemindersSession.add(b.booking_id);
           }
         });
-        localStorage.setItem('shown_booking_reminders', JSON.stringify(shownReminders));
+
+        try {
+          sessionStorage.setItem('shown_booking_reminders', JSON.stringify(shownReminders));
+        } catch (e) {
+          console.error("Error saving shown_booking_reminders:", e);
+        }
       }
     }
 
@@ -1801,8 +1831,16 @@
       if (msgLower.includes('otkazao') || msgLower.includes('otkazan')) {
         return 'notif-negative';
       }
-      // Green if package approved or admin manually booked a session
-      if (msgLower.includes('odobren') || msgLower.includes('odobrio') || msgLower.includes('rezervirao')) {
+      // Green if package approved, manual booking, or waitlist auto-booking
+      if (
+        msgLower.includes('odobren') || 
+        msgLower.includes('odobrio') || 
+        msgLower.includes('rezervirao') ||
+        msgLower.includes('dodan') ||
+        msgLower.includes('dodani') ||
+        msgLower.includes('automatski') ||
+        msgLower.includes('lista čekanja')
+      ) {
         return 'notif-positive';
       }
       return 'notif-neutral';

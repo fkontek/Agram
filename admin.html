@@ -2999,6 +2999,48 @@
       }
     }
 
+    function handleLogAction(type) {
+      // 1. Switch to Clients tab
+      switchTab('klijenti');
+      try {
+        switchMobileTab('klijenti');
+      } catch (e) {}
+
+      // 2. Close drawer if open
+      if (drawerOpen) {
+        toggleActivityDrawer();
+      }
+
+      // 3. Scroll to the pending section
+      setTimeout(() => {
+        let el = null;
+        if (type === 'registration') {
+          if (window.innerWidth < 768) {
+            el = document.getElementById('mobile-pending-clients-section');
+          } else {
+            el = document.getElementById('pending-clients-section');
+          }
+        } else if (type === 'package') {
+          if (window.innerWidth < 768) {
+            el = document.getElementById('mobile-pending-packages-section');
+          } else {
+            el = document.getElementById('pending-packages-section');
+          }
+        }
+
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Flash element outline to grab attention
+          const originalOutline = el.style.outline;
+          el.style.outline = '3px solid var(--primary-gold)';
+          el.style.borderRadius = '8px';
+          setTimeout(() => {
+            el.style.outline = originalOutline;
+          }, 2000);
+        }
+      }, 300);
+    }
+
     async function fetchActivityLogs(silent = false) {
       try {
         const res = await fetch(`${API_BASE}/api/admin/activity-logs`, { headers: authHeaders() });
@@ -3041,10 +3083,21 @@
           const logsHtml = logs.map(log => {
             const isNew = log.id > lastReadId;
             const relativeTime = formatRelativeTime(log.created_at);
+            
+            let actionBtn = "";
+            if (log.details.includes("Nova registracija")) {
+              actionBtn = `<button class="btn-action btn-edit" style="padding: 4px 10px; font-size: 1.0rem; height: auto; margin: 0; text-transform: uppercase; border-color: var(--primary-gold-dark); cursor: pointer;" onclick="handleLogAction('registration')">Pregledaj</button>`;
+            } else if (log.details.includes("Zahtjev za paket")) {
+              actionBtn = `<button class="btn-action btn-edit" style="padding: 4px 10px; font-size: 1.0rem; height: auto; margin: 0; text-transform: uppercase; border-color: var(--primary-gold-dark); cursor: pointer;" onclick="handleLogAction('package')">Pregledaj</button>`;
+            }
+
             return `
-              <div class="log-item ${isNew ? 'new-log' : ''}">
-                <div>${log.details}</div>
-                <div class="log-time" title="${log.created_at}">${relativeTime}</div>
+              <div class="log-item ${isNew ? 'new-log' : ''}" style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                <div style="flex: 1;">
+                  <div>${log.details}</div>
+                  <div class="log-time" title="${log.created_at}">${relativeTime}</div>
+                </div>
+                ${actionBtn}
               </div>
             `;
           }).join('');
