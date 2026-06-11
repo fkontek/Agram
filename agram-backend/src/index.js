@@ -1596,9 +1596,14 @@ export default {
 
       // ADMIN: GET ACTIVITY LOGS
       if (request.method === "GET" && url.pathname === "/api/admin/activity-logs") {
-        const { results } = await env.DB.prepare(
-          "SELECT id, details, created_at FROM ActivityLogs ORDER BY id DESC LIMIT 30"
-        ).all();
+        const { results } = await env.DB.prepare(`
+          SELECT id, details, created_at FROM ActivityLogs
+          WHERE details LIKE 'Nova registracija%'
+             OR details LIKE 'Zahtjev za paket%'
+             OR details LIKE 'Otkazano%'
+             OR details LIKE 'Admin otkazao%'
+          ORDER BY id DESC LIMIT 30
+        `).all();
         return jsonResponse({ success: true, logs: results });
       }
 
