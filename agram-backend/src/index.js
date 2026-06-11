@@ -170,6 +170,17 @@ function formatDate(dateObj) {
   return `${year}-${month}-${day}`;
 }
 
+// Format Date object to YYYY-MM-DDTHH:MM:SS
+function formatLocalDateTimeISO(dateObj) {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  const hours = String(dateObj.getHours()).padStart(2, '0');
+  const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+  const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
 // Helper to get limit from package name
 function getPackageLimit(packageName) {
   if (!packageName || packageName === "Nema paketa" || packageName === "Bez paketa") {
@@ -1594,6 +1605,24 @@ export default {
         return jsonResponse({ success: true, clients: results });
       }
 
+      // ADMIN: GET DETAILED BOOKINGS FOR A CLIENT
+      if (request.method === "GET" && url.pathname === "/api/admin/client-bookings") {
+        const client_id = url.searchParams.get("client_id");
+        if (!client_id) {
+          return jsonResponse({ success: false, error: "client_id je obavezan." }, 400);
+        }
+
+        const { results } = await env.DB.prepare(`
+          SELECT b.id as booking_id, b.status, s.title, s.date, s.time
+          FROM Bookings b
+          JOIN Sessions s ON b.session_id = s.id
+          WHERE b.user_id = ? AND b.status >= -1
+          ORDER BY s.date DESC, s.time DESC
+        `).bind(client_id).all();
+
+        return jsonResponse({ success: true, bookings: results });
+      }
+
       // ADMIN: GET ACTIVITY LOGS
       if (request.method === "GET" && url.pathname === "/api/admin/activity-logs") {
         const { results } = await env.DB.prepare(`
@@ -1833,6 +1862,9 @@ export default {
         
         await autoConfirmBookings(env);
         
+        const cutoffDate = new Date(getCroatiaNow().getTime() + 12 * 60 * 60 * 1000);
+        const cutoffStr = formatLocalDateTimeISO(cutoffDate);
+        
         // 1. Get all sessions for this date
         const sessions = await env.DB.prepare(`
           SELECT s.*, 
@@ -1844,12 +1876,17 @@ export default {
 
         // 2. Get attendees list for all sessions of this date
         const attendees = await env.DB.prepare(`
-          SELECT b.id as booking_id, b.session_id, b.status, c.username, c.email, c.remaining_credits
+          SELECT b.id as booking_id, b.session_id, b.status, c.username, c.email, c.remaining_credits, c.total_credits,
+                 (SELECT COUNT(*) FROM Bookings b2 
+                  JOIN Sessions s2 ON b2.session_id = s2.id 
+                  WHERE b2.user_id = c.id 
+                    AND b2.status = 0 
+                    AND (s2.date || 'T' || s2.time || ':00') >= ?) as cancelable_count
           FROM Bookings b
           JOIN Clients c ON b.user_id = c.id
           JOIN Sessions s ON b.session_id = s.id
           WHERE s.date = ? AND b.status >= -1
-        `).bind(dateStr).all();
+        `).bind(cutoffStr, dateStr).all();
 
         return jsonResponse({
           success: true,

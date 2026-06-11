@@ -1274,6 +1274,20 @@
         </form>
       </div>
 
+      <!-- Tražilica klijenata -->
+      <div class="admin-card" style="margin-bottom: 20px; padding: 15px; background-color: rgba(197, 168, 128, 0.05); border: 1.5px solid rgba(197, 168, 128, 0.2);">
+        <h3 style="margin-top: 0; margin-bottom: 10px; font-family: 'Montserrat', sans-serif; color: var(--text-dark); text-transform: uppercase; font-size: 1.2rem;">Pretraži klijente</h3>
+        <div style="position: relative; display: flex; align-items: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 14px; pointer-events: none;">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="client-search-input" placeholder="Upišite ime, prezime, korisničko ime ili email..." 
+                 style="width: 100%; padding: 12px 14px 12px 42px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 1.25rem; font-family: 'Montserrat', sans-serif;" 
+                 oninput="filterClientsTable()" />
+        </div>
+      </div>
+
       <h2>Popis klijenata i članarina</h2>
       <div class="table-responsive-desktop">
         <table id="clients-table">
@@ -1991,8 +2005,9 @@
       };
     }
 
-    // Globalne varijable za mobilni prikaz
+    // Globalne varijable za prikaz klijenata
     let allClientsMobile = [];
+    let allClientsDesktop = [];
 
     // Set today as default date on inputs
     window.addEventListener("DOMContentLoaded", () => {
@@ -2280,12 +2295,12 @@
                   }
 
                   return `
-                          <tr>
-                            <td><button class="client-link-btn" onclick="viewClientQuestionnaireByUsername('${att.username}')">${att.username}</button><br><span style="font-size: 1.15rem; color: var(--text-muted);">${att.email}</span></td>
-                            <td>${att.remaining_credits}</td>
-                            <td>${statusBadge}</td>
-                            <td>${actionButton}</td>
-                          </tr>
+                           <tr>
+                             <td><button class="client-link-btn" onclick="viewClientQuestionnaireByUsername('${att.username}')">${att.username}</button><br><span style="font-size: 1.15rem; color: var(--text-muted);">${att.email}</span></td>
+                             <td>${(att.remaining_credits || 0) + (att.cancelable_count || 0)} / ${att.total_credits || 0}</td>
+                             <td>${statusBadge}</td>
+                             <td>${actionButton}</td>
+                           </tr>
                         `;
                 }).join('')}
                     </tbody>
@@ -2356,12 +2371,12 @@
                     </div>
                   `;
                 }
-                return `
+                 return `
                   <div class="mobile-attendee-row">
                     <div class="mobile-attendee-info">
                       <div>
                         <button class="client-link-btn" style="font-size:1.25rem;" onclick="viewClientQuestionnaireByUsername('${att.username}')">${att.username}</button>
-                        <span class="mobile-attendee-credits">(Kredita: ${att.remaining_credits})</span>
+                        <span class="mobile-attendee-credits">(Preostalo: ${(att.remaining_credits || 0) + (att.cancelable_count || 0)} / ${att.total_credits || 0})</span>
                       </div>
                       ${statusBadge}
                     </div>
@@ -2516,6 +2531,7 @@
     }
 
     // TAB 2: KLIJENTI & PAKETI
+    // TAB 2: KLIJENTI & PAKETI
     async function loadClientsList() {
       const tbody = document.getElementById("clients-tbody");
       tbody.innerHTML = "<tr><td colspan='6'>Učitavanje...</td></tr>";
@@ -2531,42 +2547,63 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
-          tbody.innerHTML = "";
+          allClientsDesktop = data.clients || [];
           allClientsMobile = data.clients || [];
+          renderDesktopClients(allClientsDesktop);
           renderMobileClients(allClientsMobile);
-
-          if (data.clients.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align: center; color: var(--text-muted);'>Nema registriranih klijenata.</td></tr>";
-            return;
-          }
-
-          data.clients.forEach(client => {
-            const tr = document.createElement("tr");
-            if (client.status === 'frozen') {
-              tr.style.backgroundColor = "rgba(178, 34, 34, 0.05)";
-            }
-            tr.innerHTML = `
-              <td><button class="client-link-btn" onclick="viewClientQuestionnaireByUsername('${client.username}')">${client.full_name || client.username}</button> ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}</td>
-              <td>${client.package_name || "Nema"}</td>
-              <td>${client.package_expires ? formatDateStr(client.package_expires) : "Nema"}</td>
-              <td><span class="badge badge-present">${client.attended_count} / ${client.total_credits || 0}</span></td>
-              <td>
-                <div style="display: flex; gap: 6px; flex-wrap: wrap; min-width: 160px;">
-                  <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
-                  <button class="btn-action btn-edit" style="border-color: var(--primary-gold-dark);" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})">Karton</button>
-                  <button class="btn-action ${client.status === 'frozen' ? 'btn-checkin' : 'btn-delete'}" style="${client.status === 'frozen' ? 'background-color: #2e7559; border-color: #2e7559;' : ''}" onclick="toggleFreezeClient(${client.id}, '${client.username}', '${client.status}')">
-                    ${client.status === 'frozen' ? 'Odmrzni' : 'Zaledi'}
-                  </button>
-                  <button class="btn-action btn-delete" onclick="deleteClient(${client.id}, '${client.username}')">Obriši</button>
-                </div>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          });
         }
       } catch (err) {
         console.error("Clients error:", err);
       }
+    }
+
+    // Render desktop clients table
+    function renderDesktopClients(clientsList) {
+      const tbody = document.getElementById("clients-tbody");
+      tbody.innerHTML = "";
+
+      if (clientsList.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='5' style='text-align: center; color: var(--text-muted);'>Nema pronađenih klijenata.</td></tr>";
+        return;
+      }
+
+      clientsList.forEach(client => {
+        const tr = document.createElement("tr");
+        if (client.status === 'frozen') {
+          tr.style.backgroundColor = "rgba(178, 34, 34, 0.05)";
+        }
+        tr.innerHTML = `
+          <td>
+            <button class="client-link-btn" style="font-weight: 700; font-size: 1.3rem; text-decoration: underline;" onclick="toggleClientDetails(${client.id}, '${client.username}', false)">
+              ${client.full_name || client.username}
+            </button> 
+            ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}
+          </td>
+          <td>${client.package_name || "Nema"}</td>
+          <td>${client.package_expires ? formatDateStr(client.package_expires) : "Nema"}</td>
+          <td><span class="badge badge-present">${client.attended_count} / ${client.total_credits || 0}</span></td>
+          <td>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; min-width: 160px;">
+              <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
+              <button class="btn-action btn-edit" style="border-color: var(--primary-gold-dark);" onclick="viewClientQuestionnaire(${JSON.stringify(client).replace(/"/g, '&quot;')})">Karton</button>
+              <button class="btn-action ${client.status === 'frozen' ? 'btn-checkin' : 'btn-delete'}" style="${client.status === 'frozen' ? 'background-color: #2e7559; border-color: #2e7559;' : ''}" onclick="toggleFreezeClient(${client.id}, '${client.username}', '${client.status}')">
+                ${client.status === 'frozen' ? 'Odmrzni' : 'Zaledi'}
+              </button>
+              <button class="btn-action btn-delete" onclick="deleteClient(${client.id}, '${client.username}')">Obriši</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        // Hidden details row
+        const detailsTr = document.createElement("tr");
+        detailsTr.id = `client-details-${client.id}`;
+        detailsTr.style.display = "none";
+        detailsTr.innerHTML = `
+          <td colspan="5" id="client-details-content-${client.id}" style="padding: 10px 15px; background-color: rgba(197, 168, 128, 0.02);"></td>
+        `;
+        tbody.appendChild(detailsTr);
+      });
     }
 
     // Render mobile clients cards
@@ -2588,7 +2625,7 @@
           <div class="mobile-client-header">
             <div>
               <div class="mobile-client-username">
-                <button class="client-link-btn" style="font-size: 1.35rem;" onclick="viewClientQuestionnaireByUsername('${client.username}')">${client.full_name || client.username}</button>
+                <button class="client-link-btn" style="font-size: 1.35rem; font-weight: 700; text-decoration: underline;" onclick="toggleClientDetails(${client.id}, '${client.username}', true)">${client.full_name || client.username}</button>
                 ${client.status === 'frozen' ? '<span style="color:#b22222; font-size:1.15rem; font-weight:700;">(ZALEĐEN)</span>' : ''}
               </div>
             </div>
@@ -2599,6 +2636,9 @@
           <div style="display: flex; justify-content: space-between; font-size: 1.15rem; color: var(--text-muted); margin-top: 4px;">
             <div>Istječe: ${client.package_expires ? formatDateStr(client.package_expires) : 'Nema'}</div>
             <div>Odrađeno dolazaka: <strong>${client.attended_count} / ${client.total_credits || 0}</strong></div>
+          </div>
+          <div id="mobile-client-details-${client.id}" style="display: none; width: 100%;">
+            <div id="mobile-client-details-content-${client.id}"></div>
           </div>
           <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(197,168,128,0.1); padding-top: 8px; flex-wrap: wrap;">
             <button class="mobile-btn-action" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})" style="flex: 1; min-width: 70px; background: transparent; color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark); border-radius: 20px; font-size:1.1rem; padding: 6px 12px; font-family: inherit;">Uredi</button>
@@ -2611,6 +2651,110 @@
         `;
         container.appendChild(card);
       });
+    }
+
+    // Toggle client details rows (attended/reserved bookings list)
+    async function toggleClientDetails(clientId, clientUsername, isMobile = false) {
+      const prefix = isMobile ? "mobile-client-details" : "client-details";
+      const detailsRow = document.getElementById(`${prefix}-${clientId}`);
+      const detailsContent = document.getElementById(`${prefix}-content-${clientId}`);
+      if (!detailsRow) return;
+
+      if (detailsRow.style.display !== "none") {
+        detailsRow.style.display = "none";
+        return;
+      }
+
+      // Show loading
+      detailsContent.innerHTML = `<p style="color: var(--text-muted); font-style: italic; font-size: 1.15rem; margin: 8px 0;">Učitavanje povijesti i rezervacija...</p>`;
+      detailsRow.style.display = isMobile ? "block" : "table-row";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/client-bookings?client_id=${clientId}`, { headers: authHeaders() });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const bookings = data.bookings || [];
+          
+          const attended = bookings.filter(b => b.status === 1);
+          const reserved = bookings.filter(b => b.status === 0);
+
+          let layoutHtml = "";
+          if (isMobile) {
+            layoutHtml = `
+              <div style="padding: 10px; background-color: rgba(197, 168, 128, 0.05); border: 1.5px solid rgba(197, 168, 128, 0.2); border-radius: 12px; margin-top: 10px; font-size: 1.15rem; box-sizing: border-box;">
+                <div style="margin-bottom: 12px;">
+                  <h4 style="margin: 0 0 6px 0; color: #2e7559; font-weight: 700; font-size: 1.1rem; border-bottom: 1px solid rgba(46, 117, 89, 0.15); padding-bottom: 3px;">
+                    ✅ Odrađeni treninzi (${attended.length})
+                  </h4>
+                  ${attended.length === 0 ? '<p style="color: var(--text-muted); font-style: italic; margin: 4px 0;">Nema odrađenih treninga.</p>' : `
+                    <ul style="list-style: none; padding-left: 0; margin: 0; max-height: 120px; overflow-y: auto;">
+                      ${attended.map(b => `<li style="margin-bottom: 4px; color: var(--text-dark);">${b.title} - <b>${formatDateStr(b.date)} u ${b.time}h</b></li>`).join('')}
+                    </ul>
+                  `}
+                </div>
+                <div>
+                  <h4 style="margin: 0 0 6px 0; color: var(--primary-gold-dark); font-weight: 700; font-size: 1.1rem; border-bottom: 1px solid rgba(197, 168, 128, 0.3); padding-bottom: 3px;">
+                    📅 Rezervirani treninzi (${reserved.length})
+                  </h4>
+                  ${reserved.length === 0 ? '<p style="color: var(--text-muted); font-style: italic; margin: 4px 0;">Nema rezerviranih treninga.</p>' : `
+                    <ul style="list-style: none; padding-left: 0; margin: 0; max-height: 120px; overflow-y: auto;">
+                      ${reserved.map(b => `<li style="margin-bottom: 4px; color: var(--text-dark);">${b.title} - <b>${formatDateStr(b.date)} u ${b.time}h</b></li>`).join('')}
+                    </ul>
+                  `}
+                </div>
+              </div>
+            `;
+          } else {
+            layoutHtml = `
+              <div style="padding: 12px 18px; background-color: rgba(197, 168, 128, 0.05); border: 1.5px solid rgba(197, 168, 128, 0.2); border-radius: 12px; margin: 8px 0; font-size: 1.15rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                  <div>
+                    <h4 style="margin-top: 0; margin-bottom: 8px; color: #2e7559; font-weight: 700; text-transform: uppercase; font-size: 1.15rem; border-bottom: 1px solid rgba(46, 117, 89, 0.15); padding-bottom: 4px;">
+                      ✅ Odrađeni treninzi (${attended.length})
+                    </h4>
+                    ${attended.length === 0 ? '<p style="color: var(--text-muted); font-style: italic; margin: 4px 0;">Nema odrađenih treninga.</p>' : `
+                      <ul style="list-style: none; padding-left: 0; margin: 0; max-height: 150px; overflow-y: auto;">
+                        ${attended.map(b => `<li style="margin-bottom: 4px; color: var(--text-dark);">${b.title} - <b>${formatDateStr(b.date)} u ${b.time}h</b></li>`).join('')}
+                      </ul>
+                    `}
+                  </div>
+                  <div>
+                    <h4 style="margin-top: 0; margin-bottom: 8px; color: var(--primary-gold-dark); font-weight: 700; text-transform: uppercase; font-size: 1.15rem; border-bottom: 1px solid rgba(197, 168, 128, 0.3); padding-bottom: 4px;">
+                      📅 Rezervirani budući treninzi (${reserved.length})
+                    </h4>
+                    ${reserved.length === 0 ? '<p style="color: var(--text-muted); font-style: italic; margin: 4px 0;">Nema rezerviranih treninga.</p>' : `
+                      <ul style="list-style: none; padding-left: 0; margin: 0; max-height: 150px; overflow-y: auto;">
+                        ${reserved.map(b => `<li style="margin-bottom: 4px; color: var(--text-dark);">${b.title} - <b>${formatDateStr(b.date)} u ${b.time}h</b></li>`).join('')}
+                      </ul>
+                    `}
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+          detailsContent.innerHTML = layoutHtml;
+        } else {
+          detailsContent.innerHTML = `<p style="color: #b22222; font-style: italic; margin: 8px 0;">Greška pri učitavanju: ${data.error || 'Nepoznata pogreška'}</p>`;
+        }
+      } catch (err) {
+        detailsContent.innerHTML = `<p style="color: #b22222; font-style: italic; margin: 8px 0;">Greška pri komunikaciji s poslužiteljem.</p>`;
+      }
+    }
+
+    // Filter/Search clients on desktop table
+    function filterClientsTable() {
+      const query = document.getElementById("client-search-input").value.toLowerCase().trim();
+      if (!query) {
+        renderDesktopClients(allClientsDesktop);
+        return;
+      }
+      const filtered = allClientsDesktop.filter(c =>
+        (c.full_name && c.full_name.toLowerCase().includes(query)) ||
+        c.username.toLowerCase().includes(query) ||
+        c.email.toLowerCase().includes(query) ||
+        (c.package_name && c.package_name.toLowerCase().includes(query))
+      );
+      renderDesktopClients(filtered);
     }
 
     // Filter/Search clients on mobile
