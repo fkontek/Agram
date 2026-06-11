@@ -1107,13 +1107,7 @@
           const expiresFormatted = data.user.package_expires ? formatDate(data.user.package_expires) : "Nema roka isteka";
           const creditsFormatted = `${usedCredits} / ${totalCredits}`;
 
-          // Find the last attended training info
-          const lastAttended = (data.history || []).find(h => h.status === 1);
-          let lastAttendedText = "";
-          if (lastAttended) {
-            lastAttendedText = ` (${formatCroatianDate(lastAttended.date)} u ${lastAttended.time}h)`;
-          }
-          const attendedFormatted = `${data.user.attended_count || 0} / ${totalCredits}${lastAttendedText}`;
+          const attendedFormatted = `${data.user.attended_count || 0} / ${totalCredits}`;
           const attendedShortFormatted = `${data.user.attended_count || 0} / ${totalCredits}`;
 
           document.getElementById("package-name").textContent      = userPackageVal;
