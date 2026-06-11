@@ -1904,20 +1904,6 @@ export default {
             let capacity = 4;
             let title = "Grupni trening";
 
-            // Rules:
-            // Ponedjeljak (1) 07:00 i 10:00 su privatni
-            if (dayOfWeek === 1 && (time === "07:00" || time === "10:00")) {
-              type = "privatni";
-              capacity = 1;
-              title = "Privatni trening";
-            }
-            // Petak (5) 16:00 i 17:00 su privatni
-            else if (dayOfWeek === 5 && (time === "16:00" || time === "17:00")) {
-              type = "privatni";
-              capacity = 1;
-              title = "Privatni trening";
-            }
-
             queries.push(
               env.DB.prepare(`
                 INSERT INTO Sessions (title, instructor, date, time, capacity, type)
