@@ -1123,6 +1123,197 @@
         padding: 8px 10px;
       }
     }
+
+    /* Date Selection Card Styling - Premium Modern Look */
+    .date-selection-card {
+      background: var(--primary-gold-light);
+      border: 1.5px solid rgba(197, 168, 128, 0.3);
+      border-radius: var(--radius-md);
+      padding: 24px 28px;
+      margin-bottom: 30px;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .date-selection-card h2 {
+      margin-top: 0;
+      font-size: 1.6rem;
+      color: var(--text-dark);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+    }
+    
+    .date-selection-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .date-input-group {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 200px;
+      max-width: 280px;
+    }
+    
+    .date-input-group label {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+    
+    .date-input-field {
+      width: 100%;
+      height: 44px;
+      background: white;
+      border: 1.5px solid var(--border-color);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      outline: none;
+      font-family: inherit;
+      box-sizing: border-box;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    
+    .date-input-field:focus {
+      border-color: var(--primary-gold-dark);
+      box-shadow: 0 0 0 3px rgba(197, 168, 128, 0.25);
+    }
+    
+    .btn-email-report {
+      height: 44px;
+      padding: 0 20px;
+      background: var(--primary-gold);
+      color: var(--dark-bg);
+      border: 1.5px solid var(--primary-gold-dark);
+      border-radius: var(--radius-sm);
+      font-size: 1.25rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color var(--transition-fast), color var(--transition-fast), transform 0.1s ease, box-shadow var(--transition-fast);
+      box-sizing: border-box;
+      white-space: nowrap;
+    }
+    
+    .btn-email-report:hover {
+      background-color: var(--primary-gold-dark);
+      color: white;
+      box-shadow: 0 4px 12px rgba(169, 142, 101, 0.25);
+    }
+    
+    .btn-email-report:active {
+      transform: scale(0.98);
+    }
+
+    /* Mobile Date Card Styles */
+    .mobile-date-card {
+      background: white;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(197, 168, 128, 0.2);
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(28, 21, 16, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .mobile-date-card label {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+    
+    .mobile-date-input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      font-family: inherit;
+      background: var(--light-bg);
+      outline: none;
+      box-sizing: border-box;
+      color: var(--text-dark);
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    
+    .mobile-date-input:focus {
+      border-color: var(--primary-gold-dark);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(197, 168, 128, 0.15);
+    }
+
+    .mobile-btn-report {
+      width: 100%;
+      height: 44px;
+      background: var(--primary-gold);
+      color: var(--dark-bg);
+      border: 1.5px solid var(--primary-gold-dark);
+      border-radius: 22px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background-color var(--transition-fast), color var(--transition-fast), transform 0.1s ease;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .mobile-btn-report:active {
+      transform: scale(0.97);
+      background-color: var(--primary-gold-dark);
+      color: white;
+    }
+
+    /* Tablet and responsive layout for Date Selection Card */
+    @media (max-width: 992px) {
+      .date-selection-row {
+        gap: 12px;
+      }
+      .date-input-group {
+        max-width: 100%;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .date-selection-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .date-input-group {
+        min-width: 100%;
+        max-width: 100%;
+      }
+      .btn-email-report {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 
@@ -1161,14 +1352,14 @@
 
     <!-- TAB 1: DNEVNA EVIDENCIJA -->
     <div id="tab-evidencija" class="tab-content active">
-      <div class="admin-card">
+      <div class="date-selection-card">
         <h2>Odaberi datum evidencije</h2>
-        <div style="display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap;">
-          <div class="form-group" style="max-width: 250px; flex: 1; min-width: 180px; margin-bottom: 0;">
+        <div class="date-selection-row">
+          <div class="date-input-group">
             <label for="overview-date">Datum</label>
-            <input type="date" id="overview-date" onchange="loadDailyOverview()" style="width: 100%; box-sizing: border-box; height: 44px;" />
+            <input type="date" class="date-input-field" id="overview-date" onchange="loadDailyOverview()" />
           </div>
-          <button class="btn-submit" onclick="sendDailyReportOnDemand()" id="send-report-btn" style="height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 20px; margin-bottom: 0;">
+          <button class="btn-email-report" onclick="sendDailyReportOnDemand()" id="send-report-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
@@ -1482,16 +1673,12 @@
 
       <!-- Panel 1: Evidencija -->
       <div class="mobile-panel active" id="mobile-panel-evidencija">
-        <div
-          style="background: white; padding: 15px; border-radius: 16px; border: 1px solid rgba(197,168,128,0.2); margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 12px;">
+        <div class="mobile-date-card">
           <div>
-            <label for="mobile-overview-date"
-              style="font-size: 1.15rem; font-weight: 700; color: #2c251e; text-transform: uppercase; display: block; margin-bottom: 8px;">Odaberi
-              datum evidencije</label>
-            <input type="date" id="mobile-overview-date" onchange="syncDateAndLoad(this.value)"
-              style="width: 100%; padding: 12px; font-size: 1.3rem; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; background: var(--light-bg); outline: none; box-sizing: border-box;" />
+            <label for="mobile-overview-date">Odaberi datum evidencije</label>
+            <input type="date" class="mobile-date-input" id="mobile-overview-date" onchange="syncDateAndLoad(this.value)" />
           </div>
-          <button class="mobile-btn-book" onclick="sendDailyReportOnDemand()" id="mobile-send-report-btn" style="font-size: 1.15rem; padding: 10px 14px; border-radius: 20px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <button class="mobile-btn-report" onclick="sendDailyReportOnDemand()" id="mobile-send-report-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
