@@ -3085,14 +3085,18 @@
             const relativeTime = formatRelativeTime(log.created_at);
             
             let actionBtn = "";
-            if (log.details.includes("Nova registracija")) {
-              actionBtn = `<button class="btn-action btn-edit" style="padding: 4px 10px; font-size: 1.0rem; height: auto; margin: 0; text-transform: uppercase; border-color: var(--primary-gold-dark); cursor: pointer;" onclick="handleLogAction('registration')">Pregledaj</button>`;
-            } else if (log.details.includes("Zahtjev za paket")) {
-              actionBtn = `<button class="btn-action btn-edit" style="padding: 4px 10px; font-size: 1.0rem; height: auto; margin: 0; text-transform: uppercase; border-color: var(--primary-gold-dark); cursor: pointer;" onclick="handleLogAction('package')">Pregledaj</button>`;
+            let itemClickAttr = "";
+            const detailsLower = log.details.toLowerCase();
+            if (detailsLower.includes("nova registracija") || detailsLower.includes("zahtjev za registraciju")) {
+              actionBtn = `<button class="btn-action btn-edit" style="padding: 4px 10px; font-size: 1.0rem; height: auto; margin: 0; text-transform: uppercase; border-color: var(--primary-gold-dark); cursor: pointer;" onclick="event.stopPropagation(); handleLogAction('registration')">Pregledaj</button>`;
+              itemClickAttr = `onclick="handleLogAction('registration')"`;
+            } else if (detailsLower.includes("zahtjev za paket") || detailsLower.includes("zatražio novi paket") || detailsLower.includes("zatražio paket")) {
+              actionBtn = `<button class="btn-action btn-edit" style="padding: 4px 10px; font-size: 1.0rem; height: auto; margin: 0; text-transform: uppercase; border-color: var(--primary-gold-dark); cursor: pointer;" onclick="event.stopPropagation(); handleLogAction('package')">Pregledaj</button>`;
+              itemClickAttr = `onclick="handleLogAction('package')"`;
             }
 
             return `
-              <div class="log-item ${isNew ? 'new-log' : ''}" style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+              <div class="log-item ${isNew ? 'new-log' : ''}" ${itemClickAttr} style="display: flex; justify-content: space-between; align-items: center; gap: 12px;${itemClickAttr ? ' cursor: pointer;' : ''}">
                 <div style="flex: 1;">
                   <div>${log.details}</div>
                   <div class="log-time" title="${log.created_at}">${relativeTime}</div>
