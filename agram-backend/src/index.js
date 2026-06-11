@@ -986,6 +986,14 @@ export default {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
         }
 
+        // Zabrana višekratnog otkazivanja i ponovnog rezerviranja istog termina (maksimalno 2 rezervacije po klijentu za isti termin)
+        const bookingAttemptsObj = await env.DB.prepare(
+          "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND user_id = ?"
+        ).bind(session_id, user_id).first();
+        if (bookingAttemptsObj && bookingAttemptsObj.count >= 2) {
+          return jsonResponse({ success: false, error: "Nije moguće rezervirati isti termin više od 2 puta (već ste ga rezervirali i otkazali)." }, 400);
+        }
+
         // Check if user already has an active booking on this session's date
         const existingBookingToday = await env.DB.prepare(`
           SELECT b.id FROM Bookings b 
@@ -1120,9 +1128,9 @@ export default {
         let messageText = "";
 
         if (diffHours >= 12) {
-          // In-time cancel: Refund credit
+          // In-time cancel: Refund credit but keep row with status = -2
           await env.DB.batch([
-            env.DB.prepare("DELETE FROM Bookings WHERE session_id = ? AND user_id = ?").bind(session_id, user_id),
+            env.DB.prepare("UPDATE Bookings SET status = -2 WHERE session_id = ? AND user_id = ? AND status = 0").bind(session_id, user_id),
             env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id)
           ]);
           refunded = true;
@@ -1173,6 +1181,14 @@ export default {
         const session = await env.DB.prepare("SELECT title, date, time FROM Sessions WHERE id = ?").bind(session_id).first();
         if (!session) {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
+        }
+
+        // Zabrana višekratnog otkazivanja i ponovnog rezerviranja istog termina (maksimalno 2 rezervacije po klijentu za isti termin)
+        const bookingAttemptsObj = await env.DB.prepare(
+          "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND user_id = ?"
+        ).bind(session_id, user_id).first();
+        if (bookingAttemptsObj && bookingAttemptsObj.count >= 2) {
+          return jsonResponse({ success: false, error: "Nije moguće prijaviti se na listu čekanja jer ste ovaj termin već rezervirali i otkazali 2 puta." }, 400);
         }
 
         // 3. Check if user is already booked
@@ -1271,7 +1287,7 @@ export default {
           SELECT b.id as booking_id, b.status, s.title, s.instructor, s.date, s.time, s.type
           FROM Bookings b
           JOIN Sessions s ON b.session_id = s.id
-          WHERE b.user_id = ? AND (s.date < ? OR b.status != 0)
+          WHERE b.user_id = ? AND (s.date < ? OR b.status != 0) AND b.status != -2
           ORDER BY s.date DESC, s.time DESC
           LIMIT 20
         `).bind(userId, todayStr).all();
@@ -1826,7 +1842,7 @@ export default {
           FROM Bookings b
           JOIN Clients c ON b.user_id = c.id
           JOIN Sessions s ON b.session_id = s.id
-          WHERE s.date = ?
+          WHERE s.date = ? AND b.status >= -1
         `).bind(dateStr).all();
 
         return jsonResponse({
