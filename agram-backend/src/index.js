@@ -181,6 +181,83 @@ function formatLocalDateTimeISO(dateObj) {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
+// Calculate base Monday for schedule generation
+function getGenerationBaseMonday(dateObj) {
+  const day = dateObj.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  if (day === 0) {
+    // If Sunday, the base Monday is tomorrow (add 1 day)
+    return new Date(dateObj.getTime() + 1 * 24 * 60 * 60 * 1000);
+  } else {
+    // If Monday-Saturday, the base Monday is this week's Monday
+    const daysToSubtract = day - 1;
+    return new Date(dateObj.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
+  }
+}
+
+// Automatically generate weekly schedule for 3 weeks starting from baseMonday (idempotent)
+async function autoGenerateWeeks(env, baseMonday) {
+  try {
+    const instructorName = "Adrijana";
+    const morningHours = ["07:00", "08:00", "09:00", "10:00"];
+    const afternoonHours = ["16:00", "17:00", "18:00", "19:00", "20:00"];
+    const allHours = [...morningHours, ...afternoonHours];
+
+    // Generate Week 1 (baseMonday), Week 2 (baseMonday + 7 days), Week 3 (baseMonday + 14 days)
+    for (let weekOffset = 0; weekOffset <= 2; weekOffset++) {
+      const mondayDate = new Date(baseMonday.getTime() + weekOffset * 7 * 24 * 60 * 60 * 1000);
+      const queries = [];
+
+      for (let dayOffset = 0; dayOffset < 5; dayOffset++) {
+        const currentDay = new Date(mondayDate.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+        const dateStr = formatDate(currentDay);
+
+        allHours.forEach(time => {
+          let type = "grupni";
+          let capacity = 4;
+          let title = "Grupni trening";
+
+          queries.push(
+            env.DB.prepare(`
+              INSERT INTO Sessions (title, instructor, date, time, capacity, type)
+              SELECT ?, ?, ?, ?, ?, ?
+              WHERE NOT EXISTS (
+                SELECT 1 FROM Sessions WHERE date = ? AND time = ?
+              )
+            `).bind(title, instructorName, dateStr, time, capacity, type, dateStr, time)
+          );
+        });
+      }
+
+      if (queries.length > 0) {
+        await env.DB.batch(queries);
+      }
+    }
+    console.log(`autoGenerateWeeks: Checked and initialized schedule starting from base Monday ${formatDate(baseMonday)}.`);
+  } catch (error) {
+    console.error("autoGenerateWeeks failed:", error);
+  }
+}
+
+// Check if Week 3 Monday has sessions, if not, generate schedules
+async function checkAndAutoGenerateSchedules(env) {
+  try {
+    const croatiaNow = getCroatiaNow();
+    const baseMonday = getGenerationBaseMonday(croatiaNow);
+    
+    // Check if the Monday of Week 3 (baseMonday + 14 days) already has sessions
+    const targetMonday = new Date(baseMonday.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const targetMondayStr = formatDate(targetMonday);
+    
+    const hasSessions = await env.DB.prepare("SELECT 1 FROM Sessions WHERE date = ? LIMIT 1").bind(targetMondayStr).first();
+    if (!hasSessions) {
+      console.log(`checkAndAutoGenerateSchedules: Week 3 Monday (${targetMondayStr}) has no sessions. Triggering generation...`);
+      await autoGenerateWeeks(env, baseMonday);
+    }
+  } catch (error) {
+    console.error("checkAndAutoGenerateSchedules failed:", error);
+  }
+}
+
 // Helper to get limit from package name
 function getPackageLimit(packageName) {
   if (!packageName || packageName === "Nema paketa" || packageName === "Bez paketa") {
@@ -926,6 +1003,7 @@ export default {
         }
         const userId = authUser.user_id;
 
+        ctx.waitUntil(checkAndAutoGenerateSchedules(env));
         await autoConfirmBookings(env);
 
         const nowCroatia = getCroatiaNow();
@@ -1860,6 +1938,7 @@ export default {
       if (request.method === "GET" && url.pathname === "/api/admin/sessions-overview") {
         const dateStr = url.searchParams.get("date") || formatDate(getCroatiaNow());
         
+        ctx.waitUntil(checkAndAutoGenerateSchedules(env));
         await autoConfirmBookings(env);
         
         const cutoffDate = new Date(getCroatiaNow().getTime() + 12 * 60 * 60 * 1000);
@@ -2455,6 +2534,11 @@ export default {
     // 1.5. Daily Booking Reminders: runs on 12-hour schedule as well
     if (!event.cron || event.cron === "0 */12 * * *") {
       promises.push(sendBookingReminders(env));
+    }
+
+    // 1.6. Auto generate weekly schedules: runs on 12-hour schedule as well
+    if (!event.cron || event.cron === "0 */12 * * *") {
+      promises.push(checkAndAutoGenerateSchedules(env));
     }
     
     // 2. Weekly Report Email: runs automatically on Fridays in the evening

@@ -3100,7 +3100,7 @@
             return;
           }
 
-          if (!confirm("Jeste li sigurni da želite generirati raspored za tjedan od " + formatDateStr(mondayDate) + "? Već postojeći termini za te dane neće biti izbrisani.")) return;
+          if (!confirm("Jeste li sigurni da želite generirati raspored za tjedan od " + formatDateStr(mondayDate) + "? Ako na te dane već ima nekih termina, oni neće biti prebrisani.")) return;
 
           try {
             const res = await fetch(`${API_BASE}/api/admin/generate-weekly-schedule`, {
@@ -3579,7 +3579,7 @@
             return;
           }
 
-          if (!confirm("Jeste li sigurni da želite generirati raspored za tjedan od " + formatDateStr(mondayDate) + "? Već postojeći termini za te dane neće biti izbrisani.")) return;
+          if (!confirm("Jeste li sigurni da želite generirati raspored za tjedan od " + formatDateStr(mondayDate) + "? Ako na te dane već ima nekih termina, oni neće biti prebrisani.")) return;
 
           try {
             const res = await fetch(`${API_BASE}/api/admin/generate-weekly-schedule`, {
