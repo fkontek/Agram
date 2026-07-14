@@ -1309,7 +1309,8 @@
             const header = document.getElementById(headerId);
             const body   = document.getElementById(headerId + '-body');
             if (!header || !body) return;
-            const isOpen = body.style.display !== 'none';
+            const currentDisplay = body.style.display || window.getComputedStyle(body).display;
+            const isOpen = currentDisplay !== 'none';
             body.style.display = isOpen ? 'none' : 'block';
             header.classList.toggle('open', !isOpen);
           }
@@ -1331,6 +1332,10 @@
               const isFirst = groupIdx === 0;
               const li = document.createElement('li');
               li.style.listStyle = 'none';
+              li.style.display = 'block';
+              li.style.width = '100%';
+              li.style.padding = '0';
+              li.style.borderBottom = 'none';
               li.innerHTML = `
                 <div class="history-month-group">
                   <button id="${headerId}" class="history-month-header ${isFirst ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
