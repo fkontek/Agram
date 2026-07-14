@@ -2346,12 +2346,16 @@ export default {
         }
         const user_id = authUser.user_id;
 
-        const client = await env.DB.prepare("SELECT username, email, remaining_credits FROM Clients WHERE id = ?").bind(user_id).first();
+        const client = await env.DB.prepare("SELECT username, email, remaining_credits, package_expires, package_name FROM Clients WHERE id = ?").bind(user_id).first();
         if (!client) {
           return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
         }
 
-        if (client.remaining_credits > 0) {
+        const todayStr = formatDate(getCroatiaNow());
+        const isExpired = client.package_expires && client.package_expires < todayStr;
+        const hasNoPackage = !client.package_name || client.package_name === "Nema paketa" || client.package_name === "Nema aktivnog paketa";
+
+        if (client.remaining_credits > 0 && !isExpired && !hasNoPackage) {
           return jsonResponse({ success: false, error: "Nije moguće zatražiti novi paket dok ne iskoristite sve treninge iz postojećeg." }, 400);
         }
 
