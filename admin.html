@@ -2770,7 +2770,7 @@
           tr.style.backgroundColor = "rgba(178, 34, 34, 0.05)";
         }
 
-        const hasPackage = client.package_name && client.package_name !== "Nema paketa";
+        const hasPackage = client.package_name && client.package_name !== "Nema paketa" && client.package_name !== "Nema aktivnog paketa";
         const isExpiredByDate = hasPackage && client.package_expires && client.package_expires < todayStr;
         const isExpiredByCredits = hasPackage && (client.remaining_credits !== undefined ? client.remaining_credits <= 0 : client.attended_count >= client.total_credits);
 
@@ -2789,16 +2789,20 @@
         }
 
         let creditsColHtml = "";
-        const creditsText = `${client.attended_count} / ${client.total_credits || 0}`;
-        if (hasPackage && isExpiredByCredits) {
-          creditsColHtml = `
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-              <span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.25rem; padding: 6px 12px; border-radius: 20px; background-color: rgba(128, 128, 128, 0.15); color: #777;">${creditsText}</span>
-              <span class="badge badge-absent" style="font-size: 0.85rem; padding: 2px 8px; border-radius: 12px; font-weight: 800; display: inline-block; background-color: rgba(128, 128, 128, 0.15); color: #777;">ISKORIŠTEN</span>
-            </div>
-          `;
+        if (!hasPackage || isExpiredByDate) {
+          creditsColHtml = `<span style="font-size: 1.25rem; font-weight: 700; color: var(--text-muted);">-</span>`;
         } else {
-          creditsColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.25rem; padding: 6px 12px; border-radius: 20px;">${creditsText}</span>`;
+          const creditsText = `${client.attended_count} / ${client.total_credits || 0}`;
+          if (isExpiredByCredits) {
+            creditsColHtml = `
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.25rem; padding: 6px 12px; border-radius: 20px; background-color: rgba(128, 128, 128, 0.15); color: #777;">${creditsText}</span>
+                <span class="badge badge-absent" style="font-size: 0.85rem; padding: 2px 8px; border-radius: 12px; font-weight: 800; display: inline-block; background-color: rgba(128, 128, 128, 0.15); color: #777;">ISKORIŠTEN</span>
+              </div>
+            `;
+          } else {
+            creditsColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.25rem; padding: 6px 12px; border-radius: 20px;">${creditsText}</span>`;
+          }
         }
 
         tr.innerHTML = `
@@ -2858,7 +2862,7 @@
           card.style.background = "rgba(178, 34, 34, 0.03)";
         }
 
-        const hasPackage = client.package_name && client.package_name !== "Nema paketa";
+        const hasPackage = client.package_name && client.package_name !== "Nema paketa" && client.package_name !== "Nema aktivnog paketa";
         const isExpiredByDate = hasPackage && client.package_expires && client.package_expires < todayStr;
         const isExpiredByCredits = hasPackage && (client.remaining_credits !== undefined ? client.remaining_credits <= 0 : client.attended_count >= client.total_credits);
 
@@ -2871,9 +2875,16 @@
           }
         }
 
-        let creditsHtml = `${client.attended_count} / ${client.total_credits || 0}`;
-        if (hasPackage && isExpiredByCredits) {
-          creditsHtml = `<span style="color: #777; font-weight: 700;">${creditsHtml} (ISKORIŠTEN)</span>`;
+        let creditsHtml = "";
+        if (!hasPackage || isExpiredByDate) {
+          creditsHtml = `<span style="color: var(--text-muted); font-weight: 700;">-</span>`;
+        } else {
+          const creditsText = `${client.attended_count} / ${client.total_credits || 0}`;
+          if (isExpiredByCredits) {
+            creditsHtml = `<span style="color: #777; font-weight: 700;">${creditsText} (ISKORIŠTEN)</span>`;
+          } else {
+            creditsHtml = creditsText;
+          }
         }
 
         card.innerHTML = `
