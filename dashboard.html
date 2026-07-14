@@ -1104,7 +1104,20 @@
 
           const totalCredits = data.user.total_credits || 0;
           const usedCredits = totalCredits - userCreditsVal;
-          const expiresFormatted = data.user.package_expires ? formatDate(data.user.package_expires) : "Nema roka isteka";
+
+          const today = new Date();
+          const yyyy = today.getFullYear();
+          const mm = String(today.getMonth() + 1).padStart(2, '0');
+          const dd = String(today.getDate()).padStart(2, '0');
+          const todayStr = `${yyyy}-${mm}-${dd}`;
+
+          const isExpired = data.user.package_expires && data.user.package_expires < todayStr;
+          let expiresFormatted = data.user.package_expires ? formatDate(data.user.package_expires) : "Nema roka isteka";
+          
+          if (isExpired && userPackageVal !== "Nema paketa") {
+            expiresFormatted = `<span style="color: #b22222; font-weight: 800;">${expiresFormatted} (ISTEKAO)</span>`;
+          }
+
           const creditsFormatted = `${usedCredits} / ${totalCredits}`;
 
           const attendedFormatted = `${data.user.attended_count || 0} / ${totalCredits}`;
@@ -1128,7 +1141,7 @@
             attendedEl.style.fontWeight = "700";
           }
 
-          document.getElementById("package-expires").textContent    = expiresFormatted;
+          document.getElementById("package-expires").innerHTML    = expiresFormatted;
 
           // Membership info — mobile
           const mobCreditsDisplayEl = document.getElementById("mobile-credits-display");
@@ -1160,7 +1173,7 @@
             mobAttendedProfilEl.style.fontWeight = "700";
           }
 
-          document.getElementById("mobile-package-expires").textContent    = expiresFormatted;
+          document.getElementById("mobile-package-expires").innerHTML    = expiresFormatted;
 
           // Enable/disable package request buttons based on credits and pending requests
           const reqBtn = document.getElementById("request-package-btn");
