@@ -539,8 +539,8 @@
 
     <script>
       const nav = document.querySelector(".main-nav");
-      const username = sessionStorage.getItem("username");
-      const isAdmin = sessionStorage.getItem("is_admin");
+      const username = localStorage.getItem("username");
+      const isAdmin = localStorage.getItem("is_admin");
     
       if (username) {
         const dest = isAdmin === "1" ? "admin.html" : "dashboard.html";

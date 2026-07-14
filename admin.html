@@ -2177,9 +2177,9 @@
       : "https://agram-backend-test.filip-kontek.workers.dev";
 
     // Auth check
-    const username  = sessionStorage.getItem("username");
-    const isAdmin   = sessionStorage.getItem("is_admin");
-    const authToken = sessionStorage.getItem("auth_token");
+    const username  = localStorage.getItem("username");
+    const isAdmin   = localStorage.getItem("is_admin");
+    const authToken = localStorage.getItem("auth_token");
 
     if (!username || isAdmin !== "1" || !authToken) {
       window.location.href = "prijava.html";
@@ -3220,6 +3220,7 @@
     }
 
     function logout() {
+      localStorage.clear();
       sessionStorage.clear();
       window.location.href = "index.html";
     }

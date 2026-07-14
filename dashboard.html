@@ -940,9 +940,9 @@
       ? "http://localhost:8787"
       : "https://agram-backend-test.filip-kontek.workers.dev";
 
-    const userId    = sessionStorage.getItem("user_id");
-    const username  = sessionStorage.getItem("username");
-    const authToken = sessionStorage.getItem("auth_token");
+    const userId    = localStorage.getItem("user_id");
+    const username  = localStorage.getItem("username");
+    const authToken = localStorage.getItem("auth_token");
 
     // Globalne varijable za raspored
     let allSessionsData = [];
@@ -1823,6 +1823,7 @@
     }
 
     function logout() {
+      localStorage.clear();
       sessionStorage.clear();
       window.location.href = "index.html";
     }
