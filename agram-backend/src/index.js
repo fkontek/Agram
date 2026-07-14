@@ -1383,7 +1383,7 @@ export default {
 
         const userDetails = await env.DB.prepare(`
           SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire, status, full_name, first_name, last_name, phone,
-                 (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 1) as attended_count
+                 (total_credits - remaining_credits - (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 0)) as attended_count
           FROM Clients WHERE id = ?
         `).bind(userId).first();
 
@@ -1674,7 +1674,7 @@ export default {
       if (request.method === "GET" && url.pathname === "/api/admin/clients") {
         const { results } = await env.DB.prepare(`
           SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, questionnaire, status, full_name, first_name, last_name, phone,
-                 (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 1) as attended_count
+                 (total_credits - remaining_credits - (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 0)) as attended_count
           FROM Clients
           WHERE is_admin = 0 AND status IN ('approved', 'frozen')
           ORDER BY COALESCE(full_name, username) ASC
