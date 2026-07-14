@@ -1322,6 +1322,7 @@
             body.style.display = isOpen ? 'none' : 'block';
             header.classList.toggle('open', !isOpen);
           }
+          window.toggleHistoryGroup = toggleHistoryGroup;
 
           // 3. History — desktop (grouped by month)
           const historyEl = document.getElementById("history-list");
