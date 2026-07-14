@@ -535,6 +535,36 @@
       .mobile-history-info { font-size: 1.2rem; color: #2c251e; font-weight: 600; }
       .mobile-history-date { font-size: 1.05rem; color: var(--text-muted); margin-top: 2px; }
 
+      /* ---- History accordion groups ---- */
+      .history-month-group { margin-bottom: 12px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(197,168,128,0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+      .history-month-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #f8f3ea 0%, #f0e8d8 100%);
+        cursor: pointer;
+        user-select: none;
+        border: none;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #3d2c1e;
+        letter-spacing: 0.03em;
+        transition: background 0.2s;
+      }
+      .history-month-header:hover { background: linear-gradient(135deg, #f0e8d8 0%, #e8dcc8 100%); }
+      .history-month-header .month-meta { font-size: 1.0rem; color: var(--text-muted); font-weight: 500; }
+      .history-month-header .month-arrow { font-size: 1.1rem; color: var(--primary-gold-dark); transition: transform 0.25s; }
+      .history-month-header.open .month-arrow { transform: rotate(180deg); }
+      .history-month-body { background: white; }
+      .history-month-body ul { list-style: none; margin: 0; padding: 0 12px 8px; }
+      .history-month-body ul li { padding: 10px 4px; border-bottom: 1px solid rgba(197,168,128,0.1); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .history-month-body ul li:last-child { border-bottom: none; }
+      /* Mobile accordion uses same month-group styles */
+
       /* ---- Day selector ---- */
       .mobile-day-selector {
         display: flex;
@@ -1193,7 +1223,7 @@
               mReqBtn.style.opacity = "0.6";
               mReqBtn.style.cursor = "not-allowed";
               mReqBtn.style.pointerEvents = "none";
-            } else if (userCreditsVal > 0) {
+            } else if (userCreditsVal > 0 && !isExpired) {
               reqBtn.disabled = true;
               reqBtn.textContent = "Zatraži novi paket";
               reqBtn.title = "Nije moguće zatražiti novi paket dok ne iskoristite sve treninge iz postojećeg.";
@@ -1261,45 +1291,110 @@
               </div>`).join('');
           }
 
-          // 3. History — desktop
+          // Helper: Croatian month names
+          const hrMonths = ['Siječanj','Veljača','Ožujak','Travanj','Svibanj','Lipanj','Srpanj','Kolovoz','Rujan','Listopad','Studeni','Prosinac'];
+
+          // Helper: group history items by YYYY-MM
+          function groupHistoryByMonth(items) {
+            const groups = {};
+            items.forEach(item => {
+              const key = item.date.substring(0, 7); // "YYYY-MM"
+              if (!groups[key]) groups[key] = [];
+              groups[key].push(item);
+            });
+            // Return sorted newest first
+            return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+          }
+
+          // Helper: render badge
+          function historyBadge(status) {
+            if (status === 1)  return `<span class="badge badge-present">Odrađeno</span>`;
+            if (status === -1) return `<span class="badge badge-absent">Nedolazak</span>`;
+            return `<span class="badge badge-reserved">Zakazano</span>`;
+          }
+
+          // Helper: toggle accordion
+          function toggleHistoryGroup(headerId) {
+            const header = document.getElementById(headerId);
+            const body   = document.getElementById(headerId + '-body');
+            if (!header || !body) return;
+            const isOpen = body.style.display !== 'none';
+            body.style.display = isOpen ? 'none' : 'block';
+            header.classList.toggle('open', !isOpen);
+          }
+
+          // 3. History — desktop (grouped by month)
           const historyEl = document.getElementById("history-list");
           historyEl.innerHTML = "";
+          historyEl.style.listStyle = "none";
+          historyEl.style.padding   = "0";
           if (data.history.length === 0) {
             historyEl.innerHTML = `<li><span>Nema zabilježenih dolazaka.</span></li>`;
           } else {
-            data.history.forEach(item => {
-              const li = document.createElement("li");
-              let badge = "";
-              if (item.status === 1)       badge = `<span class="badge badge-present">Odrađeno</span>`;
-              else if (item.status === -1) badge = `<span class="badge badge-absent">Nedolazak (Kasno)</span>`;
-              else                         badge = `<span class="badge badge-reserved">Zakazano</span>`;
+            const grouped = groupHistoryByMonth(data.history);
+            grouped.forEach(([monthKey, items], groupIdx) => {
+              const [yr, mo] = monthKey.split('-');
+              const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
+              const headerId = `hist-grp-${monthKey}`;
+              const isFirst = groupIdx === 0;
+              const li = document.createElement('li');
+              li.style.listStyle = 'none';
               li.innerHTML = `
-                <div>
-                  <strong>${item.title}</strong><br>
-                  <span style="font-size:1.2rem; color:var(--text-muted);">${formatCroatianDate(item.date)} u ${item.time}h</span>
-                </div>
-                ${badge}`;
+                <div class="history-month-group">
+                  <button id="${headerId}" class="history-month-header ${isFirst ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
+                    <span>${label}</span>
+                    <span style="display:flex;align-items:center;gap:10px;">
+                      <span class="month-meta">${items.length} dolazak${items.length === 1 ? '' : 'a'}</span>
+                      <span class="month-arrow">▼</span>
+                    </span>
+                  </button>
+                  <div id="${headerId}-body" class="history-month-body" style="display:${isFirst ? 'block' : 'none'}">
+                    <ul>
+                      ${items.map(item => `
+                        <li>
+                          <div>
+                            <strong style="font-size:1.2rem;">${item.title}</strong><br>
+                            <span style="font-size:1.1rem;color:var(--text-muted);">${formatCroatianDate(item.date)} u ${item.time}h</span>
+                          </div>
+                          ${historyBadge(item.status)}
+                        </li>`).join('')}
+                    </ul>
+                  </div>
+                </div>`;
               historyEl.appendChild(li);
             });
           }
 
-          // History — mobile
+          // History — mobile (grouped by month)
           const mHistory = document.getElementById("mobile-history-list");
           if (data.history.length === 0) {
             mHistory.innerHTML = `<div class="mobile-empty">Nema zabilježenih dolazaka.</div>`;
           } else {
-            mHistory.innerHTML = data.history.map(item => {
-              let badge = "";
-              if (item.status === 1)       badge = `<span class="badge badge-present">Odrađeno</span>`;
-              else if (item.status === -1) badge = `<span class="badge badge-absent">Nedolazak</span>`;
-              else                         badge = `<span class="badge badge-reserved">Zakazano</span>`;
+            const grouped = groupHistoryByMonth(data.history);
+            mHistory.innerHTML = grouped.map(([monthKey, items], groupIdx) => {
+              const [yr, mo] = monthKey.split('-');
+              const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
+              const headerId = `m-hist-grp-${monthKey}`;
+              const isFirst = groupIdx === 0;
               return `
-                <div class="mobile-history-item">
-                  <div>
-                    <div class="mobile-history-info">${item.title}</div>
-                    <div class="mobile-history-date">${formatCroatianDate(item.date)} u ${item.time}h</div>
+                <div class="history-month-group" style="margin-bottom:12px;">
+                  <button id="${headerId}" class="history-month-header ${isFirst ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
+                    <span>${label}</span>
+                    <span style="display:flex;align-items:center;gap:10px;">
+                      <span class="month-meta">${items.length} dolazak${items.length === 1 ? '' : 'a'}</span>
+                      <span class="month-arrow">▼</span>
+                    </span>
+                  </button>
+                  <div id="${headerId}-body" class="history-month-body" style="display:${isFirst ? 'block' : 'none'}">
+                    ${items.map(item => `
+                      <div class="mobile-history-item" style="border-radius:0; border-left:none; border-right:none; border-top:none; box-shadow:none; border-bottom:1px solid rgba(197,168,128,0.12);">
+                        <div>
+                          <div class="mobile-history-info">${item.title}</div>
+                          <div class="mobile-history-date">${formatCroatianDate(item.date)} u ${item.time}h</div>
+                        </div>
+                        ${historyBadge(item.status)}
+                      </div>`).join('')}
                   </div>
-                  ${badge}
                 </div>`;
             }).join('');
           }
