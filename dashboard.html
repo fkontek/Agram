@@ -1248,53 +1248,101 @@
           // Store booked dates (only active ones where status is 0)
           userBookedDates = (data.upcoming || []).filter(b => b.status === 0).map(b => b.date);
 
-          // 2. Upcoming bookings — desktop
-          const upcomingEl = document.getElementById("upcoming-list");
-          upcomingEl.innerHTML = "";
-          if (data.upcoming.length === 0) {
-            upcomingEl.innerHTML = `<li><span>Nemate zakazanih termina.</span></li>`;
-          } else {
-            data.upcoming.forEach(booking => {
-              const li = document.createElement("li");
-              li.innerHTML = `
-                <div>
-                  <strong>${booking.title}</strong> (${booking.type})<br>
-                  <span style="font-size:1.2rem; color:var(--text-muted);">${formatCroatianDate(booking.date)} u ${booking.time}h</span>
-                </div>
-                <button class="btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>`;
-              upcomingEl.appendChild(li);
+           // Helper: group items by YYYY-MM
+          function groupItemsByMonth(items, desc = false) {
+            const groups = {};
+            (items || []).forEach(item => {
+              const key = item.date.substring(0, 7);
+              if (!groups[key]) groups[key] = [];
+              groups[key].push(item);
             });
-          }
-
-          // Upcoming bookings — mobile
-          const mUpcoming = document.getElementById("mobile-upcoming-list");
-          if (data.upcoming.length === 0) {
-            mUpcoming.innerHTML = `<div class="mobile-empty">Nemate zakazanih termina.</div>`;
-          } else {
-            mUpcoming.innerHTML = data.upcoming.map(booking => `
-              <div class="mobile-upcoming-item">
-                <div>
-                  <div class="mobile-upcoming-info">${booking.title}</div>
-                  <div class="mobile-upcoming-type">${booking.type}</div>
-                  <div class="mobile-upcoming-date">${formatCroatianDate(booking.date)} u ${booking.time}h</div>
-                </div>
-                <button class="mobile-btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
-              </div>`).join('');
+            return Object.entries(groups).sort((a, b) => {
+              return desc ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0]);
+            });
           }
 
           // Helper: Croatian month names
           const hrMonths = ['Siječanj','Veljača','Ožujak','Travanj','Svibanj','Lipanj','Srpanj','Kolovoz','Rujan','Listopad','Studeni','Prosinac'];
 
-          // Helper: group history items by YYYY-MM
-          function groupHistoryByMonth(items) {
-            const groups = {};
-            items.forEach(item => {
-              const key = item.date.substring(0, 7); // "YYYY-MM"
-              if (!groups[key]) groups[key] = [];
-              groups[key].push(item);
+          // 2. Upcoming bookings — desktop (grouped by month)
+          const upcomingEl = document.getElementById("upcoming-list");
+          upcomingEl.innerHTML = "";
+          upcomingEl.style.listStyle = "none";
+          upcomingEl.style.padding   = "0";
+          if (data.upcoming.length === 0) {
+            upcomingEl.innerHTML = `<li><span>Nemate zakazanih termina.</span></li>`;
+          } else {
+            const grouped = groupItemsByMonth(data.upcoming, false);
+            grouped.forEach(([monthKey, items], groupIdx) => {
+              const [yr, mo] = monthKey.split('-');
+              const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
+              const headerId = `up-grp-${monthKey}`;
+              const isFirst = groupIdx === 0;
+              const li = document.createElement('li');
+              li.style.listStyle = 'none';
+              li.style.display = 'block';
+              li.style.width = '100%';
+              li.style.padding = '0';
+              li.style.borderBottom = 'none';
+              li.innerHTML = `
+                <div class="history-month-group">
+                  <button id="${headerId}" class="history-month-header ${isFirst ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
+                    <span>${label}</span>
+                    <span style="display:flex;align-items:center;gap:10px;">
+                      <span class="month-meta">${items.length} termin${items.length === 1 ? '' : 'a'}</span>
+                      <span class="month-arrow">▼</span>
+                    </span>
+                  </button>
+                  <div id="${headerId}-body" class="history-month-body" style="display:${isFirst ? 'block' : 'none'}">
+                    <ul>
+                      ${items.map(booking => `
+                        <li>
+                          <div>
+                            <strong style="font-size:1.2rem;">${booking.title}</strong> (${booking.type})<br>
+                            <span style="font-size:1.1rem;color:var(--text-muted);">${formatCroatianDate(booking.date)} u ${booking.time}h</span>
+                          </div>
+                          <button class="btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
+                        </li>`).join('')}
+                    </ul>
+                  </div>
+                </div>`;
+              upcomingEl.appendChild(li);
             });
-            // Return sorted newest first
-            return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+          }
+
+          // Upcoming bookings — mobile (grouped by month)
+          const mUpcoming = document.getElementById("mobile-upcoming-list");
+          if (data.upcoming.length === 0) {
+            mUpcoming.innerHTML = `<div class="mobile-empty">Nemate zakazanih termina.</div>`;
+          } else {
+            const grouped = groupItemsByMonth(data.upcoming, false);
+            mUpcoming.innerHTML = grouped.map(([monthKey, items], groupIdx) => {
+              const [yr, mo] = monthKey.split('-');
+              const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
+              const headerId = `m-up-grp-${monthKey}`;
+              const isFirst = groupIdx === 0;
+              return `
+                <div class="history-month-group" style="margin-bottom:12px;">
+                  <button id="${headerId}" class="history-month-header ${isFirst ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
+                    <span>${label}</span>
+                    <span style="display:flex;align-items:center;gap:10px;">
+                      <span class="month-meta">${items.length} termin${items.length === 1 ? '' : 'a'}</span>
+                      <span class="month-arrow">▼</span>
+                    </span>
+                  </button>
+                  <div id="${headerId}-body" class="history-month-body" style="display:${isFirst ? 'block' : 'none'}">
+                    ${items.map(booking => `
+                      <div class="mobile-upcoming-item" style="border-radius:0; border-left:none; border-right:none; border-top:none; box-shadow:none; border-bottom:1px solid rgba(197,168,128,0.12); margin-bottom:0;">
+                        <div>
+                          <div class="mobile-upcoming-info">${booking.title}</div>
+                          <div class="mobile-upcoming-type">${booking.type}</div>
+                          <div class="mobile-upcoming-date">${formatCroatianDate(booking.date)} u ${booking.time}h</div>
+                        </div>
+                        <button class="mobile-btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
+                      </div>`).join('')}
+                  </div>
+                </div>`;
+            }).join('');
           }
 
           // Helper: render badge
@@ -1324,7 +1372,7 @@
           if (data.history.length === 0) {
             historyEl.innerHTML = `<li><span>Nema zabilježenih dolazaka.</span></li>`;
           } else {
-            const grouped = groupHistoryByMonth(data.history);
+            const grouped = groupItemsByMonth(data.history, true);
             grouped.forEach(([monthKey, items], groupIdx) => {
               const [yr, mo] = monthKey.split('-');
               const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
@@ -1367,7 +1415,7 @@
           if (data.history.length === 0) {
             mHistory.innerHTML = `<div class="mobile-empty">Nema zabilježenih dolazaka.</div>`;
           } else {
-            const grouped = groupHistoryByMonth(data.history);
+            const grouped = groupItemsByMonth(data.history, true);
             mHistory.innerHTML = grouped.map(([monthKey, items], groupIdx) => {
               const [yr, mo] = monthKey.split('-');
               const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
