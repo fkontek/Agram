@@ -1149,20 +1149,16 @@
             expiresFormatted = `<span style="color: #b22222; font-weight: 800;">${expiresFormatted} (ISTEKAO)</span>`;
           }
 
-          const upcomingCount = (data.upcoming || []).length;
+          const todayBookingsInHistory = (data.history || []).filter(item => item.date === todayStr && item.status === 1).length;
+          const upcomingCount = (data.upcoming || []).length + todayBookingsInHistory;
           const reservedFormatted = `${upcomingCount} / ${totalCredits}`;
           const attendedFormatted = `${data.user.attended_count || 0} / ${totalCredits}`;
 
           document.getElementById("package-name").textContent      = userPackageVal;
           const remainingEl = document.getElementById("remaining-credits");
           remainingEl.textContent  = reservedFormatted;
-          if (userCreditsVal === 0) {
-            remainingEl.style.color = "#b22222";
-            remainingEl.style.fontWeight = "800";
-          } else {
-            remainingEl.style.color = "var(--primary-gold-dark)";
-            remainingEl.style.fontWeight = "700";
-          }
+          remainingEl.style.color = "var(--primary-gold-dark)";
+          remainingEl.style.fontWeight = "700";
 
           const attendedEl = document.getElementById("attended-credits");
           if (attendedEl) {
@@ -1188,13 +1184,8 @@
           
           const mobCreditsProfilEl = document.getElementById("mobile-credits-profil");
           mobCreditsProfilEl.textContent = reservedFormatted;
-          if (userCreditsVal === 0) {
-            mobCreditsProfilEl.style.color = "#b22222";
-            mobCreditsProfilEl.style.fontWeight = "800";
-          } else {
-            mobCreditsProfilEl.style.color = "var(--primary-gold)";
-            mobCreditsProfilEl.style.fontWeight = "700";
-          }
+          mobCreditsProfilEl.style.color = "var(--primary-gold)";
+          mobCreditsProfilEl.style.fontWeight = "700";
 
           const mobAttendedProfilEl = document.getElementById("mobile-attended-profil");
           if (mobAttendedProfilEl) {
