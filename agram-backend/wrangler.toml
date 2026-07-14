@@ -4,26 +4,13 @@ compatibility_date = "2024-04-18"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "agram-auth"
-database_id = "d6f3326b-950c-4789-91f6-428b316b9f95"
+database_name = "agram-auth-test"
+database_id = "16e4301d-2852-4eee-ad79-3ceb122787d0"
 
 [vars]
 EMAIL_SANDBOX_MODE = "false"
 EMAIL_REDIRECT_TO = "filip.kontek@gmail.com"
 EMAIL_FROM_ADDRESS = "Agram Pilates <info@pilates-reformer-agram.com>"
-
-[env.test]
-name = "agram-backend-test"
-
-[env.test.vars]
-EMAIL_SANDBOX_MODE = "false"
-EMAIL_REDIRECT_TO = "filip.kontek@gmail.com"
-EMAIL_FROM_ADDRESS = "Agram Pilates <info@pilates-reformer-agram.com>"
-
-[[env.test.d1_databases]]
-binding = "DB"
-database_name = "agram-auth-test"
-database_id = "16e4301d-2852-4eee-ad79-3ceb122787d0"
 
 [triggers]
 crons = ["0 */12 * * *", "15 20,21 * * 5"]
