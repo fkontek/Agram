@@ -252,6 +252,32 @@
       font-size: 1.25rem;
     }
 
+    #clients-table th.sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    #clients-table th.sortable:hover {
+      background-color: rgba(197, 168, 128, 0.35);
+    }
+
+    #clients-table th.sortable.active-sort {
+      color: var(--primary-gold-dark, #8b6b3e);
+      font-weight: 700;
+    }
+
+    .sort-icon {
+      display: inline-block;
+      margin-left: 4px;
+      font-size: 0.9em;
+      opacity: 0.5;
+    }
+
+    #clients-table th.sortable.active-sort .sort-icon {
+      opacity: 1;
+    }
+
     #clients-table button.btn-action {
       padding: 4px 10px;
       font-size: 1.05rem;
@@ -1484,10 +1510,18 @@
         <table id="clients-table">
           <thead>
             <tr>
-              <th style="text-align: left;">Klijent</th>
-              <th style="text-align: left;">Paket</th>
-              <th style="text-align: center;">Istječe</th>
-              <th style="text-align: center;">Odrađeno dolazaka</th>
+              <th id="th-sort-name" class="sortable" onclick="handleClientSort('name')" style="text-align: left;">
+                Klijent <span id="sort-icon-name" class="sort-icon">&#8597;</span>
+              </th>
+              <th id="th-sort-package" class="sortable" onclick="handleClientSort('package')" style="text-align: left;">
+                Paket <span id="sort-icon-package" class="sort-icon">&#8597;</span>
+              </th>
+              <th id="th-sort-expires" class="sortable" onclick="handleClientSort('expires')" style="text-align: center;">
+                Istječe <span id="sort-icon-expires" class="sort-icon">&#8597;</span>
+              </th>
+              <th id="th-sort-attended" class="sortable" onclick="handleClientSort('attended')" style="text-align: center;">
+                Odrađeno dolazaka <span id="sort-icon-attended" class="sort-icon">&#8597;</span>
+              </th>
               <th style="text-align: center;">Akcije</th>
             </tr>
           </thead>
@@ -2195,6 +2229,8 @@
     // Globalne varijable za prikaz klijenata
     let allClientsMobile = [];
     let allClientsDesktop = [];
+    let currentSortColumn = null;
+    let currentSortDirection = 'asc';
 
     // Set today as default date on inputs
     window.addEventListener("DOMContentLoaded", () => {
@@ -2740,7 +2776,7 @@
         if (res.ok && data.success) {
           allClientsDesktop = data.clients || [];
           allClientsMobile = data.clients || [];
-          renderDesktopClients(allClientsDesktop);
+          filterClientsTable();
           renderMobileClients(allClientsMobile);
         }
       } catch (err) {
@@ -3002,20 +3038,88 @@
       }
     }
 
+    // Sorting & Filtering clients on desktop table
+    function handleClientSort(columnKey) {
+      if (currentSortColumn === columnKey) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSortColumn = columnKey;
+        currentSortDirection = 'asc';
+      }
+      updateSortHeaderIcons();
+      filterClientsTable();
+    }
+
+    function updateSortHeaderIcons() {
+      const columns = ['name', 'package', 'expires', 'attended'];
+      columns.forEach(col => {
+        const th = document.getElementById(`th-sort-${col}`);
+        const icon = document.getElementById(`sort-icon-${col}`);
+        if (!th || !icon) return;
+
+        if (currentSortColumn === col) {
+          th.classList.add("active-sort");
+          icon.innerHTML = currentSortDirection === 'asc' ? '&#9650;' : '&#9660;';
+        } else {
+          th.classList.remove("active-sort");
+          icon.innerHTML = '&#8597;';
+        }
+      });
+    }
+
+    function getSortedClients(clientsList) {
+      if (!currentSortColumn || !clientsList || clientsList.length === 0) {
+        return clientsList;
+      }
+
+      return [...clientsList].sort((a, b) => {
+        let res = 0;
+        if (currentSortColumn === 'name') {
+          const nameA = (a.full_name || a.username || '').trim();
+          const nameB = (b.full_name || b.username || '').trim();
+          res = nameA.localeCompare(nameB, 'hr', { sensitivity: 'base' });
+        } else if (currentSortColumn === 'package') {
+          const pkgA = (a.package_name || '').trim();
+          const pkgB = (b.package_name || '').trim();
+          const noPkgA = !pkgA || pkgA === "Nema paketa" || pkgA === "Nema aktivnog paketa";
+          const noPkgB = !pkgB || pkgB === "Nema paketa" || pkgB === "Nema aktivnog paketa";
+          if (noPkgA && !noPkgB) return 1;
+          if (!noPkgA && noPkgB) return -1;
+          res = pkgA.localeCompare(pkgB, 'hr', { sensitivity: 'base' });
+        } else if (currentSortColumn === 'expires') {
+          const expA = a.package_expires || '';
+          const expB = b.package_expires || '';
+          if (!expA && expB) return 1;
+          if (expA && !expB) return -1;
+          res = expA.localeCompare(expB);
+        } else if (currentSortColumn === 'attended') {
+          const attA = a.attended_count || 0;
+          const attB = b.attended_count || 0;
+          res = attA - attB;
+          if (res === 0) {
+            const totA = a.total_credits || 0;
+            const totB = b.total_credits || 0;
+            res = totA - totB;
+          }
+        }
+        return currentSortDirection === 'asc' ? res : -res;
+      });
+    }
+
     // Filter/Search clients on desktop table
     function filterClientsTable() {
-      const query = document.getElementById("client-search-input").value.toLowerCase().trim();
-      if (!query) {
-        renderDesktopClients(allClientsDesktop);
-        return;
+      const searchInput = document.getElementById("client-search-input");
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+      let list = allClientsDesktop || [];
+      if (query) {
+        list = list.filter(c =>
+          (c.full_name && c.full_name.toLowerCase().includes(query)) ||
+          c.username.toLowerCase().includes(query) ||
+          c.email.toLowerCase().includes(query) ||
+          (c.package_name && c.package_name.toLowerCase().includes(query))
+        );
       }
-      const filtered = allClientsDesktop.filter(c =>
-        (c.full_name && c.full_name.toLowerCase().includes(query)) ||
-        c.username.toLowerCase().includes(query) ||
-        c.email.toLowerCase().includes(query) ||
-        (c.package_name && c.package_name.toLowerCase().includes(query))
-      );
-      renderDesktopClients(filtered);
+      renderDesktopClients(getSortedClients(list));
     }
 
     // Filter/Search clients on mobile
