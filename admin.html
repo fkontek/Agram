@@ -3044,7 +3044,8 @@
         currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
       } else {
         currentSortColumn = columnKey;
-        currentSortDirection = 'asc';
+        // Default to 'desc' for 'attended' so active packages with highest attended count (e.g. 5/8) appear first
+        currentSortDirection = columnKey === 'attended' ? 'desc' : 'asc';
       }
       updateSortHeaderIcons();
       filterClientsTable();
@@ -3072,12 +3073,25 @@
         return clientsList;
       }
 
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+
+      function isCreditActive(c) {
+        const hasPkg = c.package_name && c.package_name !== "Nema paketa" && c.package_name !== "Nema aktivnog paketa";
+        const isExpired = hasPkg && c.package_expires && c.package_expires < todayStr;
+        return hasPkg && !isExpired;
+      }
+
       return [...clientsList].sort((a, b) => {
-        let res = 0;
         if (currentSortColumn === 'name') {
           const nameA = (a.full_name || a.username || '').trim();
           const nameB = (b.full_name || b.username || '').trim();
-          res = nameA.localeCompare(nameB, 'hr', { sensitivity: 'base' });
+          const res = nameA.localeCompare(nameB, 'hr', { sensitivity: 'base' });
+          return currentSortDirection === 'asc' ? res : -res;
+
         } else if (currentSortColumn === 'package') {
           const pkgA = (a.package_name || '').trim();
           const pkgB = (b.package_name || '').trim();
@@ -3085,24 +3099,43 @@
           const noPkgB = !pkgB || pkgB === "Nema paketa" || pkgB === "Nema aktivnog paketa";
           if (noPkgA && !noPkgB) return 1;
           if (!noPkgA && noPkgB) return -1;
-          res = pkgA.localeCompare(pkgB, 'hr', { sensitivity: 'base' });
+          const res = pkgA.localeCompare(pkgB, 'hr', { sensitivity: 'base' });
+          return currentSortDirection === 'asc' ? res : -res;
+
         } else if (currentSortColumn === 'expires') {
           const expA = a.package_expires || '';
           const expB = b.package_expires || '';
           if (!expA && expB) return 1;
           if (expA && !expB) return -1;
-          res = expA.localeCompare(expB);
+          const res = expA.localeCompare(expB);
+          return currentSortDirection === 'asc' ? res : -res;
+
         } else if (currentSortColumn === 'attended') {
+          const activeA = isCreditActive(a);
+          const activeB = isCreditActive(b);
+
+          // Clients without active package credits (showing "-") always stay at the bottom
+          if (!activeA && activeB) return 1;
+          if (activeA && !activeB) return -1;
+          if (!activeA && !activeB) {
+            const nameA = (a.full_name || a.username || '').trim();
+            const nameB = (b.full_name || b.username || '').trim();
+            return nameA.localeCompare(nameB, 'hr', { sensitivity: 'base' });
+          }
+
+          // Both have active package numbers (e.g. 5/8, 1/8)
           const attA = a.attended_count || 0;
           const attB = b.attended_count || 0;
-          res = attA - attB;
+          let res = attA - attB;
           if (res === 0) {
             const totA = a.total_credits || 0;
             const totB = b.total_credits || 0;
             res = totA - totB;
           }
+          return currentSortDirection === 'asc' ? res : -res;
         }
-        return currentSortDirection === 'asc' ? res : -res;
+
+        return 0;
       });
     }
 
