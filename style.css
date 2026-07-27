@@ -580,22 +580,27 @@ p {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
   font-size: 1.4rem;
   text-align: center;
+  background-color: var(--card-bg);
+  border: 1px solid rgba(197, 168, 128, 0.15);
 }
 
 .schedule th,
 .schedule td {
-  padding: 14px;
+  padding: 15px 18px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .schedule th {
-  background-color: var(--primary-gold-light);
-  color: var(--text-dark);
-  font-weight: 600;
+  background-color: var(--primary-gold);
+  color: #ffffff;
+  font-weight: 700;
   text-transform: uppercase;
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   letter-spacing: 1px;
 }
 
@@ -612,7 +617,7 @@ p {
 }
 
 .schedule tr:nth-child(even) {
-  background-color: rgba(222, 203, 165, 0.25);
+  background-color: rgba(222, 203, 165, 0.2);
 }
 
 .schedule tr:hover {
@@ -622,7 +627,8 @@ p {
 
 .schedule td {
   color: var(--text-dark);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 1.35rem;
 }
 
 /* Prices section (Cjenik) */
@@ -653,7 +659,7 @@ p {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-md);
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   background-color: var(--card-bg);
   border: 1px solid rgba(197, 168, 128, 0.15);
 }
@@ -661,17 +667,20 @@ p {
 .price-table th,
 .price-table td {
   text-align: center;
-  padding: 16px 20px;
+  padding: 15px 18px;
   border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+  font-size: 1.35rem;
+  color: var(--text-dark);
 }
 
 .price-table thead th {
   background-color: var(--primary-gold);
-  color: var(--text-light);
-  font-weight: 600;
+  color: #ffffff;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   border-bottom: none;
 }
 
@@ -685,7 +694,7 @@ p {
 }
 
 .price-table td:first-child {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-dark);
 }
 
@@ -695,7 +704,7 @@ p {
   font-weight: 700;
   text-align: left;
   padding: 12px 20px;
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   border-bottom: 1px solid rgba(197, 168, 128, 0.25);
@@ -708,7 +717,7 @@ p {
 .price-highlight {
   font-weight: 700;
   color: var(--primary-gold-dark);
-  font-size: 1.6rem;
+  font-size: 1.45rem;
 }
 
 /* Price Note Overlay */
@@ -1158,7 +1167,7 @@ p {
 #footer {
   background: linear-gradient(to bottom, var(--light-bg) 0%, #d8cfc4 100%);
   border-top: 1px solid var(--border-color);
-  padding: 40px 0 20px 0;
+  padding: 20px 0 15px 0;
 }
 
 #footer .footer {
@@ -1179,16 +1188,16 @@ p {
   text-align: center;
   color: var(--text-muted);
   font-weight: 500;
-  font-size: 1.6rem;
-  letter-spacing: 0.1rem;
-  margin-top: 15px;
-  margin-bottom: 25px;
+  font-size: 1.4rem;
+  letter-spacing: 0.05rem;
+  margin-top: 6px;
+  margin-bottom: 14px;
 }
 
 #footer .social-icon {
   display: flex;
   gap: 15px;
-  margin-bottom: 30px;
+  margin-bottom: 14px;
 }
 
 #footer .social-item {
@@ -1232,8 +1241,8 @@ p {
 
 #footer p {
   color: var(--text-muted);
-  font-size: 1.2rem;
-  margin-top: 20px;
+  font-size: 1.15rem;
+  margin-top: 8px;
   text-align: center;
 }
 
@@ -1621,7 +1630,7 @@ p {
 #instagram-feed {
   background: var(--light-bg);
   border-top: 1px solid var(--border-color);
-  padding: 60px 0;
+  padding: 25px 0 15px 0;
 }
 
 #instagram-feed .instagram-feed {
@@ -1636,9 +1645,9 @@ p {
 
 #instagram-feed .instagram-handle {
   text-align: center;
-  font-size: 1.6rem;
-  margin-top: -5px;
-  margin-bottom: 30px;
+  font-size: 1.5rem;
+  margin-top: 2px;
+  margin-bottom: 15px;
   font-weight: 600;
 }
 
