@@ -1568,7 +1568,12 @@ export default {
         if (!authUser) {
           return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
         }
-        await env.DB.prepare("UPDATE Clients SET has_seen_onboarding = 1 WHERE id = ?").bind(authUser.user_id).run();
+        try {
+          await env.DB.prepare("UPDATE Clients SET has_seen_onboarding = 1 WHERE id = ? OR username = ?")
+            .bind(authUser.user_id, authUser.username || "").run();
+        } catch (err) {
+          console.error("DB update has_seen_onboarding error:", err);
+        }
         return jsonResponse({ success: true, message: "Vodič je označen kao pregledan." });
       }
 

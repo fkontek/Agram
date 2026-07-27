@@ -1106,9 +1106,12 @@
             document.getElementById("questionnaire-modal").style.display = "none";
             document.body.style.overflow = "auto";
 
-            // Automatski pokreni vodič samo ako korisnik još nije vidio Onboarding Tour I ako nije već zatvoren u ovoj sesiji
-            const tourDismissedInSession = sessionStorage.getItem("agram_tour_dismissed") === "true";
-            if ((!data.user.has_seen_onboarding || data.user.has_seen_onboarding === 0) && !hasShownOnboardingTour && !tourDismissedInSession && typeof startOnboardingTour === "function") {
+            // Automatski pokreni vodič samo ako korisnik još nije vidio Onboarding Tour I ako nije već zabilježen u bazi ili localStorage-u
+            const currentUser = (data.user && data.user.username) || username || "user";
+            const isTourDoneLocally = localStorage.getItem("agram_tour_done_" + currentUser) === "1";
+            const hasSeenOnboardingInDB = data.user.has_seen_onboarding === 1 || data.user.has_seen_onboarding === "1";
+
+            if (!hasSeenOnboardingInDB && !isTourDoneLocally && !hasShownOnboardingTour && typeof startOnboardingTour === "function") {
               startOnboardingTour(false);
             }
           }
@@ -2374,14 +2377,32 @@
     let isExplicitReplay = false;
     let hasShownOnboardingTour = false;
 
+    function markTourDoneForUser() {
+      hasShownOnboardingTour = true;
+      const activeUser = username || localStorage.getItem("username") || "user";
+      try {
+        localStorage.setItem("agram_tour_done_" + activeUser, "1");
+        sessionStorage.setItem("agram_tour_dismissed", "true");
+      } catch (e) {}
+      fetch(`${API_BASE}/api/client/onboarding-completed`, {
+        method: "POST",
+        headers: authHeaders()
+      }).catch(err => console.error("Onboarding completion save error:", err));
+    }
+
     function startOnboardingTour(isReplay = false) {
+      const activeUser = username || localStorage.getItem("username") || "user";
+      const isTourDoneLocally = localStorage.getItem("agram_tour_done_" + activeUser) === "1";
+
       if (!isReplay) {
-        if (hasShownOnboardingTour || sessionStorage.getItem("agram_tour_dismissed") === "true") {
+        if (hasShownOnboardingTour || isTourDoneLocally || sessionStorage.getItem("agram_tour_dismissed") === "true") {
           return;
         }
       }
+
       isExplicitReplay = isReplay;
-      hasShownOnboardingTour = true;
+      markTourDoneForUser();
+
       currentOnboardingStep = 0;
       renderOnboardingStep();
       const modal = document.getElementById("onboarding-tour-modal");
@@ -2443,33 +2464,14 @@
 
     async function finishOnboardingTour() {
       closeOnboardingTourModal();
-      try {
-        await fetch(`${API_BASE}/api/client/onboarding-completed`, {
-          method: "POST",
-          headers: authHeaders()
-        });
-      } catch (err) {
-        console.error("Onboarding completion save error:", err);
-      }
     }
 
     async function skipOnboardingTour() {
       closeOnboardingTourModal();
-      try {
-        await fetch(`${API_BASE}/api/client/onboarding-completed`, {
-          method: "POST",
-          headers: authHeaders()
-        });
-      } catch (err) {
-        console.error("Onboarding skip save error:", err);
-      }
     }
 
     function closeOnboardingTourModal() {
-      hasShownOnboardingTour = true;
-      try {
-        sessionStorage.setItem("agram_tour_dismissed", "true");
-      } catch (e) {}
+      markTourDoneForUser();
       const modal = document.getElementById("onboarding-tour-modal");
       if (modal) {
         modal.style.display = "none";
