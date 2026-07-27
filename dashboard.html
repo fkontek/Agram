@@ -990,6 +990,13 @@
     const authToken = localStorage.getItem("auth_token");
 
     // Globalne varijable za raspored
+    const userAccordionState = {};
+    function isGroupOpen(headerId, groupIdx) {
+      if (userAccordionState[headerId] !== undefined) {
+        return userAccordionState[headerId];
+      }
+      return groupIdx === 0;
+    }
     let allSessionsData = [];
     let selectedDateVal = "";
     let userCreditsVal  = 0;
@@ -1296,7 +1303,7 @@
               const [yr, mo] = monthKey.split('-');
               const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
               const headerId = `up-grp-${monthKey}`;
-              const isFirst = groupIdx === 0;
+              const isOpen = isGroupOpen(headerId, groupIdx);
               const li = document.createElement('li');
               li.style.listStyle = 'none';
               li.style.display = 'block';
@@ -1305,14 +1312,14 @@
               li.style.borderBottom = 'none';
               li.innerHTML = `
                 <div class="history-month-group">
-                  <button id="${headerId}" class="history-month-header ${isFirst ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
+                  <button id="${headerId}" class="history-month-header ${isOpen ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
                     <span>${label}</span>
                     <span style="display:flex;align-items:center;gap:10px;">
                       <span class="month-meta">${items.length} termin${items.length === 1 ? '' : 'a'}</span>
                       <span class="month-arrow">▼</span>
                     </span>
                   </button>
-                  <div id="${headerId}-body" class="history-month-body" style="display:${isFirst ? 'block' : 'none'}">
+                  <div id="${headerId}-body" class="history-month-body" style="display:${isOpen ? 'block' : 'none'}">
                     <ul>
                       ${items.map(booking => `
                         <li>
@@ -1339,17 +1346,17 @@
               const [yr, mo] = monthKey.split('-');
               const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
               const headerId = `m-up-grp-${monthKey}`;
-              const isFirst = groupIdx === 0;
+              const isOpen = isGroupOpen(headerId, groupIdx);
               return `
                 <div class="history-month-group" style="margin-bottom:12px;">
-                  <button id="${headerId}" class="history-month-header ${isFirst ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
+                  <button id="${headerId}" class="history-month-header ${isOpen ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
                     <span>${label}</span>
                     <span style="display:flex;align-items:center;gap:10px;">
                       <span class="month-meta">${items.length} termin${items.length === 1 ? '' : 'a'}</span>
                       <span class="month-arrow">▼</span>
                     </span>
                   </button>
-                  <div id="${headerId}-body" class="history-month-body" style="display:${isFirst ? 'block' : 'none'}">
+                  <div id="${headerId}-body" class="history-month-body" style="display:${isOpen ? 'block' : 'none'}">
                     ${items.map(booking => `
                       <div class="mobile-upcoming-item" style="border-radius:0; border-left:none; border-right:none; border-top:none; box-shadow:none; border-bottom:1px solid rgba(197,168,128,0.12); margin-bottom:0;">
                         <div>
@@ -1378,8 +1385,10 @@
             if (!header || !body) return;
             const currentDisplay = body.style.display || window.getComputedStyle(body).display;
             const isOpen = currentDisplay !== 'none';
-            body.style.display = isOpen ? 'none' : 'block';
-            header.classList.toggle('open', !isOpen);
+            const newOpen = !isOpen;
+            body.style.display = newOpen ? 'block' : 'none';
+            header.classList.toggle('open', newOpen);
+            userAccordionState[headerId] = newOpen;
           }
           window.toggleHistoryGroup = toggleHistoryGroup;
 
@@ -1396,7 +1405,7 @@
               const [yr, mo] = monthKey.split('-');
               const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
               const headerId = `hist-grp-${monthKey}`;
-              const isFirst = groupIdx === 0;
+              const isOpen = isGroupOpen(headerId, groupIdx);
               const li = document.createElement('li');
               li.style.listStyle = 'none';
               li.style.display = 'block';
@@ -1405,14 +1414,14 @@
               li.style.borderBottom = 'none';
               li.innerHTML = `
                 <div class="history-month-group">
-                  <button id="${headerId}" class="history-month-header ${isFirst ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
+                  <button id="${headerId}" class="history-month-header ${isOpen ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
                     <span>${label}</span>
                     <span style="display:flex;align-items:center;gap:10px;">
                       <span class="month-meta">${items.length} dolazak${items.length === 1 ? '' : 'a'}</span>
                       <span class="month-arrow">▼</span>
                     </span>
                   </button>
-                  <div id="${headerId}-body" class="history-month-body" style="display:${isFirst ? 'block' : 'none'}">
+                  <div id="${headerId}-body" class="history-month-body" style="display:${isOpen ? 'block' : 'none'}">
                     <ul>
                       ${items.map(item => `
                         <li>
@@ -1439,17 +1448,17 @@
               const [yr, mo] = monthKey.split('-');
               const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
               const headerId = `m-hist-grp-${monthKey}`;
-              const isFirst = groupIdx === 0;
+              const isOpen = isGroupOpen(headerId, groupIdx);
               return `
                 <div class="history-month-group" style="margin-bottom:12px;">
-                  <button id="${headerId}" class="history-month-header ${isFirst ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
+                  <button id="${headerId}" class="history-month-header ${isOpen ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
                     <span>${label}</span>
                     <span style="display:flex;align-items:center;gap:10px;">
                       <span class="month-meta">${items.length} dolazak${items.length === 1 ? '' : 'a'}</span>
                       <span class="month-arrow">▼</span>
                     </span>
                   </button>
-                  <div id="${headerId}-body" class="history-month-body" style="display:${isFirst ? 'block' : 'none'}">
+                  <div id="${headerId}-body" class="history-month-body" style="display:${isOpen ? 'block' : 'none'}">
                     ${items.map(item => `
                       <div class="mobile-history-item" style="border-radius:0; border-left:none; border-right:none; border-top:none; box-shadow:none; border-bottom:1px solid rgba(197,168,128,0.12);">
                         <div>
@@ -2237,37 +2246,37 @@
   </div>
 
   <!-- MODAL ZA ZAHTJEV NOVOG PAKETA -->
-  <div id="request-package-modal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.85); backdrop-filter: blur(5px); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
-    <div class="modal-content" style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--primary-gold); padding: 30px; max-width: 500px; width: 100%; box-shadow: var(--shadow-lg);">
+  <div id="request-package-modal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.85); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 10000; justify-content: center; align-items: center; padding: 15px;">
+    <div class="modal-content" style="background: white; border-radius: var(--radius-lg); border: 1.5px solid var(--primary-gold); padding: 25px 20px; max-width: 480px; width: 95%; max-width: calc(100vw - 30px); box-shadow: var(--shadow-lg); box-sizing: border-box;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-        <h3 style="margin: 0; color: var(--primary-gold-dark); font-size: 1.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Zatraži novi paket</h3>
+        <h3 style="margin: 0; color: var(--primary-gold-dark); font-size: 1.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Zatraži novi paket</h3>
         <button class="close-btn" onclick="closeRequestPackageModal()" style="font-size: 2.4rem; background: none; border: none; cursor: pointer; color: var(--text-muted);">&times;</button>
       </div>
       <form id="request-package-form" onsubmit="submitRequestPackage(event)">
         <div class="form-group" style="margin-bottom: 20px; display: flex; flex-direction: column;">
-          <label for="request-package-select" style="font-size: 1.15rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 8px;">Odaberi paket</label>
-          <select id="request-package-select" required style="width: 100%; padding: 12px; font-size: 1.30rem; border: 1px solid var(--border-color); border-radius: 6px; background: white; font-family: inherit;">
+          <label for="request-package-select" style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; margin-bottom: 8px;">Odaberi paket</label>
+          <select id="request-package-select" required style="width: 100%; max-width: 100%; box-sizing: border-box; padding: 12px 10px; font-size: 1.15rem; border: 1px solid var(--border-color); border-radius: 8px; background: white; font-family: inherit; color: var(--text-dark); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
             <optgroup label="Grupni treninzi">
-              <option value="Grupni 1 trening">Grupni Drop-In (1 trening) - 25 €</option>
-              <option value="Grupni 4 treninga">Grupni Paket 4 (4 treninga) - 80 €</option>
-              <option value="Grupni 8 treninga" selected>Grupni Paket 8 (8 treninga) - 120 €</option>
-              <option value="Grupni 12 treninga">Grupni Paket 12 (12 treninga) - 160 €</option>
+              <option value="Grupni 1 trening">Drop-In (1 trening) – 25 €</option>
+              <option value="Grupni 4 treninga">Paket 4 (4 treninga) – 80 €</option>
+              <option value="Grupni 8 treninga" selected>Paket 8 (8 treninga) – 120 €</option>
+              <option value="Grupni 12 treninga">Paket 12 (12 treninga) – 160 €</option>
             </optgroup>
             <optgroup label="Poluindividualni treninzi">
-              <option value="Poluindividualni 1 trening">Poluindividualni Paket 1 (1 trening) - 35 €</option>
-              <option value="Poluindividualni 4 treninga">Poluindividualni Paket 4 (4 treninga) - 120 €</option>
-              <option value="Poluindividualni 8 treninga">Poluindividualni Paket 8 (8 treninga) - 220 €</option>
-              <option value="Poluindividualni 12 treninga">Poluindividualni Paket 12 (12 treninga) - 300 €</option>
+              <option value="Poluindividualni 1 trening">Paket 1 (1 trening) – 35 €</option>
+              <option value="Poluindividualni 4 treninga">Paket 4 (4 treninga) – 120 €</option>
+              <option value="Poluindividualni 8 treninga">Paket 8 (8 treninga) – 220 €</option>
+              <option value="Poluindividualni 12 treninga">Paket 12 (12 treninga) – 300 €</option>
             </optgroup>
             <optgroup label="Privatni treninzi">
-              <option value="Privatni 1 trening">Privatni Paket 1 (1 trening) - 40 €</option>
-              <option value="Privatni 4 treninga">Privatni Paket 4 (4 treninga) - 150 €</option>
-              <option value="Privatni 8 treninga">Privatni Paket 8 (8 treninga) - 280 €</option>
-              <option value="Privatni 12 treninga">Privatni Paket 12 (12 treninga) - 390 €</option>
+              <option value="Privatni 1 trening">Paket 1 (1 trening) – 40 €</option>
+              <option value="Privatni 4 treninga">Paket 4 (4 treninga) – 150 €</option>
+              <option value="Privatni 8 treninga">Paket 8 (8 treninga) – 280 €</option>
+              <option value="Privatni 12 treninga">Paket 12 (12 treninga) – 390 €</option>
             </optgroup>
           </select>
         </div>
-        <button type="submit" class="btn-book" style="width: 100%; display: flex; justify-content: center; font-size: 1.35rem; padding: 12px; border-radius: 6px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Pošalji zahtjev</button>
+        <button type="submit" class="btn-book" style="width: 100%; display: flex; justify-content: center; font-size: 1.25rem; padding: 12px; border-radius: 8px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Pošalji zahtjev</button>
       </form>
     </div>
   </div>
