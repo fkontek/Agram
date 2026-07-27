@@ -1106,8 +1106,9 @@
             document.getElementById("questionnaire-modal").style.display = "none";
             document.body.style.overflow = "auto";
 
-            // Automatski pokreni vodič ako korisnik još nije vidio Onboarding Tour
-            if ((data.user.has_seen_onboarding === 0 || !data.user.has_seen_onboarding) && typeof startOnboardingTour === "function") {
+            // Automatski pokreni vodič samo ako korisnik još nije vidio Onboarding Tour I ako nije već zatvoren u ovoj sesiji
+            const tourDismissedInSession = sessionStorage.getItem("agram_tour_dismissed") === "true";
+            if ((!data.user.has_seen_onboarding || data.user.has_seen_onboarding === 0) && !hasShownOnboardingTour && !tourDismissedInSession && typeof startOnboardingTour === "function") {
               startOnboardingTour(false);
             }
           }
@@ -2371,9 +2372,16 @@
 
     let currentOnboardingStep = 0;
     let isExplicitReplay = false;
+    let hasShownOnboardingTour = false;
 
     function startOnboardingTour(isReplay = false) {
+      if (!isReplay) {
+        if (hasShownOnboardingTour || sessionStorage.getItem("agram_tour_dismissed") === "true") {
+          return;
+        }
+      }
       isExplicitReplay = isReplay;
+      hasShownOnboardingTour = true;
       currentOnboardingStep = 0;
       renderOnboardingStep();
       const modal = document.getElementById("onboarding-tour-modal");
@@ -2458,6 +2466,10 @@
     }
 
     function closeOnboardingTourModal() {
+      hasShownOnboardingTour = true;
+      try {
+        sessionStorage.setItem("agram_tour_dismissed", "true");
+      } catch (e) {}
       const modal = document.getElementById("onboarding-tour-modal");
       if (modal) {
         modal.style.display = "none";
