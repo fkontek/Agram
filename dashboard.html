@@ -990,10 +990,23 @@
     const authToken = localStorage.getItem("auth_token");
 
     // Globalne varijable za raspored
-    const userAccordionState = {};
+    let userAccordionState = {};
+    try {
+      const savedState = localStorage.getItem("agram_accordion_state");
+      if (savedState) {
+        userAccordionState = JSON.parse(savedState);
+      }
+    } catch (err) {
+      userAccordionState = {};
+    }
+
     function isGroupOpen(headerId, groupIdx) {
       if (userAccordionState[headerId] !== undefined) {
         return userAccordionState[headerId];
+      }
+      const cleanKey = headerId.replace(/^m-/, '');
+      if (userAccordionState[cleanKey] !== undefined) {
+        return userAccordionState[cleanKey];
       }
       return groupIdx === 0;
     }
@@ -1388,7 +1401,16 @@
             const newOpen = !isOpen;
             body.style.display = newOpen ? 'block' : 'none';
             header.classList.toggle('open', newOpen);
+
+            // Spremi stanje za ovaj konkretni headerId kao i za mobilni/desktop par
+            const cleanKey = headerId.replace(/^m-/, '');
+            userAccordionState[cleanKey] = newOpen;
+            userAccordionState['m-' + cleanKey] = newOpen;
             userAccordionState[headerId] = newOpen;
+
+            try {
+              localStorage.setItem("agram_accordion_state", JSON.stringify(userAccordionState));
+            } catch (err) {}
           }
           window.toggleHistoryGroup = toggleHistoryGroup;
 
