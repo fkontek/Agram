@@ -693,9 +693,12 @@ p {
   border-bottom: none;
 }
 
+/* Unificirani font i debljina (thickness) za prve stupce obje tablice (Dan / Paket) */
+.schedule td:first-child,
 .price-table td:first-child {
   font-weight: 700;
   color: var(--text-dark);
+  font-size: 1.35rem;
 }
 
 .price-table tr.category-header td {
