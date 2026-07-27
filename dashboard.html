@@ -749,7 +749,19 @@
     .history-month-body ul { list-style: none; margin: 0; padding: 0 12px 8px; }
     .history-month-body ul li { padding: 10px 4px; border-bottom: 1px solid rgba(197,168,128,0.1); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .history-month-body ul li:last-child { border-bottom: none; }
-    /* Mobile accordion uses same month-group styles */
+    /* ---- Onboarding Tour Modal Styling ---- */
+    .tour-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: rgba(197, 168, 128, 0.3);
+      transition: all 0.3s ease;
+    }
+    .tour-dot.active {
+      width: 24px;
+      border-radius: 10px;
+      background-color: var(--primary-gold-dark, #8b6b3e);
+    }
   </style>
 </head>
 <body>
@@ -797,8 +809,9 @@
           <p>Rezervirano: <strong id="remaining-credits">Učitavanje...</strong></p>
           <p>Odrađeno: <strong id="attended-credits">Učitavanje...</strong></p>
           <p>Članarina vrijedi do: <strong id="package-expires">Učitavanje...</strong></p>
-          <div style="margin-top:20px; text-align:center;">
+          <div style="margin-top:20px; text-align:center; display:flex; flex-direction:column; gap:10px;">
             <button id="request-package-btn" class="btn-book" onclick="openRequestPackageModal()" style="width:100%; padding:10px 14px; font-size:1.25rem;">Zatraži novi paket</button>
+            <button onclick="startOnboardingTour(true)" style="width:100%; padding:8px 12px; font-size:1.05rem; background:transparent; border:1px solid var(--primary-gold-dark); color:var(--text-dark); border-radius:20px; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:600; transition:var(--transition-fast);" onmouseover="this.style.backgroundColor='rgba(197,168,128,0.1)'" onmouseout="this.style.backgroundColor='transparent'">💡 Vodič kroz aplikaciju</button>
           </div>
         </div>
 
@@ -929,8 +942,9 @@
             <span class="m-value" id="mobile-package-expires">—</span>
           </div>
         </div>
-        <div style="margin-top:15px; margin-bottom:20px;">
+        <div style="margin-top:15px; margin-bottom:20px; display:flex; flex-direction:column; gap:10px;">
           <button id="mobile-request-package-btn" class="mobile-btn-book" onclick="openRequestPackageModal()">Zatraži novi paket</button>
+          <button onclick="startOnboardingTour(true)" style="width:100%; padding:10px 14px; font-size:1.15rem; background:rgba(255,255,255,0.05); border:1px solid rgba(197,168,128,0.3); color:var(--primary-gold); border-radius:20px; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:600;">💡 Vodič kroz aplikaciju</button>
         </div>
         <div class="mobile-section-title">Moji zakazani termini</div>
         <div id="mobile-upcoming-list">
@@ -1071,6 +1085,11 @@
           } else {
             document.getElementById("questionnaire-modal").style.display = "none";
             document.body.style.overflow = "auto";
+
+            // Automatski pokreni vodič ako korisnik još nije vidio Onboarding Tour
+            if ((data.user.has_seen_onboarding === 0 || !data.user.has_seen_onboarding) && typeof startOnboardingTour === "function") {
+              startOnboardingTour(false);
+            }
           }
 
           // 0. Notifications — desktop
@@ -2118,6 +2137,9 @@
               alert("Hvala Vam! Upitnik je uspješno spremljen.");
               document.getElementById("questionnaire-modal").style.display = "none";
               document.body.style.overflow = "auto";
+              if (typeof startOnboardingTour === "function") {
+                startOnboardingTour(false);
+              }
               loadDashboardData();
             } else {
               alert(resData.error || "Greška pri spremanju upitnika.");
@@ -2249,6 +2271,169 @@
       </form>
     </div>
   </div>
+
+  <!-- INTERAKTIVNI VODIČ KROZ APLIKACIJU (Onboarding Tour Modal) -->
+  <div id="onboarding-tour-modal" style="display: none; position: fixed; inset: 0; background: rgba(26, 21, 16, 0.88); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 10001; justify-content: center; align-items: center; padding: 20px;">
+    <div class="onboarding-card" style="background: linear-gradient(135deg, #ffffff 0%, #faf6f0 100%); border-radius: 20px; border: 1.5px solid var(--primary-gold); padding: 30px 25px; max-width: 520px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.4); position: relative; animation: fadeIn 0.3s ease-out;">
+      
+      <!-- Progress Bar & Step Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <span id="onboarding-step-badge" style="background: rgba(197, 168, 128, 0.18); color: var(--primary-gold-dark); font-weight: 700; padding: 4px 12px; border-radius: 12px; font-size: 1.05rem;">Korak 1 od 5</span>
+        <button onclick="skipOnboardingTour()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; font-weight: 600;" title="Preskoči vodič">Preskoči ✕</button>
+      </div>
+
+      <!-- Dots Indicator -->
+      <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 25px;" id="onboarding-dots">
+        <span class="tour-dot active"></span>
+        <span class="tour-dot"></span>
+        <span class="tour-dot"></span>
+        <span class="tour-dot"></span>
+        <span class="tour-dot"></span>
+      </div>
+
+      <!-- Step Content Area -->
+      <div id="onboarding-content-area" style="min-height: 180px; text-align: center;">
+        <div id="onboarding-icon" style="font-size: 3.2rem; margin-bottom: 12px;">👋</div>
+        <h2 id="onboarding-title" style="color: var(--primary-gold-dark); font-size: 1.65rem; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Dobrodošli u Agram Reformer!</h2>
+        <p id="onboarding-text" style="font-size: 1.2rem; color: var(--text-dark); line-height: 1.6; margin-bottom: 20px;">
+          Drago nam je što ste s nama! Ovaj kratki vodič objasnit će vam sve ključne funkcije aplikacije kako biste brzo i jednostavno rezervirali svoje termine.
+        </p>
+      </div>
+
+      <!-- Controls Footer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; border-top: 1px solid rgba(197,168,128,0.2); padding-top: 20px;">
+        <button id="onboarding-prev-btn" onclick="prevOnboardingStep()" class="btn-action" style="padding: 8px 18px; font-size: 1.15rem; background: transparent; border: 1.5px solid var(--border-color); color: var(--text-dark); border-radius: 20px; font-weight: 600; cursor: pointer;">Natrag</button>
+        <button id="onboarding-next-btn" onclick="nextOnboardingStep()" class="btn-book" style="padding: 10px 24px; font-size: 1.2rem; min-width: 110px;">Dalje →</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const onboardingSteps = [
+      {
+        icon: "👋",
+        title: "Dobrodošli u Agram Reformer!",
+        text: "Drago nam je što ste s nama! Ovaj kratki vodič objasnit će vam sve ključne funkcije aplikacije kako biste brzo i jednostavno rezervirali svoje termine."
+      },
+      {
+        icon: "📅",
+        title: "Raspored i rezervacije",
+        text: "U dijelu 'Rezerviraj novi termin' možete pregledavati termine po tjednima. Klikom na slobodan termin (Grupni, Poluindividualni ili Privatni) rezervirate mjesto u sekundi."
+      },
+      {
+        icon: "💳",
+        title: "Članarina i treninzi",
+        text: "Na vrhu sučelja u svakom trenutku vidite naziv vašeg paketa, preostale sate i datum isteka članarine. Kada iskoristite treninke, 1 klikom zatražite novi paket."
+      },
+      {
+        icon: "⏱️",
+        title: "Moje rezervacije i otkazivanje",
+        text: "Sve vaše zakazane termine možete vidjeti u listi. Ako ne možete doći na trening, molimo vas da ga otkažete najkasnije 12 sati prije početka kako biste sačuvali svoj termin."
+      },
+      {
+        icon: "👤",
+        title: "Profil i postavke",
+        text: "U bilo kojem trenutku u dijelu profila možete pregledavati svoju povijest dolazaka, i po potrebi ponovno pokrenuti ovaj vodič. Želimo vam ugodan i uspješan trening!"
+      }
+    ];
+
+    let currentOnboardingStep = 0;
+    let isExplicitReplay = false;
+
+    function startOnboardingTour(isReplay = false) {
+      isExplicitReplay = isReplay;
+      currentOnboardingStep = 0;
+      renderOnboardingStep();
+      const modal = document.getElementById("onboarding-tour-modal");
+      if (modal) {
+        modal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+      }
+    }
+
+    function renderOnboardingStep() {
+      const step = onboardingSteps[currentOnboardingStep];
+      if (!step) return;
+
+      document.getElementById("onboarding-icon").textContent = step.icon;
+      document.getElementById("onboarding-title").textContent = step.title;
+      document.getElementById("onboarding-text").textContent = step.text;
+      document.getElementById("onboarding-step-badge").textContent = `Korak ${currentOnboardingStep + 1} od ${onboardingSteps.length}`;
+
+      const prevBtn = document.getElementById("onboarding-prev-btn");
+      const nextBtn = document.getElementById("onboarding-next-btn");
+
+      if (currentOnboardingStep === 0) {
+        prevBtn.style.visibility = "hidden";
+      } else {
+        prevBtn.style.visibility = "visible";
+      }
+
+      if (currentOnboardingStep === onboardingSteps.length - 1) {
+        nextBtn.textContent = "Završi ✨";
+      } else {
+        nextBtn.textContent = "Dalje →";
+      }
+
+      const dots = document.querySelectorAll("#onboarding-dots .tour-dot");
+      dots.forEach((dot, index) => {
+        if (index === currentOnboardingStep) {
+          dot.classList.add("active");
+        } else {
+          dot.classList.remove("active");
+        }
+      });
+    }
+
+    function nextOnboardingStep() {
+      if (currentOnboardingStep < onboardingSteps.length - 1) {
+        currentOnboardingStep++;
+        renderOnboardingStep();
+      } else {
+        finishOnboardingTour();
+      }
+    }
+
+    function prevOnboardingStep() {
+      if (currentOnboardingStep > 0) {
+        currentOnboardingStep--;
+        renderOnboardingStep();
+      }
+    }
+
+    async function finishOnboardingTour() {
+      closeOnboardingTourModal();
+      try {
+        await fetch(`${API_BASE}/api/client/onboarding-completed`, {
+          method: "POST",
+          headers: authHeaders()
+        });
+      } catch (err) {
+        console.error("Onboarding completion save error:", err);
+      }
+    }
+
+    async function skipOnboardingTour() {
+      closeOnboardingTourModal();
+      try {
+        await fetch(`${API_BASE}/api/client/onboarding-completed`, {
+          method: "POST",
+          headers: authHeaders()
+        });
+      } catch (err) {
+        console.error("Onboarding skip save error:", err);
+      }
+    }
+
+    function closeOnboardingTourModal() {
+      const modal = document.getElementById("onboarding-tour-modal");
+      if (modal) {
+        modal.style.display = "none";
+        document.body.style.overflow = "auto";
+      }
+    }
+  </script>
 
   <script>
     if ("serviceWorker" in navigator) {

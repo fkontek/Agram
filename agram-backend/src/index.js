@@ -831,8 +831,8 @@ export default {
         }
 
         const hashedPassword = await hashPassword(password);
-                const user = await env.DB.prepare(
-          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name, first_name, last_name, phone FROM Clients WHERE (username = ? OR email = ?) AND password = ?"
+        const user = await env.DB.prepare(
+          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name, first_name, last_name, phone, COALESCE(has_seen_onboarding, 0) as has_seen_onboarding FROM Clients WHERE (username = ? OR email = ?) AND password = ?"
         ).bind(username, username, hashedPassword).first();
 
         if (!user) {
@@ -1382,7 +1382,7 @@ export default {
         `).bind(userId, todayStr).all();
 
         const userDetails = await env.DB.prepare(`
-          SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire, status, full_name, first_name, last_name, phone,
+          SELECT username, email, package_name, total_credits, remaining_credits, package_expires, must_change_password, questionnaire, status, full_name, first_name, last_name, phone, COALESCE(has_seen_onboarding, 0) as has_seen_onboarding,
                  (total_credits - remaining_credits - (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 0)) as attended_count
           FROM Clients WHERE id = ?
         `).bind(userId).first();
@@ -1562,6 +1562,16 @@ export default {
         return jsonResponse({ success: true, message: "Upitnik uspješno spremljen." });
       }
 
+      // CLIENT: MARK ONBOARDING TOUR AS COMPLETED
+      if (request.method === "POST" && url.pathname === "/api/client/onboarding-completed") {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+        await env.DB.prepare("UPDATE Clients SET has_seen_onboarding = 1 WHERE id = ?").bind(authUser.user_id).run();
+        return jsonResponse({ success: true, message: "Vodič je označen kao pregledan." });
+      }
+
 
       // ADMIN ONLY ENDPOINTS PROTECTION
       if (url.pathname.startsWith("/api/admin/")) {
@@ -1605,19 +1615,24 @@ export default {
         // Slanje maila s privremenom lozinkom
         const emailSubject = "Pilates Reformer Agram - Profil odobren";
         const emailHtml = `
-          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
-            <h2 style="color: #a98e65;">Vaš profil je odobren!</h2>
-            <p>Dobrodošli u Pilates Reformer studio Agram! Vaš zahtjev za registraciju je odobren. Možete se prijaviti sa sljedećim podacima:</p>
-            <table style="border-spacing: 10px;">
-              <tr><td><b>Korisničko ime:</b></td><td>${client.username}</td></tr>
-              <tr><td><b>Privremena lozinka:</b></td><td><code style="background-color: #eee; padding: 3px 6px; border-radius: 3px;">${tempPass}</code></td></tr>
+          <div style="font-family: 'Montserrat', Arial, sans-serif; padding: 25px; color: #2c251e; background-color: #faf8f5; max-width: 600px; border-radius: 12px; border: 1px solid #e0d7c6;">
+            <h2 style="color: #8b6b3e; margin-top: 0;">Vaš profil je odobren! 🎉</h2>
+            <p style="font-size: 1.05rem; line-height: 1.5;">Dobrodošli u <b>Pilates Reformer studio Agram</b>! Vaš zahtjev za registraciju je uspješno odobren. Pristupni podaci:</p>
+            <table style="border-spacing: 10px; background-color: #ffffff; padding: 10px 15px; border-radius: 8px; border: 1px solid #eedfc9; width: 100%;">
+              <tr><td><b>Korisničko ime / Email:</b></td><td>${client.username} (${client.email})</td></tr>
+              <tr><td><b>Privremena lozinka:</b></td><td><code style="background-color: #f2ebd9; color: #6e4e24; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 1.1rem;">${tempPass}</code></td></tr>
             </table>
-            <p style="margin-top: 20px;">
-              Pri prvoj prijavi morat ćete postaviti novu trajnu lozinku i ispuniti kratki zdravstveni upitnik.
-            </p>
-            <p style="margin-top: 30px;">
-              <a href="https://pilates-reformer-agram.com/prijava.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
-                Prijavi se ovdje
+            
+            <h3 style="color: #8b6b3e; margin-top: 25px; margin-bottom: 10px;">Brze upute za prvu prijavu:</h3>
+            <ol style="padding-left: 20px; line-height: 1.7; font-size: 1.05rem;">
+              <li><b>Postavite trajnu lozinku:</b> Prijavite se s gornjim podacima i izaberite svoju tajnu lozinku.</li>
+              <li><b>Ispunite zdravstveni karton:</b> Kratki upitnik za prilagodbu vježbanja vašem zdravstvenom stanju.</li>
+              <li><b>Prođite brzi vodič:</b> Automatski vođeni vodič kroz aplikaciju pomoći će vam s prvom rezervacijom.</li>
+            </ol>
+
+            <p style="margin-top: 30px; text-align: center;">
+              <a href="https://pilates-reformer-agram.com/prijava.html" style="background-color: #c5a880; color: white; padding: 12px 28px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block;">
+                Prijavi se i započni
               </a>
             </p>
           </div>

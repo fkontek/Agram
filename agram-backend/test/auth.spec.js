@@ -4,7 +4,7 @@ import worker from '../src';
 
 // Combined SQL Schema in single-line statements to prevent SQLite parse issues
 const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS Clients (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, is_admin INTEGER DEFAULT 0, credits INTEGER DEFAULT 0, must_change_password INTEGER DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, package_name TEXT, total_credits INTEGER DEFAULT 0, remaining_credits INTEGER DEFAULT 0, package_expires TEXT, status TEXT DEFAULT 'approved', questionnaire TEXT DEFAULT NULL, full_name TEXT, first_name TEXT, last_name TEXT, phone TEXT);
+CREATE TABLE IF NOT EXISTS Clients (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, is_admin INTEGER DEFAULT 0, credits INTEGER DEFAULT 0, must_change_password INTEGER DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, package_name TEXT, total_credits INTEGER DEFAULT 0, remaining_credits INTEGER DEFAULT 0, package_expires TEXT, status TEXT DEFAULT 'approved', questionnaire TEXT DEFAULT NULL, full_name TEXT, first_name TEXT, last_name TEXT, phone TEXT, has_seen_onboarding INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS Sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, instructor TEXT, date TEXT NOT NULL, time TEXT NOT NULL, capacity INTEGER DEFAULT 5, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, type TEXT DEFAULT 'grupni');
 CREATE TABLE IF NOT EXISTS Bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL, user_id INTEGER NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, status INTEGER DEFAULT 0, reminder_sent INTEGER DEFAULT 0, FOREIGN KEY (session_id) REFERENCES Sessions(id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES Clients(id) ON DELETE CASCADE, UNIQUE(session_id, user_id));
 CREATE TABLE IF NOT EXISTS News (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, content TEXT NOT NULL, image_url TEXT, is_workshop INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
@@ -442,5 +442,33 @@ describe('JWT Authentication integration tests', () => {
     const booking = await env.DB.prepare("SELECT reminder_sent FROM Bookings WHERE session_id = 888 AND user_id = 1").first();
     expect(booking).toBeDefined();
     expect(booking.reminder_sent).toBe(1);
+  });
+
+  it('client endpoint /api/client/onboarding-completed updates flag to 1', async () => {
+    const loginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'clientuser', password: 'clientpass' })
+    });
+    const loginRes = await worker.fetch(loginReq, env, createExecutionContext());
+    const loginData = await loginRes.json();
+    const token = loginData.token;
+
+    const req = new Request('http://localhost/api/client/onboarding-completed', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+
+    const client = await env.DB.prepare("SELECT has_seen_onboarding FROM Clients WHERE id = 1").first();
+    expect(client.has_seen_onboarding).toBe(1);
   });
 });
