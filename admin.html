@@ -2055,15 +2055,15 @@
           </select>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-          <div class="form-group">
-            <label for="edit-used-credits" style="font-weight: 700; font-size: 1.0rem;">Već odrađeno (Zoya):</label>
-            <input type="number" id="edit-used-credits" min="0" max="50" oninput="recalcEditRemainingCredits()" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700; color: var(--primary-gold-dark);" />
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; align-items: end;">
+          <div class="form-group" style="display: flex; flex-direction: column;">
+            <label for="edit-used-credits" style="font-weight: 700; font-size: 0.95rem; min-height: 2.5rem; display: flex; align-items: flex-end; margin-bottom: 6px;">Već odrađeno (Zoya):</label>
+            <input type="number" id="edit-used-credits" min="0" max="50" oninput="recalcEditRemainingCredits()" style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700; color: var(--primary-gold-dark);" />
           </div>
 
-          <div class="form-group">
-            <label for="edit-remaining-credits" style="font-weight: 700; font-size: 1.0rem;">Preostalo za rezervaciju:</label>
-            <input type="number" id="edit-remaining-credits" min="0" max="50" oninput="recalcEditUsedCredits()" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700;" />
+          <div class="form-group" style="display: flex; flex-direction: column;">
+            <label for="edit-remaining-credits" style="font-weight: 700; font-size: 0.95rem; min-height: 2.5rem; display: flex; align-items: flex-end; margin-bottom: 6px;">Preostalo za rezervaciju:</label>
+            <input type="number" id="edit-remaining-credits" min="0" max="50" oninput="recalcEditUsedCredits()" style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700;" />
           </div>
         </div>
 
