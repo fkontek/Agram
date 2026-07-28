@@ -1226,7 +1226,7 @@
           const mobCreditsDisplayEl = document.getElementById("mobile-credits-display");
           if (mobCreditsDisplayEl) {
             if (totalCredits > 0) {
-              mobCreditsDisplayEl.innerHTML = `Rezervirano: <span style="color: var(--primary-gold); font-weight: 800;">${upcomingCount} od ${totalCredits}</span>`;
+              mobCreditsDisplayEl.innerHTML = `Rezervirano: <span style="color: var(--primary-gold); font-weight: 800;">${usedCreditsTotal} od ${totalCredits}</span>`;
             } else {
               mobCreditsDisplayEl.innerHTML = `<span style="color: var(--text-muted); font-weight: 600;">Bez aktivnog paketa</span>`;
             }
