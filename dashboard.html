@@ -1170,7 +1170,8 @@
           }
 
           // 1. Membership info — desktop
-          userCreditsVal = data.user.remaining_credits || 0;
+          const totalCredits = data.user.total_credits || 0;
+          userCreditsVal = data.user.remaining_credits !== undefined ? data.user.remaining_credits : 0;
           userPackageVal = data.user.package_name || "Nema paketa";
           
           const hasNoPackage = userPackageVal === "Nema paketa" || userPackageVal === "Nema aktivnog paketa";
@@ -1183,8 +1184,6 @@
             document.getElementById("no-package-banner-mobile").style.display = "none";
           }
 
-          const totalCredits = data.user.total_credits || 0;
-          const userCreditsVal = data.user.remaining_credits !== undefined ? data.user.remaining_credits : 0;
           const usedCreditsTotal = Math.max(0, totalCredits - userCreditsVal);
 
           const today = new Date();
