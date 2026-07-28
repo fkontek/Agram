@@ -800,9 +800,10 @@
     <div class="dashboard-grid">
       <div class="dashboard-sidebar">
         <!-- Status članarine -->
+        <!-- Status članarine -->
         <div class="info-box" id="membership-box" style="margin-bottom:0;">
-          <h2>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          <h2 style="display:flex; align-items:center; gap:10px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             Status članarine
           </h2>
           <p>Aktivni paket: <strong id="package-name">Učitavanje...</strong></p>
@@ -817,13 +818,14 @@
 
         <!-- Zakazani termini -->
         <div class="info-box" style="margin-bottom:0;">
-          <h2 style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="display:flex; align-items:center; gap:8px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <h2 style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <span style="display:flex; align-items:center; gap:10px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Moji zakazani termini
             </span>
-            <button onclick="downloadAllUpcomingIcs()" style="background:rgba(197,168,128,0.12); border:1px solid var(--primary-gold-dark); color:var(--primary-gold-dark); border-radius:14px; padding:4px 10px; font-size:1.0rem; cursor:pointer; font-weight:600; transition:var(--transition-fast);" title="Spremi sve nadolazeće termine u kalendar (Apple/Google/Outlook)">
-              📅 Spremi sve
+            <button onclick="downloadAllUpcomingIcs()" class="btn-google-calendar" style="background:rgba(197,168,128,0.12); border:1px solid var(--primary-gold-dark); color:var(--primary-gold-dark); border-radius:18px; padding:6px 14px; font-size:0.95rem; font-family:'Montserrat',sans-serif; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:var(--transition-fast);" title="Dodaj sve nadolazeće termine u Google Kalendar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Dodaj u Google Kalendar
             </button>
           </h2>
           <ul id="upcoming-list"><li><span>Učitavanje rezervacija...</span></li></ul>
@@ -831,8 +833,8 @@
 
         <!-- Povijest -->
         <div class="info-box" style="margin-bottom:0;">
-          <h2>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+          <h2 style="display:flex; align-items:center; gap:10px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
             Povijest dolazaka
           </h2>
           <ul id="history-list"><li><span>Učitavanje povijesti...</span></li></ul>
@@ -842,8 +844,8 @@
       <!-- Rezervacija -->
       <div class="dashboard-main">
         <div class="info-box" style="padding-bottom:25px; margin-bottom:0;">
-          <h2>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <h2 style="display:flex; align-items:center; gap:10px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             Rezerviraj novi termin
           </h2>
           <div class="schedule-tabs-container">
@@ -1182,7 +1184,8 @@
           }
 
           const totalCredits = data.user.total_credits || 0;
-          const usedCredits = totalCredits - userCreditsVal;
+          const userCreditsVal = data.user.remaining_credits !== undefined ? data.user.remaining_credits : 0;
+          const usedCreditsTotal = Math.max(0, totalCredits - userCreditsVal);
 
           const today = new Date();
           const yyyy = today.getFullYear();
@@ -1197,10 +1200,13 @@
             expiresFormatted = `<span style="color: #b22222; font-weight: 800;">${expiresFormatted} (ISTEKAO)</span>`;
           }
 
-          const todayBookingsInHistory = (data.history || []).filter(item => item.date === todayStr && item.status === 1).length;
-          const upcomingCount = (data.upcoming || []).length + todayBookingsInHistory;
-          const reservedFormatted = `${upcomingCount} / ${totalCredits}`;
-          const attendedFormatted = `${data.user.attended_count || 0} / ${totalCredits}`;
+          // Reserved = Total credits used (transferred Zoya + active new bookings)
+          const reservedFormatted = `${usedCreditsTotal} / ${totalCredits}`;
+
+          // Attended = Transferred used credits + attended new bookings
+          const upcomingNewAppCount = (data.upcoming || []).length;
+          const attendedCalculated = Math.max(data.user.attended_count || 0, usedCreditsTotal - upcomingNewAppCount);
+          const attendedFormatted = `${attendedCalculated} / ${totalCredits}`;
 
           document.getElementById("package-name").textContent      = userPackageVal;
           const remainingEl = document.getElementById("remaining-credits");
@@ -2125,7 +2131,9 @@
     }
 
     function logout() {
-      localStorage.clear();
+      // Remove user session keys but PRESERVE onboarding tour completion status
+      const keysToRemove = ["user_id", "username", "auth_token", "is_admin", "full_name", "first_name", "last_name", "email", "phone"];
+      keysToRemove.forEach(k => localStorage.removeItem(k));
       sessionStorage.clear();
       window.location.href = "index.html";
     }

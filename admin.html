@@ -4012,21 +4012,32 @@
     }
 
     async function approvePackageRequest(requestId, username, packageName) {
-      const promptVal = prompt(`Odobriti paket '${packageName}' za korisnika '${username}'?\n\nAko klijent prenosi paket iz Zoya aplikacije, unesite koliko je treninga VEĆ ISKORIŠTENO (npr. 5):\n(Ostavite 0 ili prazno ako je novi paket)`, "0");
-      if (promptVal === null) return;
-      const usedCredits = parseInt(promptVal, 10) || 0;
+      const defaultExpiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const usedInput = prompt(`Odobriti paket '${packageName}' za korisnika '${username}'?\n\n[1/2] Ako klijent prenosi paket iz Zoya aplikacije, unesite koliko je treninga VEĆ ISKORIŠTENO (npr. 5):\n(Ostavite 0 ako je novi paket)`, "0");
+      if (usedInput === null) return;
+      const usedCredits = parseInt(usedInput, 10) || 0;
+
+      const expiresInput = prompt(`[2/2] Datum isteka članarine (YYYY-MM-DD):\n(Zadano je 30 dana od danas: ${defaultExpiresDate})`, defaultExpiresDate);
+      if (expiresInput === null) return;
+      const packageExpires = expiresInput.trim() || defaultExpiresDate;
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/approve-package-request`, {
           method: "POST",
           headers: authHeaders(),
-          body: JSON.stringify({ request_id: requestId, used_credits: usedCredits })
+          body: JSON.stringify({ 
+            request_id: requestId, 
+            used_credits: usedCredits,
+            package_expires: packageExpires
+          })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          alert(`Paket '${packageName}' je uspješno aktiviran za korisnika '${username}' (Iskorišteno: ${usedCredits}).`);
+          alert(`Paket '${packageName}' je uspješno aktiviran za korisnika '${username}'!\n- Iskorišteno: ${usedCredits}\n- Vrijedi do: ${packageExpires}`);
           fetchActivityLogs(true);
           loadClientsList();
+          loadPendingPackageRequests();
         } else {
           alert(data.error || "Greška pri odobrenju paketa.");
         }

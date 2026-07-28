@@ -2456,7 +2456,7 @@ export default {
 
       // ADMIN: APPROVE PACKAGE REQUEST
       if (request.method === "POST" && (url.pathname === "/api/admin/approve-package-request" || url.pathname === "/api/admin/package-requests/approve")) {
-        const { request_id, user_id: req_user_id, package_name: req_pkg_name, used_credits } = await request.json();
+        const { request_id, user_id: req_user_id, package_name: req_pkg_name, used_credits, package_expires } = await request.json();
         
         let user_id = req_user_id;
         let package_name = req_pkg_name;
@@ -2482,8 +2482,8 @@ export default {
         const used = (used_credits !== undefined && used_credits !== null && used_credits !== "") ? Math.max(0, parseInt(used_credits) || 0) : 0;
         const remaining = Math.max(0, limit - used);
 
-        const expiresDate = new Date(getCroatiaNow().getTime() + 30 * 24 * 60 * 60 * 1000);
-        const expiresStr = formatDate(expiresDate);
+        const defaultExpiresDate = new Date(getCroatiaNow().getTime() + 30 * 24 * 60 * 60 * 1000);
+        const expiresStr = package_expires || formatDate(defaultExpiresDate);
 
         // Approve: update client credits, mark request as approved, notify client
         const msg = `Vaš zahtjev za aktivaciju paketa '${package_name}' je odobren! Paket je aktiviran.`;
