@@ -1601,12 +1601,12 @@ export default {
 
       // ADMIN: APPROVE CLIENT
       if (request.method === "POST" && url.pathname === "/api/admin/approve-client") {
-        const { client_id } = await request.json();
+        const { client_id, used_credits, package_expires } = await request.json();
         if (!client_id) {
           return jsonResponse({ success: false, error: "ID klijenta je obavezan." }, 400);
         }
 
-        const client = await env.DB.prepare("SELECT username, email FROM Clients WHERE id = ? AND status = 'pending'").bind(client_id).first();
+        const client = await env.DB.prepare("SELECT username, email, package_name, total_credits FROM Clients WHERE id = ? AND status = 'pending'").bind(client_id).first();
         if (!client) {
           return jsonResponse({ success: false, error: "Klijent na čekanju nije pronađen." }, 404);
         }
@@ -1614,8 +1614,16 @@ export default {
         const tempPass = generateTempPassword();
         const hashedTemp = await hashPassword(tempPass);
 
-        await env.DB.prepare("UPDATE Clients SET status = 'approved', password = ?, must_change_password = 1 WHERE id = ?").bind(hashedTemp, client_id).run();
-        await logActivity(env, `Odobrena registracija: ${client.username}`);
+        const limit = client.total_credits || getPackageLimit(client.package_name);
+        const used = (used_credits !== undefined && used_credits !== null && used_credits !== "") ? Math.max(0, parseInt(used_credits) || 0) : 0;
+        const remaining = Math.max(0, limit - used);
+
+        const defaultExpiresDate = new Date(getCroatiaNow().getTime() + 30 * 24 * 60 * 60 * 1000);
+        const expiresStr = package_expires || formatDate(defaultExpiresDate);
+
+        await env.DB.prepare("UPDATE Clients SET status = 'approved', password = ?, must_change_password = 1, remaining_credits = ?, package_expires = ? WHERE id = ?")
+          .bind(hashedTemp, remaining, expiresStr, client_id).run();
+        await logActivity(env, `Odobrena registracija: ${client.username} (Iskorišteno: ${used}, Vrijedi do: ${expiresStr})`);
 
         // Slanje maila s privremenom lozinkom
         const emailSubject = "Pilates Reformer Agram - Profil odobren";

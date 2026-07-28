@@ -3883,17 +3883,29 @@
     }
 
     async function approveClient(clientId, username) {
-      if (!confirm(`Odobriti registraciju za korisnika '${username}'? Korisniku će se generirati i poslati privremena lozinka na e-mail.`)) return;
+      const defaultExpiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const usedInput = prompt(`Odobriti registraciju za korisnika '${username}'?\n\n[1/2] Ako klijent prenosi paket iz Zoya aplikacije, unesite koliko je treninga VEĆ ISKORIŠTENO (npr. 6):\n(Ostavite 0 ako je novi paket)`, "0");
+      if (usedInput === null) return;
+      const usedCredits = parseInt(usedInput, 10) || 0;
+
+      const expiresInput = prompt(`[2/2] Datum isteka članarine (YYYY-MM-DD):\n(Zadano je 30 dana od danas: ${defaultExpiresDate})`, defaultExpiresDate);
+      if (expiresInput === null) return;
+      const packageExpires = expiresInput.trim() || defaultExpiresDate;
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/approve-client`, {
           method: "POST",
           headers: authHeaders(),
-          body: JSON.stringify({ client_id: clientId })
+          body: JSON.stringify({ 
+            client_id: clientId,
+            used_credits: usedCredits,
+            package_expires: packageExpires
+          })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          showCustomAlert(`Zahtjev odobren! Privremena lozinka je poslana na e-mail korisnika.`, data.tempPassword);
+          showCustomAlert(`Korisnik '${username}' je odobren!\n- Iskorišteno treninga: ${usedCredits}\n- Vrijedi do: ${packageExpires}\n\nPrivremena lozinka poslana na e-mail:`, data.tempPassword);
           fetchActivityLogs(true);
           loadClientsList();
         } else {
