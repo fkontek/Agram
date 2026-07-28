@@ -2028,16 +2028,17 @@
 
   <!-- UREDI ČLANARINU MODAL -->
   <div id="edit-credits-modal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
-        <h3>Uredi članarinu</h3>
+        <h3>Uredi članarinu klijenta</h3>
         <button class="close-btn" onclick="closeCreditsModal()">&times;</button>
       </div>
       <form id="edit-credits-form">
         <input type="hidden" id="edit-client-id" />
+        
         <div class="form-group" style="margin-bottom: 15px;">
-          <label for="edit-package-name">Naziv paketa</label>
-          <select id="edit-package-name" onchange="handleEditClientPackageChange()">
+          <label for="edit-package-name" style="font-weight: 700;">Paket</label>
+          <select id="edit-package-name" onchange="handleEditClientPackageChange()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-family: inherit;">
             <option value="Grupni 1 trening">Grupni (1 trening)</option>
             <option value="Grupni 4 treninga">Grupni (4 treninga)</option>
             <option value="Grupni 8 treninga" selected>Grupni (8 treninga)</option>
@@ -2053,13 +2054,27 @@
             <option value="Nema paketa">Bez paketa</option>
           </select>
         </div>
-        <input type="hidden" id="edit-total-credits" />
-        <input type="hidden" id="edit-remaining-credits" />
-        <div class="form-group" style="margin-bottom: 20px;">
-          <label for="edit-package-expires">Datum isteka (YYYY-MM-DD)</label>
-          <input type="date" id="edit-package-expires" />
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+          <div class="form-group">
+            <label for="edit-used-credits" style="font-weight: 700; font-size: 1.0rem;">Već odrađeno (Zoya):</label>
+            <input type="number" id="edit-used-credits" min="0" max="50" oninput="recalcEditRemainingCredits()" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700; color: var(--primary-gold-dark);" />
+          </div>
+
+          <div class="form-group">
+            <label for="edit-remaining-credits" style="font-weight: 700; font-size: 1.0rem;">Preostalo za rezervaciju:</label>
+            <input type="number" id="edit-remaining-credits" min="0" max="50" oninput="recalcEditUsedCredits()" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700;" />
+          </div>
         </div>
-        <button type="submit" class="btn-submit" style="width: 100%;">Spremi izmjene</button>
+
+        <input type="hidden" id="edit-total-credits" />
+
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="edit-package-expires" style="font-weight: 700;">Datum isteka članarine (YYYY-MM-DD)</label>
+          <input type="date" id="edit-package-expires" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem;" />
+        </div>
+
+        <button type="submit" class="btn-submit" style="width: 100%; font-size: 1.2rem; padding: 12px;">Spremi izmjene</button>
       </form>
     </div>
   </div>
@@ -2828,7 +2843,8 @@
         if (!hasPackage || isExpiredByDate) {
           creditsColHtml = `<span style="font-size: 1.25rem; font-weight: 700; color: var(--text-muted);">-</span>`;
         } else {
-          const creditsText = `${client.attended_count} / ${client.total_credits || 0}`;
+          const usedCount = Math.max(0, (client.total_credits || 0) - (client.remaining_credits !== undefined ? client.remaining_credits : 0));
+          const creditsText = `${usedCount} / ${client.total_credits || 0}`;
           if (isExpiredByCredits) {
             creditsColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.25rem; padding: 6px 12px; border-radius: 20px; background-color: rgba(128, 128, 128, 0.15); color: #777;">${creditsText}</span>`;
           } else {
@@ -2906,16 +2922,10 @@
           }
         }
 
-        let creditsHtml = "";
-        if (!hasPackage || isExpiredByDate) {
-          creditsHtml = `<span style="color: var(--text-muted); font-weight: 700;">-</span>`;
-        } else {
-          const creditsText = `${client.attended_count} / ${client.total_credits || 0}`;
-          if (isExpiredByCredits) {
-            creditsHtml = `<span style="color: #777; font-weight: 700;">${creditsText}</span>`;
-          } else {
-            creditsHtml = creditsText;
-          }
+        let creditsHtml = "-";
+        if (hasPackage && !isExpiredByDate) {
+          const usedCount = Math.max(0, (client.total_credits || 0) - (client.remaining_credits !== undefined ? client.remaining_credits : 0));
+          creditsHtml = `${usedCount} / ${client.total_credits || 0}`;
         }
 
         card.innerHTML = `
@@ -3240,11 +3250,37 @@
       }
 
       selectEl.value = packageVal;
-      document.getElementById("edit-total-credits").value = client.total_credits || 0;
-      document.getElementById("edit-remaining-credits").value = client.remaining_credits || 0;
+      const limit = getPackageLimit(packageVal);
+      document.getElementById("edit-total-credits").value = limit;
+
+      const remaining = client.remaining_credits !== undefined ? client.remaining_credits : limit;
+      const used = Math.max(0, limit - remaining);
+
+      document.getElementById("edit-used-credits").value = used;
+      document.getElementById("edit-remaining-credits").value = remaining;
       document.getElementById("edit-package-expires").value = client.package_expires || "";
 
       document.getElementById("edit-credits-modal").style.display = "flex";
+    }
+
+    function recalcEditRemainingCredits() {
+      const pkgVal = document.getElementById("edit-package-name").value;
+      const limit = getPackageLimit(pkgVal);
+      document.getElementById("edit-total-credits").value = limit;
+
+      const used = parseInt(document.getElementById("edit-used-credits").value, 10) || 0;
+      const remaining = Math.max(0, limit - used);
+      document.getElementById("edit-remaining-credits").value = remaining;
+    }
+
+    function recalcEditUsedCredits() {
+      const pkgVal = document.getElementById("edit-package-name").value;
+      const limit = getPackageLimit(pkgVal);
+      document.getElementById("edit-total-credits").value = limit;
+
+      const remaining = parseInt(document.getElementById("edit-remaining-credits").value, 10) || 0;
+      const used = Math.max(0, limit - remaining);
+      document.getElementById("edit-used-credits").value = used;
     }
 
     // Helper to get limit from package name
@@ -3268,14 +3304,13 @@
 
     // Auto-fill logic for edit client modal
     function handleEditClientPackageChange() {
-      const packageVal = document.getElementById("edit-package-name").value;
-      const totalInput = document.getElementById("edit-total-credits");
-      const remainingInput = document.getElementById("edit-remaining-credits");
+      const pkgVal = document.getElementById("edit-package-name").value;
+      const limit = getPackageLimit(pkgVal);
+      document.getElementById("edit-total-credits").value = limit;
+      document.getElementById("edit-used-credits").value = 0;
+      document.getElementById("edit-remaining-credits").value = limit;
       const expiresInput = document.getElementById("edit-package-expires");
-      const credits = getPackageLimit(packageVal);
-      totalInput.value = credits;
-      remainingInput.value = credits;
-      if (credits > 0) {
+      if (limit > 0) {
         const expiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         expiresInput.value = expiresDate.toISOString().split("T")[0];
       } else {

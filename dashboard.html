@@ -1015,7 +1015,7 @@
       if (userAccordionState[cleanKey] !== undefined) {
         return userAccordionState[cleanKey];
       }
-      return groupIdx === 0;
+      return false; // Skupljeni po defaultu za sve grupe!
     }
     let allSessionsData = [];
     let selectedDateVal = "";
@@ -1202,10 +1202,9 @@
           // Reserved = Total credits used (transferred Zoya + active new bookings)
           const reservedFormatted = `${usedCreditsTotal} / ${totalCredits}`;
 
-          // Attended = Transferred used credits + attended new bookings
-          const upcomingNewAppCount = (data.upcoming || []).length;
-          const attendedCalculated = Math.max(data.user.attended_count || 0, usedCreditsTotal - upcomingNewAppCount);
-          const attendedFormatted = `${attendedCalculated} / ${totalCredits}`;
+          // Attended = Completed/Attended sessions (including transferred Zoya sessions)
+          const attendedCount = Math.max(0, data.user.attended_count !== undefined ? data.user.attended_count : 0);
+          const attendedFormatted = `${attendedCount} / ${totalCredits}`;
 
           document.getElementById("package-name").textContent      = userPackageVal;
           const remainingEl = document.getElementById("remaining-credits");
