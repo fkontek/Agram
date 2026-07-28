@@ -2055,15 +2055,15 @@
           </select>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; align-items: end;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
           <div class="form-group" style="display: flex; flex-direction: column;">
-            <label for="edit-used-credits" style="font-weight: 700; font-size: 0.95rem; min-height: 2.5rem; display: flex; align-items: flex-end; margin-bottom: 6px;">Već odrađeno (Zoya):</label>
-            <input type="number" id="edit-used-credits" min="0" max="50" oninput="recalcEditRemainingCredits()" style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700; color: var(--primary-gold-dark);" />
+            <label for="edit-used-credits" style="font-weight: 700; font-size: 0.95rem; height: 2.8rem; display: flex; align-items: flex-end; margin-bottom: 6px;">Već odrađeno (Zoya):</label>
+            <input type="number" id="edit-used-credits" min="0" max="50" oninput="recalcEditRemainingCredits()" style="width: 100%; height: 42px; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700; color: var(--primary-gold-dark);" />
           </div>
 
           <div class="form-group" style="display: flex; flex-direction: column;">
-            <label for="edit-remaining-credits" style="font-weight: 700; font-size: 0.95rem; min-height: 2.5rem; display: flex; align-items: flex-end; margin-bottom: 6px;">Preostalo za rezervaciju:</label>
-            <input type="number" id="edit-remaining-credits" min="0" max="50" oninput="recalcEditUsedCredits()" style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700;" />
+            <label for="edit-remaining-credits" style="font-weight: 700; font-size: 0.95rem; height: 2.8rem; display: flex; align-items: flex-end; margin-bottom: 6px;">Preostalo za rezervaciju:</label>
+            <input type="number" id="edit-remaining-credits" min="0" max="50" oninput="recalcEditUsedCredits()" style="width: 100%; height: 42px; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 700;" />
           </div>
         </div>
 
@@ -3918,31 +3918,20 @@
     }
 
     async function approveClient(clientId, username) {
-      const defaultExpiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
-      const usedInput = prompt(`Odobriti registraciju za korisnika '${username}'?\n\n[1/2] Ako klijent prenosi paket iz Zoya aplikacije, unesite koliko je treninga VEĆ ISKORIŠTENO (npr. 6):\n(Ostavite 0 ako je novi paket)`, "0");
-      if (usedInput === null) return;
-      const usedCredits = parseInt(usedInput, 10) || 0;
-
-      const expiresInput = prompt(`[2/2] Datum isteka članarine (YYYY-MM-DD):\n(Zadano je 30 dana od danas: ${defaultExpiresDate})`, defaultExpiresDate);
-      if (expiresInput === null) return;
-      const packageExpires = expiresInput.trim() || defaultExpiresDate;
+      if (!confirm(`Odobriti registraciju za korisnika '${username}'? Korisniku će se generirati i poslati privremena lozinka na e-mail.`)) return;
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/approve-client`, {
           method: "POST",
           headers: authHeaders(),
-          body: JSON.stringify({ 
-            client_id: clientId,
-            used_credits: usedCredits,
-            package_expires: packageExpires
-          })
+          body: JSON.stringify({ client_id: clientId })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          showCustomAlert(`Korisnik '${username}' je odobren!\n- Iskorišteno treninga: ${usedCredits}\n- Vrijedi do: ${packageExpires}\n\nPrivremena lozinka poslana na e-mail:`, data.tempPassword);
+          showCustomAlert(`Zahtjev odobren! Privremena lozinka je poslana na e-mail korisnika.`, data.tempPassword);
           fetchActivityLogs(true);
           loadClientsList();
+          loadPendingClients();
         } else {
           alert(data.error || "Greška pri odobrenju klijenta.");
         }
@@ -4059,29 +4048,17 @@
     }
 
     async function approvePackageRequest(requestId, username, packageName) {
-      const defaultExpiresDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
-      const usedInput = prompt(`Odobriti paket '${packageName}' za korisnika '${username}'?\n\n[1/2] Ako klijent prenosi paket iz Zoya aplikacije, unesite koliko je treninga VEĆ ISKORIŠTENO (npr. 5):\n(Ostavite 0 ako je novi paket)`, "0");
-      if (usedInput === null) return;
-      const usedCredits = parseInt(usedInput, 10) || 0;
-
-      const expiresInput = prompt(`[2/2] Datum isteka članarine (YYYY-MM-DD):\n(Zadano je 30 dana od danas: ${defaultExpiresDate})`, defaultExpiresDate);
-      if (expiresInput === null) return;
-      const packageExpires = expiresInput.trim() || defaultExpiresDate;
+      if (!confirm(`Odobriti paket '${packageName}' za korisnika '${username}'?`)) return;
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/approve-package-request`, {
           method: "POST",
           headers: authHeaders(),
-          body: JSON.stringify({ 
-            request_id: requestId, 
-            used_credits: usedCredits,
-            package_expires: packageExpires
-          })
+          body: JSON.stringify({ request_id: requestId })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          alert(`Paket '${packageName}' je uspješno aktiviran za korisnika '${username}'!\n- Iskorišteno: ${usedCredits}\n- Vrijedi do: ${packageExpires}`);
+          alert(`Paket '${packageName}' je uspješno aktiviran za korisnika '${username}'.`);
           fetchActivityLogs(true);
           loadClientsList();
           loadPendingPackageRequests();
