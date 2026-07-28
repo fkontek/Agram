@@ -471,4 +471,96 @@ describe('JWT Authentication integration tests', () => {
     const client = await env.DB.prepare("SELECT has_seen_onboarding FROM Clients WHERE id = 1").first();
     expect(client.has_seen_onboarding).toBe(1);
   });
+
+  it('multi-user session booking, waitlist joining, and auto-promotion test with 5 users', async () => {
+    // 1. Create 5 test users with active credits
+    const passHash = await hashPassword('password123');
+    for (let i = 1; i <= 5; i++) {
+      await env.DB.prepare(`
+        INSERT INTO Clients (id, username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, status)
+        VALUES (?, ?, ?, ?, 0, 0, 'Grupni 8 treninga', 8, 8, 'approved')
+        ON CONFLICT(id) DO UPDATE SET remaining_credits = 8
+      `).bind(10 + i, `user${i}`, `user${i}@test.com`, passHash).run();
+    }
+
+    // 2. Login user1 and user2 to get tokens
+    const loginUser = async (username) => {
+      const loginReq = new Request('http://example.com/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: 'password123' })
+      });
+      const res = await worker.fetch(loginReq, env, createExecutionContext());
+      const data = await res.json();
+      return data.token;
+    };
+
+    const token1 = await loginUser('user1');
+    const token2 = await loginUser('user2');
+    const token3 = await loginUser('user3');
+
+    // 3. Create a session with capacity 1 for 2026-09-01
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (999, 'Reformer Express', 'Adrijana', '2026-09-01', '14:00', 1, 'grupni')
+    `).run();
+
+    // 4. User 1 books session -> Should succeed
+    const bookReq1 = new Request('http://example.com/api/book', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token1}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: 999 })
+    });
+    const bookRes1 = await worker.fetch(bookReq1, env, createExecutionContext());
+    expect(bookRes1.status).toBe(200);
+
+    // 5. User 2 attempts booking -> Should fail (Session full)
+    const bookReq2 = new Request('http://example.com/api/book', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token2}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: 999 })
+    });
+    const bookRes2 = await worker.fetch(bookReq2, env, createExecutionContext());
+    expect(bookRes2.status).toBe(400);
+
+    // 6. User 2 joins waitlist -> Should succeed (Position 1)
+    const waitReq2 = new Request('http://example.com/api/waitlist/join', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token2}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: 999 })
+    });
+    const waitRes2 = await worker.fetch(waitReq2, env, createExecutionContext());
+    expect(waitRes2.status).toBe(200);
+    const waitData2 = await waitRes2.json();
+    expect(waitData2.position).toBe(1);
+
+    // 7. User 3 joins waitlist -> Should succeed (Position 2)
+    const waitReq3 = new Request('http://example.com/api/waitlist/join', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token3}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: 999 })
+    });
+    const waitRes3 = await worker.fetch(waitReq3, env, createExecutionContext());
+    expect(waitRes3.status).toBe(200);
+    const waitData3 = await waitRes3.json();
+    expect(waitData3.position).toBe(2);
+
+    // 8. User 1 cancels booking -> Triggers auto-promotion of User 2!
+    const cancelReq1 = new Request('http://example.com/api/cancel-booking', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token1}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: 999 })
+    });
+    const cancelRes1 = await worker.fetch(cancelReq1, env, createExecutionContext());
+    expect(cancelRes1.status).toBe(200);
+
+    // 9. Verify User 2 is now booked for session 999
+    const user2Booking = await env.DB.prepare('SELECT status FROM Bookings WHERE session_id = 999 AND user_id = 12').first();
+    expect(user2Booking).toBeDefined();
+    expect(user2Booking.status).toBe(0); // Active booking
+
+    // 10. Verify User 2 was removed from waitlist and User 3 is now position 1
+    const waitlistUser2 = await env.DB.prepare('SELECT id FROM Waitlists WHERE session_id = 999 AND user_id = 12').first();
+    expect(waitlistUser2).toBeNull();
+  });
 });
