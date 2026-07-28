@@ -693,7 +693,12 @@ async function sendBookingReminders(env) {
     const updates = [];
 
     for (const b of bookings) {
-      if (b.email) {
+      // Atomically claim the booking in DB before sending email to prevent race conditions
+      const claimResult = await env.DB.prepare(
+        "UPDATE Bookings SET reminder_sent = 1 WHERE id = ? AND reminder_sent = 0"
+      ).bind(b.booking_id).run();
+
+      if (claimResult.meta && claimResult.meta.changes > 0 && b.email) {
         const dateFormatted = b.date.split('-').reverse().join('.') + '.';
         const emailSubject = `Podsjetnik na trening: ${b.title}`;
         const emailHtml = `
@@ -714,11 +719,6 @@ async function sendBookingReminders(env) {
         `;
         await sendEmail(env, b.email, emailSubject, emailHtml);
       }
-      updates.push(env.DB.prepare("UPDATE Bookings SET reminder_sent = 1 WHERE id = ?").bind(b.booking_id));
-    }
-
-    if (updates.length > 0) {
-      await env.DB.batch(updates);
     }
   } catch (e) {
     console.error("Error sending booking reminders:", e);
