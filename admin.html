@@ -2854,13 +2854,8 @@
           const usedCount = Math.max(0, (client.total_credits || 0) - (client.remaining_credits !== undefined ? client.remaining_credits : 0));
           const reservedText = `${usedCount} / ${client.total_credits || 0}`;
 
-          if (isExpiredByCredits) {
-            attendedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(128, 128, 128, 0.15); color: #777;">${attendedText}</span>`;
-            reservedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(128, 128, 128, 0.15); color: #777;">${reservedText}</span>`;
-          } else {
-            attendedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(46, 117, 89, 0.15); color: #2e7559;">${attendedText}</span>`;
-            reservedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(197, 168, 128, 0.2); color: var(--primary-gold-dark);">${reservedText}</span>`;
-          }
+          attendedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(46, 117, 89, 0.15); color: #2e7559;">${attendedText}</span>`;
+          reservedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(128, 128, 128, 0.15); color: #666;">${reservedText}</span>`;
         }
 
         tr.innerHTML = `
@@ -2959,7 +2954,7 @@
           <div style="display: flex; justify-content: space-between; font-size: 1.15rem; color: var(--text-muted); margin-top: 4px; flex-wrap: wrap; gap: 8px;">
             <div>Istječe: <strong>${expiresHtml}</strong></div>
             <div>Odrađeno: <strong style="color: #2e7559;">${attendedHtml}</strong></div>
-            <div>Rezervirano: <strong style="color: var(--primary-gold-dark);">${reservedHtml}</strong></div>
+            <div>Rezervirano: <strong style="color: #666;">${reservedHtml}</strong></div>
           </div>
           <div id="mobile-client-details-${client.id}" style="display: none; width: 100%;">
             <div id="mobile-client-details-content-${client.id}"></div>
