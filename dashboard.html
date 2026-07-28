@@ -817,9 +817,14 @@
 
         <!-- Zakazani termini -->
         <div class="info-box" style="margin-bottom:0;">
-          <h2>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Moji zakazani termini
+          <h2 style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="display:flex; align-items:center; gap:8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Moji zakazani termini
+            </span>
+            <button onclick="downloadAllUpcomingIcs()" style="background:rgba(197,168,128,0.12); border:1px solid var(--primary-gold-dark); color:var(--primary-gold-dark); border-radius:14px; padding:4px 10px; font-size:1.0rem; cursor:pointer; font-weight:600; transition:var(--transition-fast);" title="Spremi sve nadolazeće termine u kalendar (Apple/Google/Outlook)">
+              📅 Spremi sve
+            </button>
           </h2>
           <ul id="upcoming-list"><li><span>Učitavanje rezervacija...</span></li></ul>
         </div>
@@ -1307,6 +1312,9 @@
           // Helper: Croatian month names
           const hrMonths = ['Siječanj','Veljača','Ožujak','Travanj','Svibanj','Lipanj','Srpanj','Kolovoz','Rujan','Listopad','Studeni','Prosinac'];
 
+          // Store latest upcoming bookings globally for calendar export
+          window.latestUpcomingData = data.upcoming || [];
+
           // 2. Upcoming bookings — desktop (grouped by month)
           const upcomingEl = document.getElementById("upcoming-list");
           upcomingEl.innerHTML = "";
@@ -1344,7 +1352,10 @@
                             <strong style="font-size:1.2rem;">${booking.title}</strong> (${booking.type})<br>
                             <span style="font-size:1.1rem;color:var(--text-muted);">${formatCroatianDate(booking.date)} u ${booking.time}h</span>
                           </div>
-                          <button class="btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
+                          <div style="display:flex; align-items:center; gap:6px;">
+                            <button class="btn-calendar" onclick="addToGoogleCalendar('${booking.title}', '${booking.type}', '${booking.date}', '${booking.time}')" style="background:rgba(197,168,128,0.12); color:var(--primary-gold-dark); border:1px solid var(--primary-gold); border-radius:16px; padding:6px 12px; font-size:0.95rem; cursor:pointer; font-weight:600; transition:var(--transition-fast);" title="Dodaj u Google Kalendar">📅 Kalendar</button>
+                            <button class="btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
+                          </div>
                         </li>`).join('')}
                     </ul>
                   </div>
@@ -1355,37 +1366,42 @@
 
           // Upcoming bookings — mobile (grouped by month)
           const mUpcoming = document.getElementById("mobile-upcoming-list");
-          if (data.upcoming.length === 0) {
-            mUpcoming.innerHTML = `<div class="mobile-empty">Nemate zakazanih termina.</div>`;
-          } else {
-            const grouped = groupItemsByMonth(data.upcoming, false);
-            mUpcoming.innerHTML = grouped.map(([monthKey, items], groupIdx) => {
-              const [yr, mo] = monthKey.split('-');
-              const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
-              const headerId = `m-up-grp-${monthKey}`;
-              const isOpen = isGroupOpen(headerId, groupIdx);
-              return `
-                <div class="history-month-group" style="margin-bottom:12px;">
-                  <button id="${headerId}" class="history-month-header ${isOpen ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
-                    <span>${label}</span>
-                    <span style="display:flex;align-items:center;gap:10px;">
-                      <span class="month-meta">${items.length} termin${items.length === 1 ? '' : 'a'}</span>
-                      <span class="month-arrow">▼</span>
-                    </span>
-                  </button>
-                  <div id="${headerId}-body" class="history-month-body" style="display:${isOpen ? 'block' : 'none'}">
-                    ${items.map(booking => `
-                      <div class="mobile-upcoming-item" style="border-radius:0; border-left:none; border-right:none; border-top:none; box-shadow:none; border-bottom:1px solid rgba(197,168,128,0.12); margin-bottom:0;">
-                        <div>
-                          <div class="mobile-upcoming-info">${booking.title}</div>
-                          <div class="mobile-upcoming-type">${booking.type}</div>
-                          <div class="mobile-upcoming-date">${formatCroatianDate(booking.date)} u ${booking.time}h</div>
-                        </div>
-                        <button class="mobile-btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
-                      </div>`).join('')}
-                  </div>
-                </div>`;
-            }).join('');
+          if (mUpcoming) {
+            if (data.upcoming.length === 0) {
+              mUpcoming.innerHTML = `<div class="mobile-empty">Nemate zakazanih termina.</div>`;
+            } else {
+              const grouped = groupItemsByMonth(data.upcoming, false);
+              mUpcoming.innerHTML = grouped.map(([monthKey, items], groupIdx) => {
+                const [yr, mo] = monthKey.split('-');
+                const label = `${hrMonths[parseInt(mo)-1]} ${yr}`;
+                const headerId = `m-up-grp-${monthKey}`;
+                const isOpen = isGroupOpen(headerId, groupIdx);
+                return `
+                  <div class="history-month-group" style="margin-bottom:12px;">
+                    <button id="${headerId}" class="history-month-header ${isOpen ? 'open' : ''}" onclick="toggleHistoryGroup('${headerId}')">
+                      <span>${label}</span>
+                      <span style="display:flex;align-items:center;gap:10px;">
+                        <span class="month-meta">${items.length} termin${items.length === 1 ? '' : 'a'}</span>
+                        <span class="month-arrow">▼</span>
+                      </span>
+                    </button>
+                    <div id="${headerId}-body" class="history-month-body" style="display:${isOpen ? 'block' : 'none'}">
+                      ${items.map(booking => `
+                        <div class="mobile-upcoming-item" style="border-radius:0; border-left:none; border-right:none; border-top:none; box-shadow:none; border-bottom:1px solid rgba(197,168,128,0.12); margin-bottom:0;">
+                          <div>
+                            <div class="mobile-upcoming-info">${booking.title}</div>
+                            <div class="mobile-upcoming-type">${booking.type}</div>
+                            <div class="mobile-upcoming-date">${formatCroatianDate(booking.date)} u ${booking.time}h</div>
+                          </div>
+                          <div style="display:flex; align-items:center; gap:6px;">
+                            <button class="mobile-btn-calendar" onclick="addToGoogleCalendar('${booking.title}', '${booking.type}', '${booking.date}', '${booking.time}')" style="background:rgba(197,168,128,0.12); color:var(--primary-gold); border:1px solid rgba(197,168,128,0.4); border-radius:14px; padding:6px 10px; font-size:0.9rem; font-weight:600; cursor:pointer;" title="Dodaj u Google Kalendar">📅 Kalendar</button>
+                            <button class="mobile-btn-cancel" onclick="cancelBooking(${booking.session_id})">Otkaži</button>
+                          </div>
+                        </div>`).join('')}
+                    </div>
+                  </div>`;
+              }).join('');
+            }
           }
 
           // Helper: render badge
@@ -1978,6 +1994,85 @@
     }
 
     const shownRemindersSession = new Set();
+    // Global calendar export helpers
+    function addToGoogleCalendar(title, type, dateStr, timeStr) {
+      let startTime = timeStr.split('-')[0].trim();
+      let endTime = timeStr.includes('-') ? timeStr.split('-')[1].trim() : "";
+      
+      if (!endTime) {
+        const [h, m] = startTime.split(':').map(Number);
+        const endH = (h + 1).toString().padStart(2, '0');
+        endTime = `${endH}:${m.toString().padStart(2, '0')}`;
+      }
+
+      const cleanDate = dateStr.replace(/-/g, '');
+      const cleanStart = startTime.replace(/:/g, '') + '00';
+      const cleanEnd = endTime.replace(/:/g, '') + '00';
+
+      const isoStart = `${cleanDate}T${cleanStart}`;
+      const isoEnd = `${cleanDate}T${cleanEnd}`;
+
+      const eventTitle = encodeURIComponent(`${title} (${type}) - Studio Agram`);
+      const eventDetails = encodeURIComponent(`Pilates Reformer trening u Agram studiju.\nTermin: ${dateStr} u ${timeStr}h.`);
+      const location = encodeURIComponent("Gornji Bukovac 102 A, 10000 Zagreb");
+
+      const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${isoStart}/${isoEnd}&details=${eventDetails}&location=${location}`;
+
+      window.open(googleUrl, '_blank');
+    }
+    window.addToGoogleCalendar = addToGoogleCalendar;
+
+    function downloadAllUpcomingIcs() {
+      const upcoming = window.latestUpcomingData || [];
+      if (upcoming.length === 0) {
+        alert("Nemate nadolazećih rezerviranih treninga za izvoz u kalendar.");
+        return;
+      }
+
+      let icsContent = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Agram Pilates Reformer Studio//HR",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH"
+      ];
+
+      upcoming.forEach(b => {
+        let startTime = b.time.split('-')[0].trim();
+        let endTime = b.time.includes('-') ? b.time.split('-')[1].trim() : "";
+        if (!endTime) {
+          const [h, m] = startTime.split(':').map(Number);
+          endTime = `${(h + 1).toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        }
+
+        const cleanDate = b.date.replace(/-/g, '');
+        const cleanStart = startTime.replace(/:/g, '') + '00';
+        const cleanEnd = endTime.replace(/:/g, '') + '00';
+
+        icsContent.push(
+          "BEGIN:VEVENT",
+          `SUMMARY:${b.title} (${b.type}) - Studio Agram`,
+          `DESCRIPTION:Pilates Reformer trening u Agram studiju.\\nTermin: ${b.date} u ${b.time}h.`,
+          "LOCATION:Gornji Bukovac 102 A\\, 10000 Zagreb",
+          `DTSTART:${cleanDate}T${cleanStart}`,
+          `DTEND:${cleanDate}T${cleanEnd}`,
+          "STATUS:CONFIRMED",
+          "END:VEVENT"
+        );
+      });
+
+      icsContent.push("END:VCALENDAR");
+
+      const blob = new Blob([icsContent.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "agram_treninzi.ics";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    window.downloadAllUpcomingIcs = downloadAllUpcomingIcs;
+
     function checkTomorrowBookingReminders(upcomingBookings) {
       if (!upcomingBookings || upcomingBookings.length === 0) return;
       

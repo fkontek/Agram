@@ -4012,17 +4012,19 @@
     }
 
     async function approvePackageRequest(requestId, username, packageName) {
-      if (!confirm(`Odobriti paket '${packageName}' za korisnika '${username}'?`)) return;
+      const promptVal = prompt(`Odobriti paket '${packageName}' za korisnika '${username}'?\n\nAko klijent prenosi paket iz Zoya aplikacije, unesite koliko je treninga VEĆ ISKORIŠTENO (npr. 5):\n(Ostavite 0 ili prazno ako je novi paket)`, "0");
+      if (promptVal === null) return;
+      const usedCredits = parseInt(promptVal, 10) || 0;
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/approve-package-request`, {
           method: "POST",
           headers: authHeaders(),
-          body: JSON.stringify({ request_id: requestId })
+          body: JSON.stringify({ request_id: requestId, used_credits: usedCredits })
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          alert(`Paket '${packageName}' je uspješno aktiviran za korisnika '${username}'.`);
+          alert(`Paket '${packageName}' je uspješno aktiviran za korisnika '${username}' (Iskorišteno: ${usedCredits}).`);
           fetchActivityLogs(true);
           loadClientsList();
         } else {

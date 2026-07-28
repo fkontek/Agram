@@ -2455,24 +2455,33 @@ export default {
       }
 
       // ADMIN: APPROVE PACKAGE REQUEST
-      if (request.method === "POST" && url.pathname === "/api/admin/approve-package-request") {
-        const { request_id } = await request.json();
-        if (!request_id) {
-          return jsonResponse({ success: false, error: "ID zahtjeva je obavezan." }, 400);
+      if (request.method === "POST" && (url.pathname === "/api/admin/approve-package-request" || url.pathname === "/api/admin/package-requests/approve")) {
+        const { request_id, user_id: req_user_id, package_name: req_pkg_name, used_credits } = await request.json();
+        
+        let user_id = req_user_id;
+        let package_name = req_pkg_name;
+        
+        if (request_id && (!user_id || !package_name)) {
+          const reqObj = await env.DB.prepare("SELECT user_id, package_name FROM PackageRequests WHERE id = ?").bind(request_id).first();
+          if (reqObj) {
+            user_id = reqObj.user_id;
+            package_name = reqObj.package_name;
+          }
+        }
+        
+        if (!user_id || !package_name) {
+          return jsonResponse({ success: false, error: "Nedostaju obavezni podaci (user_id, package_name)." }, 400);
         }
 
-        const reqObj = await env.DB.prepare("SELECT user_id, package_name FROM PackageRequests WHERE id = ? AND status = 'pending'").bind(request_id).first();
-        if (!reqObj) {
-          return jsonResponse({ success: false, error: "Zahtjev nije pronađen ili je već obrađen." }, 404);
-        }
-
-        const { user_id, package_name } = reqObj;
         const client = await env.DB.prepare("SELECT username, email FROM Clients WHERE id = ?").bind(user_id).first();
         if (!client) {
           return jsonResponse({ success: false, error: "Klijent nije pronađen." }, 404);
         }
 
         const limit = getPackageLimit(package_name);
+        const used = (used_credits !== undefined && used_credits !== null && used_credits !== "") ? Math.max(0, parseInt(used_credits) || 0) : 0;
+        const remaining = Math.max(0, limit - used);
+
         const expiresDate = new Date(getCroatiaNow().getTime() + 30 * 24 * 60 * 60 * 1000);
         const expiresStr = formatDate(expiresDate);
 
@@ -2481,7 +2490,7 @@ export default {
         
         await env.DB.batch([
           env.DB.prepare("UPDATE Clients SET package_name = ?, total_credits = ?, remaining_credits = ?, package_expires = ? WHERE id = ?")
-            .bind(package_name, limit, limit, expiresStr, user_id),
+            .bind(package_name, limit, remaining, expiresStr, user_id),
           env.DB.prepare("UPDATE PackageRequests SET status = 'approved' WHERE id = ?")
             .bind(request_id),
           env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)")
