@@ -1989,6 +1989,11 @@
 
       const closeBtn = content.querySelector("#close-reminder-btn");
       closeBtn.onclick = () => {
+        const remKey = String(booking.booking_id || (booking.date + '_' + booking.time));
+        try {
+          localStorage.setItem('agram_reminder_dismissed_' + remKey, 'true');
+          sessionStorage.setItem('agram_reminder_dismissed_' + remKey, 'true');
+        } catch (e) {}
         modal.style.animation = "fadeIn 0.2s ease-out reverse";
         content.style.animation = "slideUp 0.2s ease-out reverse";
         setTimeout(() => {
@@ -2089,28 +2094,28 @@
       
       const tomorrowBookings = upcomingBookings.filter(b => b.date === tomorrowStr);
       if (tomorrowBookings.length > 0) {
-        let shownReminders = {};
-        try {
-          shownReminders = JSON.parse(sessionStorage.getItem('shown_booking_reminders') || '{}');
-        } catch (e) {
-          console.error("Error reading shown_booking_reminders:", e);
-        }
-
         tomorrowBookings.forEach(b => {
-          if (!b.booking_id) return;
-          if (!shownReminders[b.booking_id] && !shownRemindersSession.has(b.booking_id)) {
+          const remKey = String(b.booking_id || (b.date + '_' + b.time));
+          
+          let isDismissed = false;
+          try {
+            if (localStorage.getItem('agram_reminder_dismissed_' + remKey) === 'true') isDismissed = true;
+            if (sessionStorage.getItem('agram_reminder_dismissed_' + remKey) === 'true') isDismissed = true;
+          } catch (e) {}
+          
+          if (shownRemindersSession.has(remKey)) isDismissed = true;
+
+          if (!isDismissed) {
+            shownRemindersSession.add(remKey);
+            try {
+              localStorage.setItem('agram_reminder_dismissed_' + remKey, 'true');
+              sessionStorage.setItem('agram_reminder_dismissed_' + remKey, 'true');
+            } catch (e) {}
+
             showReminderPopup(b);
             showBrowserNotification(b);
-            shownReminders[b.booking_id] = true;
-            shownRemindersSession.add(b.booking_id);
           }
         });
-
-        try {
-          sessionStorage.setItem('shown_booking_reminders', JSON.stringify(shownReminders));
-        } catch (e) {
-          console.error("Error saving shown_booking_reminders:", e);
-        }
       }
     }
 
