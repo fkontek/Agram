@@ -1520,14 +1520,17 @@
                 Istječe <span id="sort-icon-expires" class="sort-icon">&#8597;</span>
               </th>
               <th id="th-sort-attended" class="sortable" onclick="handleClientSort('attended')" style="text-align: center;">
-                Odrađeno dolazaka <span id="sort-icon-attended" class="sort-icon">&#8597;</span>
+                Odrađeno <span id="sort-icon-attended" class="sort-icon">&#8597;</span>
+              </th>
+              <th id="th-sort-reserved" class="sortable" onclick="handleClientSort('reserved')" style="text-align: center;">
+                Rezervirano <span id="sort-icon-reserved" class="sort-icon">&#8597;</span>
               </th>
               <th style="text-align: center;">Akcije</th>
             </tr>
           </thead>
           <tbody id="clients-tbody">
             <tr>
-              <td colspan="5">Učitavanje klijenata...</td>
+              <td colspan="6">Učitavanje klijenata...</td>
             </tr>
           </tbody>
         </table>
@@ -2805,7 +2808,7 @@
       tbody.innerHTML = "";
 
       if (clientsList.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='5' style='text-align: center; color: var(--text-muted);'>Nema pronađenih klijenata.</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='6' style='text-align: center; color: var(--text-muted);'>Nema pronađenih klijenata.</td></tr>";
         return;
       }
 
@@ -2839,16 +2842,24 @@
           }
         }
 
-        let creditsColHtml = "";
+        let attendedColHtml = "";
+        let reservedColHtml = "";
         if (!hasPackage || isExpiredByDate) {
-          creditsColHtml = `<span style="font-size: 1.25rem; font-weight: 700; color: var(--text-muted);">-</span>`;
+          attendedColHtml = `<span style="font-size: 1.25rem; font-weight: 700; color: var(--text-muted);">-</span>`;
+          reservedColHtml = `<span style="font-size: 1.25rem; font-weight: 700; color: var(--text-muted);">-</span>`;
         } else {
+          const attendedCount = Math.max(0, client.attended_count !== undefined ? client.attended_count : 0);
+          const attendedText = `${attendedCount} / ${client.total_credits || 0}`;
+
           const usedCount = Math.max(0, (client.total_credits || 0) - (client.remaining_credits !== undefined ? client.remaining_credits : 0));
-          const creditsText = `${usedCount} / ${client.total_credits || 0}`;
+          const reservedText = `${usedCount} / ${client.total_credits || 0}`;
+
           if (isExpiredByCredits) {
-            creditsColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.25rem; padding: 6px 12px; border-radius: 20px; background-color: rgba(128, 128, 128, 0.15); color: #777;">${creditsText}</span>`;
+            attendedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(128, 128, 128, 0.15); color: #777;">${attendedText}</span>`;
+            reservedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(128, 128, 128, 0.15); color: #777;">${reservedText}</span>`;
           } else {
-            creditsColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.25rem; padding: 6px 12px; border-radius: 20px;">${creditsText}</span>`;
+            attendedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(46, 117, 89, 0.15); color: #2e7559;">${attendedText}</span>`;
+            reservedColHtml = `<span class="badge badge-present" style="font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: 1.2rem; padding: 5px 10px; border-radius: 20px; background-color: rgba(197, 168, 128, 0.2); color: var(--primary-gold-dark);">${reservedText}</span>`;
           }
         }
 
@@ -2861,7 +2872,8 @@
           </td>
           <td>${client.package_name || "Nema"}</td>
           <td style="text-align: center;">${expiresColHtml}</td>
-          <td style="text-align: center;">${creditsColHtml}</td>
+          <td style="text-align: center;">${attendedColHtml}</td>
+          <td style="text-align: center;">${reservedColHtml}</td>
           <td style="text-align: center;">
             <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-width: 160px;">
               <button class="btn-action btn-edit" onclick="openCreditsModal(${JSON.stringify(client).replace(/"/g, '&quot;')})">Uredi</button>
@@ -2922,10 +2934,14 @@
           }
         }
 
-        let creditsHtml = "-";
+        let attendedHtml = "-";
+        let reservedHtml = "-";
         if (hasPackage && !isExpiredByDate) {
+          const attendedCount = Math.max(0, client.attended_count !== undefined ? client.attended_count : 0);
+          attendedHtml = `${attendedCount} / ${client.total_credits || 0}`;
+
           const usedCount = Math.max(0, (client.total_credits || 0) - (client.remaining_credits !== undefined ? client.remaining_credits : 0));
-          creditsHtml = `${usedCount} / ${client.total_credits || 0}`;
+          reservedHtml = `${usedCount} / ${client.total_credits || 0}`;
         }
 
         card.innerHTML = `
@@ -2940,9 +2956,10 @@
           <div class="mobile-client-package-info">
             <div>Paket: <strong>${client.package_name || 'Nema'}</strong></div>
           </div>
-          <div style="display: flex; justify-content: space-between; font-size: 1.15rem; color: var(--text-muted); margin-top: 4px;">
+          <div style="display: flex; justify-content: space-between; font-size: 1.15rem; color: var(--text-muted); margin-top: 4px; flex-wrap: wrap; gap: 8px;">
             <div>Istječe: <strong>${expiresHtml}</strong></div>
-            <div>Odrađeno dolazaka: <strong>${creditsHtml}</strong></div>
+            <div>Odrađeno: <strong style="color: #2e7559;">${attendedHtml}</strong></div>
+            <div>Rezervirano: <strong style="color: var(--primary-gold-dark);">${reservedHtml}</strong></div>
           </div>
           <div id="mobile-client-details-${client.id}" style="display: none; width: 100%;">
             <div id="mobile-client-details-content-${client.id}"></div>
@@ -3062,7 +3079,7 @@
     }
 
     function updateSortHeaderIcons() {
-      const columns = ['name', 'package', 'expires', 'attended'];
+      const columns = ['name', 'package', 'expires', 'attended', 'reserved'];
       columns.forEach(col => {
         const th = document.getElementById(`th-sort-${col}`);
         const icon = document.getElementById(`sort-icon-${col}`);
@@ -3124,7 +3141,6 @@
           const activeA = isCreditActive(a);
           const activeB = isCreditActive(b);
 
-          // Clients without active package credits (showing "-") always stay at the bottom
           if (!activeA && activeB) return 1;
           if (activeA && !activeB) return -1;
           if (!activeA && !activeB) {
@@ -3133,10 +3149,31 @@
             return nameA.localeCompare(nameB, 'hr', { sensitivity: 'base' });
           }
 
-          // Both have active package numbers (e.g. 5/8, 1/8)
           const attA = a.attended_count || 0;
           const attB = b.attended_count || 0;
           let res = attA - attB;
+          if (res === 0) {
+            const totA = a.total_credits || 0;
+            const totB = b.total_credits || 0;
+            res = totA - totB;
+          }
+          return currentSortDirection === 'asc' ? res : -res;
+
+        } else if (currentSortColumn === 'reserved') {
+          const activeA = isCreditActive(a);
+          const activeB = isCreditActive(b);
+
+          if (!activeA && activeB) return 1;
+          if (activeA && !activeB) return -1;
+          if (!activeA && !activeB) {
+            const nameA = (a.full_name || a.username || '').trim();
+            const nameB = (b.full_name || b.username || '').trim();
+            return nameA.localeCompare(nameB, 'hr', { sensitivity: 'base' });
+          }
+
+          const usedA = Math.max(0, (a.total_credits || 0) - (a.remaining_credits !== undefined ? a.remaining_credits : 0));
+          const usedB = Math.max(0, (b.total_credits || 0) - (b.remaining_credits !== undefined ? b.remaining_credits : 0));
+          let res = usedA - usedB;
           if (res === 0) {
             const totA = a.total_credits || 0;
             const totB = b.total_credits || 0;
