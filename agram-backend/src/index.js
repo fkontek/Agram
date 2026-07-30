@@ -682,7 +682,7 @@ async function sendBookingReminders(env) {
     
     // Find all bookings for tomorrow where status is Reserved (0) and reminder hasn't been sent (0)
     const activeBookings = await env.DB.prepare(`
-      SELECT b.id as booking_id, c.username, c.email, s.title, s.time, s.date
+      SELECT b.id as booking_id, b.user_id, c.username, c.email, s.title, s.time, s.date
       FROM Bookings b
       JOIN Clients c ON b.user_id = c.id
       JOIN Sessions s ON b.session_id = s.id
@@ -690,15 +690,21 @@ async function sendBookingReminders(env) {
     `).bind(tomorrowStr).all();
 
     const bookings = activeBookings.results || [];
-    const updates = [];
+    const processedEmails = new Set();
 
     for (const b of bookings) {
+      if (!b.email || processedEmails.has(b.email.toLowerCase())) {
+        continue;
+      }
+
       // Atomically claim the booking in DB before sending email to prevent race conditions
       const claimResult = await env.DB.prepare(
         "UPDATE Bookings SET reminder_sent = 1 WHERE id = ? AND reminder_sent = 0"
       ).bind(b.booking_id).run();
 
-      if (claimResult.meta && claimResult.meta.changes > 0 && b.email) {
+      const changes = claimResult && claimResult.meta ? claimResult.meta.changes : 0;
+      if (changes > 0) {
+        processedEmails.add(b.email.toLowerCase());
         const dateFormatted = b.date.split('-').reverse().join('.') + '.';
         const emailSubject = `Podsjetnik na trening: ${b.title}`;
         const emailHtml = `
