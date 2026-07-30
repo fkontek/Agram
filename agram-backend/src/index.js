@@ -238,9 +238,17 @@ async function autoGenerateWeeks(env, baseMonday) {
   }
 }
 
+// Ensure database columns exist (auto-migration fallback)
+async function ensureDbColumns(env) {
+  try {
+    await env.DB.prepare("ALTER TABLE Clients ADD COLUMN has_seen_onboarding INTEGER DEFAULT 0").run();
+  } catch (e) {}
+}
+
 // Check if Week 3 Monday has sessions, if not, generate schedules
 async function checkAndAutoGenerateSchedules(env) {
   try {
+    await ensureDbColumns(env);
     const croatiaNow = getCroatiaNow();
     const baseMonday = getGenerationBaseMonday(croatiaNow);
     
@@ -1575,6 +1583,7 @@ export default {
           return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
         }
         try {
+          await ensureDbColumns(env);
           await env.DB.prepare("UPDATE Clients SET has_seen_onboarding = 1 WHERE id = ? OR username = ?")
             .bind(authUser.user_id, authUser.username || "").run();
         } catch (err) {

@@ -1114,11 +1114,20 @@
             document.body.style.overflow = "auto";
 
             // Automatski pokreni vodič samo ako korisnik još nije vidio Onboarding Tour I ako nije već zabilježen u bazi ili localStorage-u
-            const currentUser = (data.user && data.user.username) || username || "user";
-            const isTourDoneLocally = localStorage.getItem("agram_tour_done_" + currentUser) === "1";
-            const hasSeenOnboardingInDB = data.user.has_seen_onboarding === 1 || data.user.has_seen_onboarding === "1";
+            const currentUser = (data.user && data.user.username) || username || localStorage.getItem("username") || "user";
+            const isTourDoneLocally = localStorage.getItem("agram_tour_done_" + currentUser) === "1" || localStorage.getItem("agram_has_seen_onboarding_" + currentUser) === "1";
+            const hasSeenOnboardingInDB = data.user && (data.user.has_seen_onboarding == 1 || data.user.has_seen_onboarding === "1" || data.user.has_seen_onboarding === true);
 
-            if (!hasSeenOnboardingInDB && !isTourDoneLocally && !hasShownOnboardingTour && typeof startOnboardingTour === "function") {
+            if (hasSeenOnboardingInDB || isTourDoneLocally) {
+              hasShownOnboardingTour = true;
+              try {
+                localStorage.setItem("agram_tour_done_" + currentUser, "1");
+                localStorage.setItem("agram_has_seen_onboarding_" + currentUser, "1");
+              } catch(e) {}
+              if (!hasSeenOnboardingInDB) {
+                fetch(`${API_BASE}/api/client/onboarding-completed`, { method: "POST", headers: authHeaders() }).catch(() => {});
+              }
+            } else if (!hasShownOnboardingTour && typeof startOnboardingTour === "function") {
               startOnboardingTour(false);
             }
           }
@@ -2488,6 +2497,7 @@
       const activeUser = username || localStorage.getItem("username") || "user";
       try {
         localStorage.setItem("agram_tour_done_" + activeUser, "1");
+        localStorage.setItem("agram_has_seen_onboarding_" + activeUser, "1");
         sessionStorage.setItem("agram_tour_dismissed", "true");
       } catch (e) {}
       fetch(`${API_BASE}/api/client/onboarding-completed`, {
@@ -2498,7 +2508,7 @@
 
     function startOnboardingTour(isReplay = false) {
       const activeUser = username || localStorage.getItem("username") || "user";
-      const isTourDoneLocally = localStorage.getItem("agram_tour_done_" + activeUser) === "1";
+      const isTourDoneLocally = localStorage.getItem("agram_tour_done_" + activeUser) === "1" || localStorage.getItem("agram_has_seen_onboarding_" + activeUser) === "1";
 
       if (!isReplay) {
         if (hasShownOnboardingTour || isTourDoneLocally || sessionStorage.getItem("agram_tour_dismissed") === "true") {
