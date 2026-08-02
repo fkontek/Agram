@@ -1357,7 +1357,7 @@ p {
     width: auto;
     height: auto;
     align-items: center;
-    gap: 12px;
+    gap: 4px;
   }
 
   #header .nav-list ul li {
@@ -1365,10 +1365,10 @@ p {
   }
 
   #header .nav-list ul li a {
-    font-size: 1.55rem;
+    font-size: 1.35rem;
     font-weight: 600;
-    letter-spacing: 0.05rem;
-    padding: 8px 14px;
+    letter-spacing: 0.03rem;
+    padding: 6px 8px;
     white-space: nowrap;
     color: var(--text-light);
   }
@@ -1376,6 +1376,29 @@ p {
   #header .nav-list ul li a:hover {
     color: var(--primary-gold);
     transform: translateY(-1px);
+  }
+}
+
+@media only screen and (min-width: 1280px) {
+  #header .nav-list ul {
+    gap: 8px;
+  }
+
+  #header .nav-list ul li a {
+    font-size: 1.45rem;
+    letter-spacing: 0.04rem;
+    padding: 8px 12px;
+  }
+}
+
+@media only screen and (min-width: 1440px) {
+  #header .nav-list ul {
+    gap: 12px;
+  }
+
+  #header .nav-list ul li a {
+    font-size: 1.55rem;
+    padding: 8px 14px;
   }
 }
 
