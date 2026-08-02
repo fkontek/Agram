@@ -688,31 +688,48 @@ async function sendBookingReminders(env) {
     const tomorrow = new Date(croatiaNow.getTime() + 24 * 60 * 60 * 1000);
     const tomorrowStr = formatDate(tomorrow);
     
-    // Find all bookings for tomorrow where status is Reserved (0) and reminder hasn't been sent (0)
+    // Find all active bookings for tomorrow where status is Reserved (0) and reminder hasn't been sent (0)
     const activeBookings = await env.DB.prepare(`
       SELECT b.id as booking_id, b.user_id, c.username, c.email, s.title, s.time, s.date
       FROM Bookings b
       JOIN Clients c ON b.user_id = c.id
       JOIN Sessions s ON b.session_id = s.id
       WHERE s.date = ? AND b.status = 0 AND b.reminder_sent = 0
+      ORDER BY b.id ASC
     `).bind(tomorrowStr).all();
 
     const bookings = activeBookings.results || [];
-    const processedEmails = new Set();
+    if (bookings.length === 0) return;
 
+    // Group bookings by user_id so at most 1 email is sent per user
+    const userBookingsMap = new Map();
     for (const b of bookings) {
-      if (!b.email || processedEmails.has(b.email.toLowerCase())) {
-        continue;
+      if (!b.email) continue;
+      if (!userBookingsMap.has(b.user_id)) {
+        userBookingsMap.set(b.user_id, {
+          user_id: b.user_id,
+          username: b.username,
+          email: b.email,
+          bookingIds: [],
+          firstBooking: b
+        });
       }
+      userBookingsMap.get(b.user_id).bookingIds.push(b.booking_id);
+    }
 
-      // Atomically claim the booking in DB before sending email to prevent race conditions
+    // For each user, atomically claim ALL their tomorrow bookings in DB, then send exactly 1 email
+    for (const [userId, userData] of userBookingsMap) {
+      const ids = userData.bookingIds;
+      if (ids.length === 0) continue;
+
+      const placeholders = ids.map(() => '?').join(',');
       const claimResult = await env.DB.prepare(
-        "UPDATE Bookings SET reminder_sent = 1 WHERE id = ? AND reminder_sent = 0"
-      ).bind(b.booking_id).run();
+        `UPDATE Bookings SET reminder_sent = 1 WHERE id IN (${placeholders}) AND reminder_sent = 0`
+      ).bind(...ids).run();
 
       const changes = claimResult && claimResult.meta ? claimResult.meta.changes : 0;
       if (changes > 0) {
-        processedEmails.add(b.email.toLowerCase());
+        const b = userData.firstBooking;
         const dateFormatted = b.date.split('-').reverse().join('.') + '.';
         const emailSubject = `Podsjetnik na trening: ${b.title}`;
         const emailHtml = `
@@ -731,7 +748,7 @@ async function sendBookingReminders(env) {
             <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
           </div>
         `;
-        await sendEmail(env, b.email, emailSubject, emailHtml);
+        await sendEmail(env, userData.email, emailSubject, emailHtml);
       }
     }
   } catch (e) {

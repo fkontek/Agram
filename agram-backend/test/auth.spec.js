@@ -416,16 +416,17 @@ describe('JWT Authentication integration tests', () => {
     const tomorrow = new Date(d.getTime() + 24 * 60 * 60 * 1000);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-    // 2. Insert a mock session for tomorrow
+    // 2. Insert two mock sessions for tomorrow
     await env.DB.prepare(`
       INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
-      VALUES (888, 'Tomorrow Pilates', 'Adrijana', ?, '10:00', 4, 'grupni')
-    `).bind(tomorrowStr).run();
+      VALUES (888, 'Tomorrow Pilates 1', 'Adrijana', ?, '10:00', 4, 'grupni'),
+             (889, 'Tomorrow Pilates 2', 'Adrijana', ?, '17:00', 4, 'grupni')
+    `).bind(tomorrowStr, tomorrowStr).run();
 
-    // 3. Insert a reserved booking for tomorrow (status = 0, reminder_sent = 0)
+    // 3. Insert reserved bookings for tomorrow for user 1 (status = 0, reminder_sent = 0)
     await env.DB.prepare(`
       INSERT INTO Bookings (session_id, user_id, status, reminder_sent)
-      VALUES (888, 1, 0, 0)
+      VALUES (888, 1, 0, 0), (889, 1, 0, 0)
     `).run();
 
     // 4. Trigger worker.scheduled
@@ -438,10 +439,12 @@ describe('JWT Authentication integration tests', () => {
     await worker.scheduled(event, env, ctx);
     await waitOnExecutionContext(ctx);
 
-    // 5. Verify that booking reminder_sent was updated to 1
-    const booking = await env.DB.prepare("SELECT reminder_sent FROM Bookings WHERE session_id = 888 AND user_id = 1").first();
-    expect(booking).toBeDefined();
-    expect(booking.reminder_sent).toBe(1);
+    // 5. Verify that ALL tomorrow bookings for user 1 were updated to reminder_sent = 1
+    const bookings = await env.DB.prepare("SELECT reminder_sent FROM Bookings WHERE session_id IN (888, 889) AND user_id = 1").all();
+    expect(bookings.results).toBeDefined();
+    expect(bookings.results.length).toBe(2);
+    expect(bookings.results[0].reminder_sent).toBe(1);
+    expect(bookings.results[1].reminder_sent).toBe(1);
   });
 
   it('client endpoint /api/client/onboarding-completed updates flag to 1', async () => {
