@@ -406,7 +406,7 @@ async function notifyWaitlist(env, sessionId) {
             <tr><td><b>Termin:</b></td><td>${session.title}</td></tr>
             <tr><td><b>Datum i vrijeme:</b></td><td>${dateStr} u ${session.time}h</td></tr>
           </table>
-          <p>Oduzet Vam je 1 trening iz paketa. Vidimo se!</p>
+          <p>Vidimo se!</p>
           <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
           <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
         </div>
