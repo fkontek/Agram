@@ -238,10 +238,22 @@ async function autoGenerateWeeks(env, baseMonday) {
   }
 }
 
-// Ensure database columns exist (auto-migration fallback)
+// Ensure database columns and tables exist (auto-migration fallback)
 async function ensureDbColumns(env) {
   try {
     await env.DB.prepare("ALTER TABLE Clients ADD COLUMN has_seen_onboarding INTEGER DEFAULT 0").run();
+  } catch (e) {}
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS SentReminders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        target_date TEXT NOT NULL,
+        reminder_type TEXT NOT NULL DEFAULT '24h_booking',
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, target_date, reminder_type)
+      )
+    `).run();
   } catch (e) {}
 }
 
@@ -276,7 +288,7 @@ function getPackageLimit(packageName) {
 }
 
 // Send email using Resend API
-async function sendEmail(env, to, subject, htmlContent) {
+async function sendEmail(env, to, subject, htmlContent, idempotencyKey = null) {
   const apiKey = env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("RESEND_API_KEY is not defined. Skipping email sending.");
@@ -297,13 +309,18 @@ async function sendEmail(env, to, subject, htmlContent) {
 
   const fromAddress = env.EMAIL_FROM_ADDRESS || "Agram Pilates <onboarding@resend.dev>";
 
+  const headers = {
+    "Authorization": `Bearer ${apiKey}`,
+    "Content-Type": "application/json"
+  };
+  if (idempotencyKey) {
+    headers["Idempotency-Key"] = idempotencyKey;
+  }
+
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
+      headers,
       body: JSON.stringify({
         from: fromAddress,
         to: [recipient],
@@ -681,10 +698,20 @@ async function sendDailyReportEmail(env, dateStr = null) {
   }
 }
 
-// Send 24-hour email reminders to clients for tomorrow's bookings
-async function sendBookingReminders(env) {
+// Send 24-hour email reminders to clients for tomorrow's bookings (at 20:00 Zagreb time)
+async function sendBookingReminders(env, event = null) {
   try {
+    await ensureDbColumns(env);
     const croatiaNow = getCroatiaNow();
+
+    // If triggered by the 20:00 cron schedule, enforce that local Croatia hour is 20:00
+    if (event && event.cron && event.cron === "0 18,19 * * *") {
+      if (croatiaNow.getHours() !== 20) {
+        console.log(`Skipping sendBookingReminders: current Croatia hour is ${croatiaNow.getHours()}, expected 20.`);
+        return;
+      }
+    }
+
     const tomorrow = new Date(croatiaNow.getTime() + 24 * 60 * 60 * 1000);
     const tomorrowStr = formatDate(tomorrow);
     
@@ -722,34 +749,49 @@ async function sendBookingReminders(env) {
       const ids = userData.bookingIds;
       if (ids.length === 0) continue;
 
+      // Deduplication check: Atomic lock using SentReminders table with UNIQUE(user_id, target_date, reminder_type)
+      const lockResult = await env.DB.prepare(`
+        INSERT OR IGNORE INTO SentReminders (user_id, target_date, reminder_type)
+        VALUES (?, ?, '24h_booking')
+      `).bind(userId, tomorrowStr).run();
+
+      const lockInserted = lockResult && lockResult.meta ? lockResult.meta.changes : 0;
+      if (lockInserted === 0) {
+        // A reminder was ALREADY sent to this user for tomorrow's date!
+        console.log(`Skipping duplicate reminder email for user_id ${userId} on date ${tomorrowStr}`);
+        const placeholders = ids.map(() => '?').join(',');
+        await env.DB.prepare(
+          `UPDATE Bookings SET reminder_sent = 1 WHERE id IN (${placeholders})`
+        ).bind(...ids).run();
+        continue;
+      }
+
       const placeholders = ids.map(() => '?').join(',');
-      const claimResult = await env.DB.prepare(
-        `UPDATE Bookings SET reminder_sent = 1 WHERE id IN (${placeholders}) AND reminder_sent = 0`
+      await env.DB.prepare(
+        `UPDATE Bookings SET reminder_sent = 1 WHERE id IN (${placeholders})`
       ).bind(...ids).run();
 
-      const changes = claimResult && claimResult.meta ? claimResult.meta.changes : 0;
-      if (changes > 0) {
-        const b = userData.firstBooking;
-        const dateFormatted = b.date.split('-').reverse().join('.') + '.';
-        const emailSubject = `Podsjetnik na trening: ${b.title}`;
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
-            <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Podsjetnik na trening</h2>
-            <p>Bok <b>${b.username}</b>,</p>
-            <p>Podsjećamo te da sutra imaš rezerviran termin:</p>
-            <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
-              <tr><td><b>Termin:</b></td><td>${b.title}</td></tr>
-              <tr><td><b>Datum i vrijeme:</b></td><td>Sutra (${dateFormatted}) u ${b.time}h</td></tr>
-            </table>
-            <p style="margin-top: 20px;">
-              Vidimo se!
-            </p>
-            <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
-            <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
-          </div>
-        `;
-        await sendEmail(env, userData.email, emailSubject, emailHtml);
-      }
+      const b = userData.firstBooking;
+      const dateFormatted = b.date.split('-').reverse().join('.') + '.';
+      const emailSubject = `Podsjetnik na trening: ${b.title}`;
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Podsjetnik na trening</h2>
+          <p>Bok <b>${b.username}</b>,</p>
+          <p>Podsjećamo te da sutra imaš rezerviran termin:</p>
+          <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
+            <tr><td><b>Termin:</b></td><td>${b.title}</td></tr>
+            <tr><td><b>Datum i vrijeme:</b></td><td>Sutra (${dateFormatted}) u ${b.time}h</td></tr>
+          </table>
+          <p style="margin-top: 20px;">
+            Vidimo se!
+          </p>
+          <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+          <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
+        </div>
+      `;
+      const idempotencyKey = `reminder-user-${userId}-${tomorrowStr}`;
+      await sendEmail(env, userData.email, emailSubject, emailHtml, idempotencyKey);
     }
   } catch (e) {
     console.error("Error sending booking reminders:", e);
@@ -2604,9 +2646,9 @@ export default {
       promises.push(syncInstagramFeed(env));
     }
 
-    // 1.5. Daily Booking Reminders: runs on 12-hour schedule as well
-    if (!event.cron || event.cron === "0 */12 * * *") {
-      promises.push(sendBookingReminders(env));
+    // 1.5. Daily Booking Reminders: runs at 20:00 Croatia time
+    if (!event.cron || event.cron === "0 18,19 * * *" || event.cron === "0 */12 * * *") {
+      promises.push(sendBookingReminders(env, event));
     }
 
     // 1.6. Auto generate weekly schedules: runs on 12-hour schedule as well

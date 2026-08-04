@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS Settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, 
 CREATE TABLE IF NOT EXISTS InstagramPosts (id TEXT PRIMARY KEY, caption TEXT, media_type TEXT, media_url TEXT, permalink TEXT, thumbnail_url TEXT, timestamp TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS Waitlists (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL, user_id INTEGER NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(session_id, user_id), FOREIGN KEY (session_id) REFERENCES Sessions(id), FOREIGN KEY (user_id) REFERENCES Clients(id));
 CREATE TABLE IF NOT EXISTS PackageRequests (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, package_name TEXT NOT NULL, status TEXT DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES Clients(id) ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS SentReminders (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, target_date TEXT NOT NULL, reminder_type TEXT NOT NULL DEFAULT '24h_booking', sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, target_date, reminder_type));
 `;
 
 // Helper to hash password using SHA-256
@@ -445,6 +446,44 @@ describe('JWT Authentication integration tests', () => {
     expect(bookings.results.length).toBe(2);
     expect(bookings.results[0].reminder_sent).toBe(1);
     expect(bookings.results[1].reminder_sent).toBe(1);
+  });
+
+  it('prevents duplicate reminder email on subsequent cron runs for the same target date', async () => {
+    // 1. Prepare tomorrow's date
+    const d = new Date();
+    const tomorrow = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    // 2. Insert mock session and booking for tomorrow for user 2
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (999, 'Tomorrow Pilates Unique', 'Adrijana', ?, '12:00', 4, 'grupni')
+    `).bind(tomorrowStr).run();
+
+    await env.DB.prepare(`
+      INSERT INTO Bookings (session_id, user_id, status, reminder_sent)
+      VALUES (999, 2, 0, 0)
+    `).run();
+
+    // 3. First scheduled run
+    const ctx1 = createExecutionContext();
+    const event1 = { cron: "0 */12 * * *", scheduledTime: Date.now() };
+    await worker.scheduled(event1, env, ctx1);
+    await waitOnExecutionContext(ctx1);
+
+    // Verify 1 entry in SentReminders
+    const sentCount1 = await env.DB.prepare("SELECT COUNT(*) as cnt FROM SentReminders WHERE user_id = 2 AND target_date = ?").bind(tomorrowStr).first();
+    expect(sentCount1.cnt).toBe(1);
+
+    // 4. Second scheduled run (simulating duplicate cron invocation)
+    const ctx2 = createExecutionContext();
+    const event2 = { cron: "0 */12 * * *", scheduledTime: Date.now() + 1000 };
+    await worker.scheduled(event2, env, ctx2);
+    await waitOnExecutionContext(ctx2);
+
+    // Verify STILL only 1 entry in SentReminders (no duplicate lock created, duplicate email skipped)
+    const sentCount2 = await env.DB.prepare("SELECT COUNT(*) as cnt FROM SentReminders WHERE user_id = 2 AND target_date = ?").bind(tomorrowStr).first();
+    expect(sentCount2.cnt).toBe(1);
   });
 
   it('client endpoint /api/client/onboarding-completed updates flag to 1', async () => {

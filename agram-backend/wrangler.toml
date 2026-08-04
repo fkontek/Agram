@@ -13,5 +13,5 @@ EMAIL_REDIRECT_TO = "filip.kontek@gmail.com"
 EMAIL_FROM_ADDRESS = "Agram Pilates <info@pilates-reformer-agram.com>"
 
 [triggers]
-crons = ["0 */12 * * *", "15 20,21 * * 5"]
+crons = ["0 */12 * * *", "0 18,19 * * *", "15 20,21 * * 5"]
 
