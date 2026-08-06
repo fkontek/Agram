@@ -431,11 +431,9 @@ describe('JWT Authentication integration tests', () => {
     `).run();
 
     // 4. Trigger worker.scheduled
+    // 4. Trigger worker.scheduled without cron property to simulate manual/scheduled execution
     const ctx = createExecutionContext();
-    const event = {
-      cron: "0 */12 * * *",
-      scheduledTime: Date.now()
-    };
+    const event = { scheduledTime: Date.now() };
     
     await worker.scheduled(event, env, ctx);
     await waitOnExecutionContext(ctx);
@@ -467,7 +465,7 @@ describe('JWT Authentication integration tests', () => {
 
     // 3. First scheduled run
     const ctx1 = createExecutionContext();
-    const event1 = { cron: "0 */12 * * *", scheduledTime: Date.now() };
+    const event1 = { scheduledTime: Date.now() };
     await worker.scheduled(event1, env, ctx1);
     await waitOnExecutionContext(ctx1);
 
@@ -477,13 +475,38 @@ describe('JWT Authentication integration tests', () => {
 
     // 4. Second scheduled run (simulating duplicate cron invocation)
     const ctx2 = createExecutionContext();
-    const event2 = { cron: "0 */12 * * *", scheduledTime: Date.now() + 1000 };
+    const event2 = { scheduledTime: Date.now() + 1000 };
     await worker.scheduled(event2, env, ctx2);
     await waitOnExecutionContext(ctx2);
 
     // Verify STILL only 1 entry in SentReminders (no duplicate lock created, duplicate email skipped)
     const sentCount2 = await env.DB.prepare("SELECT COUNT(*) as cnt FROM SentReminders WHERE user_id = 2 AND target_date = ?").bind(tomorrowStr).first();
     expect(sentCount2.cnt).toBe(1);
+  });
+
+  it('ignores booking reminders when triggered by 12-hour sync cron (0 */12 * * *)', async () => {
+    const d = new Date();
+    const tomorrow = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (777, 'Tomorrow Pilates 12h Cron', 'Adrijana', ?, '15:00', 4, 'grupni')
+    `).bind(tomorrowStr).run();
+
+    await env.DB.prepare(`
+      INSERT INTO Bookings (session_id, user_id, status, reminder_sent)
+      VALUES (777, 1, 0, 0)
+    `).run();
+
+    const ctx = createExecutionContext();
+    const event = { cron: "0 */12 * * *", scheduledTime: Date.now() };
+    await worker.scheduled(event, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    // Verify that reminder_sent remains 0 and no SentReminders entry is created
+    const booking = await env.DB.prepare("SELECT reminder_sent FROM Bookings WHERE session_id = 777 AND user_id = 1").first();
+    expect(booking.reminder_sent).toBe(0);
   });
 
   it('client endpoint /api/client/onboarding-completed updates flag to 1', async () => {

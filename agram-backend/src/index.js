@@ -704,8 +704,8 @@ async function sendBookingReminders(env, event = null) {
     await ensureDbColumns(env);
     const croatiaNow = getCroatiaNow();
 
-    // If triggered by the 20:00 cron schedule, enforce that local Croatia hour is 20:00
-    if (event && event.cron && event.cron === "0 18,19 * * *") {
+    // Enforce that local Croatia hour is 20:00 when triggered by cron
+    if (event && event.cron) {
       if (croatiaNow.getHours() !== 20) {
         console.log(`Skipping sendBookingReminders: current Croatia hour is ${croatiaNow.getHours()}, expected 20.`);
         return;
@@ -2646,8 +2646,8 @@ export default {
       promises.push(syncInstagramFeed(env));
     }
 
-    // 1.5. Daily Booking Reminders: runs at 20:00 Croatia time
-    if (!event.cron || event.cron === "0 18,19 * * *" || event.cron === "0 */12 * * *") {
+    // 1.5. Daily Booking Reminders: runs strictly at 20:00 Croatia time (cron 0 18,19 * * *)
+    if (!event.cron || event.cron === "0 18,19 * * *") {
       promises.push(sendBookingReminders(env, event));
     }
 
