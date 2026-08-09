@@ -4170,7 +4170,7 @@
       }
     }
 
-    function viewClientQuestionnaire(client) {
+    async function viewClientQuestionnaire(client) {
       document.getElementById("q-modal-name").textContent = client.full_name || client.username || "—";
       document.getElementById("q-modal-username").textContent = client.username || "—";
       document.getElementById("q-modal-email").textContent = client.email || "—";
