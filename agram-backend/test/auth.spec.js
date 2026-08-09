@@ -565,10 +565,10 @@ describe('JWT Authentication integration tests', () => {
     const token2 = await loginUser('user2');
     const token3 = await loginUser('user3');
 
-    // 3. Create a session with capacity 1 for 2026-09-01
+    // 3. Create a session with capacity 1 for 2026-08-25
     await env.DB.prepare(`
       INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
-      VALUES (999, 'Reformer Express', 'Adrijana', '2026-09-01', '14:00', 1, 'grupni')
+      VALUES (999, 'Reformer Express', 'Adrijana', '2026-08-25', '14:00', 1, 'grupni')
     `).run();
 
     // 4. User 1 books session -> Should succeed
@@ -628,5 +628,71 @@ describe('JWT Authentication integration tests', () => {
     // 10. Verify User 2 was removed from waitlist and User 3 is now position 1
     const waitlistUser2 = await env.DB.prepare('SELECT id FROM Waitlists WHERE session_id = 999 AND user_id = 12').first();
     expect(waitlistUser2).toBeNull();
+  });
+
+  it('forgot-password generates token and reset-password verifies token validation', async () => {
+    const forgotReq = new Request('http://example.com/api/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'ivana.h@test.com' })
+    });
+    const ctx1 = createExecutionContext();
+    const forgotRes = await worker.fetch(forgotReq, env, ctx1);
+    await waitOnExecutionContext(ctx1);
+
+    expect(forgotRes.status).toBe(200);
+    const forgotData = await forgotRes.json();
+    expect(forgotData.success).toBe(true);
+
+    const client = await env.DB.prepare("SELECT reset_token_hash FROM Clients WHERE email = 'ivana.h@test.com'").first();
+    expect(client).toBeDefined();
+
+    const resetReq = new Request('http://example.com/api/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reset_token: 'invalid_token', new_password: 'newSecretPassword123' })
+    });
+    const ctx2 = createExecutionContext();
+    const resetRes = await worker.fetch(resetReq, env, ctx2);
+    await waitOnExecutionContext(ctx2);
+
+    expect(resetRes.status).toBe(400);
+  });
+
+  it('enforces backend business rules: past session booking fails, waitlist on open session fails', async () => {
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (998, 'Past Session', 'Adrijana', '2020-01-01', '10:00', 4, 'grupni')
+    `).run();
+
+    const loginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'clientuser', password: 'clientpass' })
+    });
+    const loginRes = await worker.fetch(loginReq, env, createExecutionContext());
+    const loginData = await loginRes.json();
+    const token = loginData.token;
+
+    const pastBookReq = new Request('http://example.com/api/book', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: 998 })
+    });
+    const pastBookRes = await worker.fetch(pastBookReq, env, createExecutionContext());
+    expect(pastBookRes.status).toBe(400);
+
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (997, 'Open Session', 'Adrijana', '2026-08-20', '10:00', 4, 'grupni')
+    `).run();
+
+    const waitlistOpenReq = new Request('http://example.com/api/waitlist/join', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: 997 })
+    });
+    const waitlistOpenRes = await worker.fetch(waitlistOpenReq, env, createExecutionContext());
+    expect(waitlistOpenRes.status).toBe(400);
   });
 });

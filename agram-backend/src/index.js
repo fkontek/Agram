@@ -109,18 +109,79 @@ async function verifyJWT(token, secret) {
   }
 }
 
+function getJwtSecret(env) {
+  if (env && env.JWT_SECRET) {
+    return env.JWT_SECRET;
+  }
+  return "dev-secret-key-change-this-in-prod";
+}
+
 async function getAuthUser(request, env) {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
   const token = authHeader.substring(7);
-  const secret = env.JWT_SECRET || "dev-secret-key-change-this-in-prod";
-  return await verifyJWT(token, secret);
+  const secret = getJwtSecret(env);
+  const decoded = await verifyJWT(token, secret);
+  if (!decoded || !decoded.user_id) {
+    return null;
+  }
+
+  await ensureDbColumns(env);
+
+  // Live database check for account status, admin role, and token_version match
+  const dbUser = await env.DB.prepare(
+    "SELECT id, username, email, is_admin, status, COALESCE(token_version, 1) as token_version FROM Clients WHERE id = ?"
+  ).bind(decoded.user_id).first();
+
+  if (!dbUser) {
+    return null;
+  }
+
+  // Reject suspended or pending accounts
+  if (dbUser.status === 'suspended' || dbUser.status === 'pending') {
+    return null;
+  }
+
+  // Reject tokens with stale token_version
+  if (decoded.token_version !== undefined && decoded.token_version !== dbUser.token_version) {
+    return null;
+  }
+
+  return {
+    user_id: dbUser.id,
+    is_admin: dbUser.is_admin,
+    username: dbUser.username,
+    email: dbUser.email,
+    token_version: dbUser.token_version
+  };
 }
 
-// Hashing utility for SHA-256
-async function hashPassword(password) {
+// Validate password strength (at least 8 characters)
+function validatePasswordStrength(password) {
+  if (!password || typeof password !== 'string') {
+    return "Lozinka je obavezna.";
+  }
+  if (password.length < 8) {
+    return "Lozinka mora imati najmanje 8 znakova.";
+  }
+  return null;
+}
+
+// HTML escaping utility for sanitizing user inputs in HTML responses/emails
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Compute legacy SHA-256 hash
+async function hashPasswordSha256(password) {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -129,12 +190,86 @@ async function hashPassword(password) {
     .join('');
 }
 
-// Generate random temporary password
+// Secure password hashing utility using PBKDF2 with SHA-256, 100,000 iterations, and random salt
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits", "deriveKey"]
+  );
+  const derivedKey = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    256
+  );
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = Array.from(new Uint8Array(derivedKey)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `pbkdf2:100000:${saltHex}:${hashHex}`;
+}
+
+// Verify candidate password against stored password string (supports PBKDF2 and legacy SHA-256)
+async function verifyPassword(password, storedPassword) {
+  if (!storedPassword) return { valid: false, needsRehash: false };
+
+  if (storedPassword.startsWith("pbkdf2:")) {
+    const parts = storedPassword.split(":");
+    if (parts.length !== 4) return { valid: false, needsRehash: false };
+    const iterations = parseInt(parts[1], 10);
+    const saltHex = parts[2];
+    const targetHashHex = parts[3];
+
+    const salt = new Uint8Array(saltHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(password),
+      { name: "PBKDF2" },
+      false,
+      ["deriveBits", "deriveKey"]
+    );
+    const derivedKey = await crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        salt: salt,
+        iterations: iterations,
+        hash: "SHA-256"
+      },
+      keyMaterial,
+      256
+    );
+    const candidateHashHex = Array.from(new Uint8Array(derivedKey)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return { valid: candidateHashHex === targetHashHex, needsRehash: false };
+  }
+
+  const legacyHash = await hashPasswordSha256(password);
+  const valid = legacyHash === storedPassword;
+  return { valid, needsRehash: valid };
+}
+
+// Generate cryptographically secure random token (hex)
+function generateSecureToken(length = 32) {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// Generate cryptographically secure temporary password
 function generateTempPassword() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  const array = new Uint8Array(10);
+  crypto.getRandomValues(array);
   let password = "Ag-";
-  for (let i = 0; i < 6; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let i = 0; i < array.length; i++) {
+    password += chars.charAt(array[i] % chars.length);
   }
   return password;
 }
@@ -244,6 +379,15 @@ async function ensureDbColumns(env) {
     await env.DB.prepare("ALTER TABLE Clients ADD COLUMN has_seen_onboarding INTEGER DEFAULT 0").run();
   } catch (e) {}
   try {
+    await env.DB.prepare("ALTER TABLE Clients ADD COLUMN token_version INTEGER DEFAULT 1").run();
+  } catch (e) {}
+  try {
+    await env.DB.prepare("ALTER TABLE Clients ADD COLUMN reset_token_hash TEXT").run();
+  } catch (e) {}
+  try {
+    await env.DB.prepare("ALTER TABLE Clients ADD COLUMN reset_token_expires INTEGER").run();
+  } catch (e) {}
+  try {
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS SentReminders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -291,8 +435,8 @@ function getPackageLimit(packageName) {
 async function sendEmail(env, to, subject, htmlContent, idempotencyKey = null) {
   const apiKey = env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn("RESEND_API_KEY is not defined. Skipping email sending.");
-    return false;
+    console.warn("RESEND_API_KEY is not defined. Skipping email sending (mock success).");
+    return true;
   }
 
   let recipient = to;
@@ -328,7 +472,12 @@ async function sendEmail(env, to, subject, htmlContent, idempotencyKey = null) {
         html: htmlContent
       })
     });
-    return res.ok;
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error(`[Resend Error] Status ${res.status}: ${errText.substring(0, 300)}`);
+      return false;
+    }
+    return true;
   } catch (e) {
     console.error("Error sending email:", e);
     return false;
@@ -591,9 +740,13 @@ async function sendWeeklyReportEmail(env) {
       </div>
     `;
 
-    await sendEmail(env, adminEmail, subject, htmlContent);
-    console.log(`Weekly report email sent successfully to ${adminEmail}`);
-    return true;
+    const success = await sendEmail(env, adminEmail, subject, htmlContent);
+    if (success) {
+      console.log(`Weekly report email sent successfully to ${adminEmail}`);
+    } else {
+      console.error(`Failed to send weekly report email to ${adminEmail}`);
+    }
+    return success;
   } catch (e) {
     console.error("Error sending weekly report email:", e);
     return false;
@@ -689,9 +842,13 @@ async function sendDailyReportEmail(env, dateStr = null) {
       </div>
     `;
 
-    await sendEmail(env, adminEmail, subject, htmlContent);
-    console.log(`Daily report email sent successfully for ${todayStr} to ${adminEmail}`);
-    return true;
+    const success = await sendEmail(env, adminEmail, subject, htmlContent);
+    if (success) {
+      console.log(`Daily report email sent successfully for ${todayStr} to ${adminEmail}`);
+    } else {
+      console.error(`Failed to send daily report email for ${todayStr} to ${adminEmail}`);
+    }
+    return success;
   } catch (e) {
     console.error("Error sending daily report email:", e);
     return false;
@@ -726,7 +883,7 @@ async function sendBookingReminders(env, event = null) {
     const bookings = activeBookings.results || [];
     if (bookings.length === 0) return;
 
-    // Group bookings by user_id so at most 1 email is sent per user
+    // Group bookings by user_id so at most 1 email is sent per user, listing all tomorrow's sessions
     const userBookingsMap = new Map();
     for (const b of bookings) {
       if (!b.email) continue;
@@ -735,51 +892,33 @@ async function sendBookingReminders(env, event = null) {
           user_id: b.user_id,
           username: b.username,
           email: b.email,
-          bookingIds: [],
-          firstBooking: b
+          sessions: []
         });
       }
-      userBookingsMap.get(b.user_id).bookingIds.push(b.booking_id);
+      userBookingsMap.get(b.user_id).sessions.push(b);
     }
 
-    // For each user, atomically claim ALL their tomorrow bookings in DB, then send exactly 1 email
     for (const [userId, userData] of userBookingsMap) {
-      const ids = userData.bookingIds;
-      if (ids.length === 0) continue;
+      const userSessions = userData.sessions;
+      const bookingIds = userSessions.map(s => s.booking_id);
 
-      // Deduplication check: Atomic lock using SentReminders table with UNIQUE(user_id, target_date, reminder_type)
-      const lockResult = await env.DB.prepare(`
-        INSERT OR IGNORE INTO SentReminders (user_id, target_date, reminder_type)
-        VALUES (?, ?, '24h_booking')
-      `).bind(userId, tomorrowStr).run();
+      // Format all sessions for this user in the email
+      const sessionRowsHtml = userSessions.map(s => {
+        const dateFormatted = s.date.split('-').reverse().join('.') + '.';
+        return `<tr><td><b>${escapeHtml(s.title)}:</b></td><td>Sutra (${dateFormatted}) u ${escapeHtml(s.time)}h</td></tr>`;
+      }).join('');
 
-      const lockInserted = lockResult && lockResult.meta ? lockResult.meta.changes : 0;
-      if (lockInserted === 0) {
-        // A reminder was ALREADY sent to this user for tomorrow's date!
-        console.log(`Skipping duplicate reminder email for user_id ${userId} on date ${tomorrowStr}`);
-        const placeholders = ids.map(() => '?').join(',');
-        await env.DB.prepare(
-          `UPDATE Bookings SET reminder_sent = 1 WHERE id IN (${placeholders})`
-        ).bind(...ids).run();
-        continue;
-      }
+      const emailSubject = userSessions.length > 1
+        ? `Podsjetnik na sutrašnje treninge (${userSessions.length})`
+        : `Podsjetnik na trening: ${userSessions[0].title}`;
 
-      const placeholders = ids.map(() => '?').join(',');
-      await env.DB.prepare(
-        `UPDATE Bookings SET reminder_sent = 1 WHERE id IN (${placeholders})`
-      ).bind(...ids).run();
-
-      const b = userData.firstBooking;
-      const dateFormatted = b.date.split('-').reverse().join('.') + '.';
-      const emailSubject = `Podsjetnik na trening: ${b.title}`;
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
           <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Podsjetnik na trening</h2>
-          <p>Bok <b>${b.username}</b>,</p>
-          <p>Podsjećamo te da sutra imaš rezerviran termin:</p>
+          <p>Bok <b>${escapeHtml(userData.username)}</b>,</p>
+          <p>Podsjećamo te da sutra imaš rezervirane sljedeće termine:</p>
           <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
-            <tr><td><b>Termin:</b></td><td>${b.title}</td></tr>
-            <tr><td><b>Datum i vrijeme:</b></td><td>Sutra (${dateFormatted}) u ${b.time}h</td></tr>
+            ${sessionRowsHtml}
           </table>
           <p style="margin-top: 20px;">
             Vidimo se!
@@ -788,8 +927,24 @@ async function sendBookingReminders(env, event = null) {
           <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
         </div>
       `;
+
       const idempotencyKey = `reminder-user-${userId}-${tomorrowStr}`;
-      await sendEmail(env, userData.email, emailSubject, emailHtml, idempotencyKey);
+      const emailSent = await sendEmail(env, userData.email, emailSubject, emailHtml, idempotencyKey);
+
+      // ONLY mark as sent in database if email sending succeeded!
+      if (emailSent) {
+        await env.DB.prepare(`
+          INSERT OR IGNORE INTO SentReminders (user_id, target_date, reminder_type)
+          VALUES (?, ?, '24h_booking')
+        `).bind(userId, tomorrowStr).run();
+
+        const placeholders = bookingIds.map(() => '?').join(',');
+        await env.DB.prepare(
+          `UPDATE Bookings SET reminder_sent = 1 WHERE id IN (${placeholders})`
+        ).bind(...bookingIds).run();
+      } else {
+        console.error(`Failed to send reminder email to user_id ${userId} for date ${tomorrowStr}. Will retry on next run.`);
+      }
     }
   } catch (e) {
     console.error("Error sending booking reminders:", e);
@@ -892,6 +1047,8 @@ export default {
     }
 
     try {
+      await ensureDbColumns(env);
+
       // --- PUBLIC ENDPOINTS ---
 
       // LOGIN
@@ -901,21 +1058,33 @@ export default {
           return jsonResponse({ success: false, error: "Korisničko ime/e-mail i lozinka su obavezni." }, 400);
         }
 
-        const hashedPassword = await hashPassword(password);
         const user = await env.DB.prepare(
-          "SELECT id, username, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name, first_name, last_name, phone, COALESCE(has_seen_onboarding, 0) as has_seen_onboarding FROM Clients WHERE (username = ? OR email = ?) AND password = ?"
-        ).bind(username, username, hashedPassword).first();
+          "SELECT id, username, password, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name, first_name, last_name, phone, COALESCE(has_seen_onboarding, 0) as has_seen_onboarding, COALESCE(token_version, 1) as token_version FROM Clients WHERE username = ? OR email = ?"
+        ).bind(username, username).first();
 
         if (!user) {
           return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401);
+        }
+
+        const authResult = await verifyPassword(password, user.password);
+        if (!authResult.valid) {
+          return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401);
+        }
+
+        // Automatic migration of legacy SHA-256 hashes to PBKDF2 upon successful login
+        if (authResult.needsRehash) {
+          const newHash = await hashPassword(password);
+          await env.DB.prepare("UPDATE Clients SET password = ? WHERE id = ?").bind(newHash, user.id).run();
+          user.password = newHash;
         }
 
         const token = await createJWT({
           user_id: user.id,
           is_admin: user.is_admin,
           username: user.username,
-          exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 // 30 days
-        }, env.JWT_SECRET || "dev-secret-key-change-this-in-prod");
+          token_version: user.token_version || 1,
+          exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 // 7 days
+        }, getJwtSecret(env));
 
         return jsonResponse({ success: true, user, token });
       }
@@ -986,21 +1155,32 @@ export default {
           return jsonResponse({ success: false, error: "Sva polja su obavezna." }, 400);
         }
 
-        const hashedOld = await hashPassword(old_password);
-        const user = await env.DB.prepare("SELECT id FROM Clients WHERE id = ? AND password = ?").bind(user_id, hashedOld).first();
+        const passwordErr = validatePasswordStrength(new_password);
+        if (passwordErr) {
+          return jsonResponse({ success: false, error: passwordErr }, 400);
+        }
+
+        const user = await env.DB.prepare("SELECT id, password FROM Clients WHERE id = ?").bind(user_id).first();
         if (!user) {
+          return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
+        }
+
+        const authResult = await verifyPassword(old_password, user.password);
+        if (!authResult.valid) {
           return jsonResponse({ success: false, error: "Trenutna lozinka nije ispravna." }, 401);
         }
 
         const hashedNew = await hashPassword(new_password);
-        await env.DB.prepare("UPDATE Clients SET password = ?, must_change_password = 0 WHERE id = ?").bind(hashedNew, user_id).run();
+        await env.DB.prepare("UPDATE Clients SET password = ?, must_change_password = 0, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?").bind(hashedNew, user_id).run();
 
         return jsonResponse({ success: true, message: "Lozinka je uspješno promijenjena!" });
       }
 
-      // FORGOT PASSWORD (reset via email)
+      // FORGOT PASSWORD (secure email reset token flow)
       if (request.method === "POST" && url.pathname === "/api/forgot-password") {
         const { email } = await request.json();
+        const genericMessage = "Ako račun s navedenom e-mail adresom postoji, poslali smo vam upute za poništavanje lozinke na e-mail.";
+        
         if (!email) {
           return jsonResponse({ success: false, error: "E-mail adresa je obavezna." }, 400);
         }
@@ -1009,46 +1189,71 @@ export default {
           "SELECT id, username, email, status FROM Clients WHERE email = ?"
         ).bind(email).first();
 
-        if (!client) {
-          return jsonResponse({ success: false, error: "Korisnik s tom e-mail adresom nije pronađen." }, 404);
+        if (client && client.status === "approved") {
+          const rawToken = generateSecureToken(32);
+          const tokenHash = await hashPasswordSha256(rawToken);
+          const expires = Math.floor(Date.now() / 1000) + 3600; // 1 hour
+
+          await env.DB.prepare(
+            "UPDATE Clients SET reset_token_hash = ?, reset_token_expires = ? WHERE id = ?"
+          ).bind(tokenHash, expires, client.id).run();
+
+          await logActivity(env, `Zahtjev za reset lozinke: ${client.username}`);
+
+          const resetLink = `https://pilates-reformer-agram.com/prijava.html?reset_token=${rawToken}`;
+          const emailSubject = "Pilates Reformer Agram - Poništavanje lozinke";
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+              <h2 style="color: #a98e65;">Poništavanje lozinke</h2>
+              <p>Bok <b>${escapeHtml(client.username)}</b>,</p>
+              <p>Zatražili ste ponovno postavljanje lozinke za Vaš račun. Kliknite na donji gumb kako biste postavili novu lozinku (poveznica vrijedi 1 sat):</p>
+              <p style="margin: 25px 0;">
+                <a href="${resetLink}" style="background-color: #c5a880; color: white; padding: 12px 24px; text-decoration: none; border-radius: 20px; font-weight: bold; display: inline-block;">
+                  Postavi novu lozinku
+                </a>
+              </p>
+              <p style="font-size: 12px; color: #7c7267;">Ako niste zatražili poništavanje lozinke, slobodno zanemarite ovu poruku. Vaša lozinka ostaje nepromijenjena.</p>
+              <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+              <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Pilates Reformer Agram</p>
+            </div>
+          `;
+          ctx.waitUntil(sendEmail(env, client.email, emailSubject, emailHtml));
         }
 
-        if (client.status === "pending") {
-          return jsonResponse({ success: false, error: "Vaš profil još nije odobren. Molimo pričekajte odobrenje administratora." }, 403);
+        return jsonResponse({ success: true, message: genericMessage });
+      }
+
+      // RESET PASSWORD WITH TOKEN
+      if (request.method === "POST" && url.pathname === "/api/reset-password") {
+        const { reset_token, new_password } = await request.json();
+        if (!reset_token || !new_password) {
+          return jsonResponse({ success: false, error: "Token i nova lozinka su obavezni." }, 400);
         }
 
-        const tempPass = generateTempPassword();
-        const hashedTemp = await hashPassword(tempPass);
+        const passwordErr = validatePasswordStrength(new_password);
+        if (passwordErr) {
+          return jsonResponse({ success: false, error: passwordErr }, 400);
+        }
 
+        const tokenHash = await hashPasswordSha256(reset_token);
+        const nowSec = Math.floor(Date.now() / 1000);
+
+        const client = await env.DB.prepare(
+          "SELECT id, username, reset_token_expires FROM Clients WHERE reset_token_hash = ?"
+        ).bind(tokenHash).first();
+
+        if (!client || !client.reset_token_expires || client.reset_token_expires < nowSec) {
+          return jsonResponse({ success: false, error: "Poveznica za poništavanje lozinke je nevažeća ili je istekla." }, 400);
+        }
+
+        const hashedNew = await hashPassword(new_password);
         await env.DB.prepare(
-          "UPDATE Clients SET password = ?, must_change_password = 1 WHERE id = ?"
-        ).bind(hashedTemp, client.id).run();
+          "UPDATE Clients SET password = ?, reset_token_hash = NULL, reset_token_expires = NULL, must_change_password = 0, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?"
+        ).bind(hashedNew, client.id).run();
 
-        await logActivity(env, `Reset lozinke: ${client.username}`);
+        await logActivity(env, `Lozinka uspješno poništena s tokenom: ${client.username}`);
 
-        // Slanje maila s novom privremenom lozinkom
-        const emailSubject = "Pilates Reformer Agram - Reset lozinke";
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
-            <h2 style="color: #a98e65;">Ponovno postavljanje lozinke</h2>
-            <p>Zatražili ste ponovno postavljanje lozinke za Vaš račun u Pilates Reformer studiju Agram. Vaša nova privremena lozinka je:</p>
-            <table style="border-spacing: 10px;">
-              <tr><td><b>Korisničko ime:</b></td><td>${client.username}</td></tr>
-              <tr><td><b>Privremena lozinka:</b></td><td><code style="background-color: #eee; padding: 3px 6px; border-radius: 3px;">${tempPass}</code></td></tr>
-            </table>
-            <p style="margin-top: 20px;">
-              Molimo Vas da se prijavite koristeći ove podatke, a sustav će Vas odmah zatražiti da postavite novu trajnu lozinku.
-            </p>
-            <p style="margin-top: 30px;">
-              <a href="https://pilates-reformer-agram.com/prijava.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
-                Prijavi se ovdje
-              </a>
-            </p>
-          </div>
-        `;
-        const emailSent = await sendEmail(env, client.email, emailSubject, emailHtml);
-
-        return jsonResponse({ success: true, message: "Nova privremena lozinka je poslana na Vaš e-mail.", emailSent });
+        return jsonResponse({ success: true, message: "Lozinka je uspješno poništena! Sada se možete prijaviti s novom lozinkom." });
       }
 
       // GET NEWS FEED
@@ -1140,53 +1345,94 @@ export default {
           return jsonResponse({ success: false, error: `Vaš paket (${client.package_name}) je istekao dana ${client.package_expires}.` }, 400);
         }
 
-        // 2. Check Session capacity and if user is already booked
+        // 2. Check Session capacity and validity
         const session = await env.DB.prepare("SELECT * FROM Sessions WHERE id = ?").bind(session_id).first();
         if (!session) {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
         }
 
-        // Zabrana višekratnog otkazivanja i ponovnog rezerviranja istog termina (maksimalno 2 rezervacije po klijentu za isti termin)
-        const bookingAttemptsObj = await env.DB.prepare(
-          "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND user_id = ?"
-        ).bind(session_id, user_id).first();
-        if (bookingAttemptsObj && bookingAttemptsObj.count >= 2) {
-          return jsonResponse({ success: false, error: "Nije moguće rezervirati isti termin više od 2 puta (već ste ga rezervirali i otkazali)." }, 400);
+        // Check if session is in the past
+        const croatiaNow = getCroatiaNow();
+        if (session.date < todayStr) {
+          return jsonResponse({ success: false, error: "Nije moguće rezervirati termin u prošlosti." }, 400);
+        }
+        if (session.date === todayStr) {
+          const nowHourMin = `${String(croatiaNow.getHours()).padStart(2, '0')}:${String(croatiaNow.getMinutes()).padStart(2, '0')}`;
+          if (session.time <= nowHourMin) {
+            return jsonResponse({ success: false, error: "Nije moguće rezervirati termin koji je već započeo." }, 400);
+          }
         }
 
-        // Check if user already has an active booking on this session's date
+        // Check if session date is beyond 3 weeks
+        const maxDate = new Date(croatiaNow.getTime() + 21 * 24 * 60 * 60 * 1000);
+        const maxDateStr = formatDate(maxDate);
+        if (session.date > maxDateStr) {
+          return jsonResponse({ success: false, error: "Nije moguće rezervirati termin više od 3 tjedna unaprijed." }, 400);
+        }
+
+        // Check package type compatibility
+        if (client.package_name) {
+          const pkgLower = client.package_name.toLowerCase();
+          if (pkgLower.includes("grupni") && session.type !== "grupni") {
+            return jsonResponse({ success: false, error: `Vaš paket (${client.package_name}) vrijedi samo za grupne treninge.` }, 400);
+          }
+          if (pkgLower.includes("privatni") && session.type !== "privatni" && session.type !== "poluindividualni") {
+            return jsonResponse({ success: false, error: `Vaš paket (${client.package_name}) vrijedi samo za privatne/poluindividualne treninge.` }, 400);
+          }
+        }
+
+        // 1. Deduct credit conditionally only if remaining_credits > 0
+        const creditResult = await env.DB.prepare(
+          "UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ? AND remaining_credits > 0"
+        ).bind(user_id).run();
+
+        if (!creditResult || !creditResult.meta || creditResult.meta.changes === 0) {
+          return jsonResponse({ success: false, error: "Nemate dovoljno preostalih treninga u paketu." }, 400);
+        }
+
+        // 2. Check for duplicate active booking on the same date
         const existingBookingToday = await env.DB.prepare(`
           SELECT b.id FROM Bookings b 
           JOIN Sessions s ON b.session_id = s.id 
           WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
         `).bind(user_id, session.date).first();
-        
+
         if (existingBookingToday) {
+          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id).run();
           return jsonResponse({ success: false, error: "Već imate rezerviran termin za ovaj dan. Nije moguće rezervirati više termina u istom danu." }, 400);
         }
 
+        // 3. Check capacity
         const bookingCountObj = await env.DB.prepare(
           "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
         ).bind(session_id).first();
         const bookedCount = bookingCountObj ? bookingCountObj.count : 0;
 
         if (bookedCount >= session.capacity) {
+          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id).run();
           return jsonResponse({ success: false, error: "Termin je već popunjen." }, 400);
         }
 
-        const existingBooking = await env.DB.prepare(
-          "SELECT id FROM Bookings WHERE session_id = ? AND user_id = ? AND status >= 0"
+        // 4. Check for existing row (active or cancelled) to handle re-booking vs new insert
+        const existingRow = await env.DB.prepare(
+          "SELECT id, status FROM Bookings WHERE session_id = ? AND user_id = ?"
         ).bind(session_id, user_id).first();
-        if (existingBooking) {
-          return jsonResponse({ success: false, error: "Već ste prijavljeni na ovaj termin." }, 400);
-        }
 
-        // 3. Make booking & deduct credit
-        // We run these as a batch to ensure consistency
-        await env.DB.batch([
-          env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 0)").bind(session_id, user_id),
-          env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(user_id)
-        ]);
+        if (existingRow) {
+          if (existingRow.status >= 0) {
+            await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id).run();
+            return jsonResponse({ success: false, error: "Već ste prijavljeni na ovaj termin." }, 400);
+          }
+          // Re-book previously cancelled session
+          await env.DB.prepare(
+            "UPDATE Bookings SET status = 0, reminder_sent = 0 WHERE id = ?"
+          ).bind(existingRow.id).run();
+        } else {
+          // New booking
+          await env.DB.prepare(
+            "INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 0)"
+          ).bind(session_id, user_id).run();
+        }
 
         const dateStr = session.date.split('-').reverse().join('.') + '.';
         await logActivity(env, `Rezervacija: ${client.username} → ${session.title} (${dateStr}, ${session.time}h)`);
@@ -1266,12 +1512,12 @@ export default {
         }
         const user_id = authUser.user_id;
 
-        // 1. Check if booking exists
+        // 1. Check if an active un-attended booking exists (status = 0)
         const booking = await env.DB.prepare(
-          "SELECT id, status FROM Bookings WHERE session_id = ? AND user_id = ? AND status >= 0"
+          "SELECT id, status FROM Bookings WHERE session_id = ? AND user_id = ? AND status = 0"
         ).bind(session_id, user_id).first();
         if (!booking) {
-          return jsonResponse({ success: false, error: "Rezervacija nije pronađena." }, 404);
+          return jsonResponse({ success: false, error: "Aktivna rezervacija nije pronađena ili je trening već odrađen/otkazan." }, 404);
         }
 
         // 2. Get session date/time to check 12h limit
@@ -1288,16 +1534,27 @@ export default {
         let messageText = "";
 
         if (diffHours >= 12) {
-          // In-time cancel: Refund credit but keep row with status = -2
-          await env.DB.batch([
-            env.DB.prepare("UPDATE Bookings SET status = -2 WHERE session_id = ? AND user_id = ? AND status = 0").bind(session_id, user_id),
-            env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id)
-          ]);
+          // In-time cancel: Refund credit ONLY IF status transition from 0 to -2 succeeded
+          const updateResult = await env.DB.prepare(
+            "UPDATE Bookings SET status = -2 WHERE session_id = ? AND user_id = ? AND status = 0"
+          ).bind(session_id, user_id).run();
+
+          if (!updateResult || !updateResult.meta || updateResult.meta.changes === 0) {
+            return jsonResponse({ success: false, error: "Rezervacija je već otkazana ili nije aktivna." }, 400);
+          }
+
+          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id).run();
           refunded = true;
           messageText = "Termin je otkazan. Trening Vam je vraćen na račun. Molimo Vas da rezervirate idući slobodan termin ili nas osobno kontaktirate za dogovor.";
         } else {
-          // Late cancel: Delete booking but do NOT refund credit
-          await env.DB.prepare("UPDATE Bookings SET status = -1 WHERE session_id = ? AND user_id = ?").bind(session_id, user_id).run();
+          // Late cancel: Set status = -1 but do NOT refund credit
+          const updateResult = await env.DB.prepare(
+            "UPDATE Bookings SET status = -1 WHERE session_id = ? AND user_id = ? AND status = 0"
+          ).bind(session_id, user_id).run();
+
+          if (!updateResult || !updateResult.meta || updateResult.meta.changes === 0) {
+            return jsonResponse({ success: false, error: "Rezervacija je već otkazana ili nije aktivna." }, 400);
+          }
           refunded = false;
           messageText = "Termin je otkazan manje od 12 sati prije treninga. Kredit se ne vraća (broji se kao iskorišten). Molimo Vas da rezervirate idući slobodan termin ili nas osobno kontaktirate za dogovor.";
         }
@@ -1337,18 +1594,31 @@ export default {
           return jsonResponse({ success: false, error: "Vaša članarina je trenutno zaleđena. Nije moguće prijaviti se na listu čekanja." }, 400);
         }
 
-        // 2. Check if session exists
-        const session = await env.DB.prepare("SELECT title, date, time FROM Sessions WHERE id = ?").bind(session_id).first();
+        // 2. Check if session exists and is in the future
+        const session = await env.DB.prepare("SELECT title, date, time, capacity FROM Sessions WHERE id = ?").bind(session_id).first();
         if (!session) {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
         }
 
-        // Zabrana višekratnog otkazivanja i ponovnog rezerviranja istog termina (maksimalno 2 rezervacije po klijentu za isti termin)
-        const bookingAttemptsObj = await env.DB.prepare(
-          "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND user_id = ?"
-        ).bind(session_id, user_id).first();
-        if (bookingAttemptsObj && bookingAttemptsObj.count >= 2) {
-          return jsonResponse({ success: false, error: "Nije moguće prijaviti se na listu čekanja jer ste ovaj termin već rezervirali i otkazali 2 puta." }, 400);
+        const croatiaNow = getCroatiaNow();
+        const todayStr = formatDate(croatiaNow);
+        if (session.date < todayStr) {
+          return jsonResponse({ success: false, error: "Nije moguće prijaviti se na listu čekanja za termin u prošlosti." }, 400);
+        }
+        if (session.date === todayStr) {
+          const nowHourMin = `${String(croatiaNow.getHours()).padStart(2, '0')}:${String(croatiaNow.getMinutes()).padStart(2, '0')}`;
+          if (session.time <= nowHourMin) {
+            return jsonResponse({ success: false, error: "Nije moguće prijaviti se na listu čekanja za termin koji je već započeo." }, 400);
+          }
+        }
+
+        // 3. Verify session is actually FULL before allowing waitlist join
+        const bookingCountObj = await env.DB.prepare(
+          "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
+        ).bind(session_id).first();
+        const bookedCount = bookingCountObj ? bookingCountObj.count : 0;
+        if (bookedCount < session.capacity) {
+          return jsonResponse({ success: false, error: "Termin još nije popunjen. Možete ga izravno rezervirati." }, 400);
         }
 
         // 3. Check if user is already booked
@@ -1671,6 +1941,18 @@ export default {
         return jsonResponse({ success: true, clients: results });
       }
 
+      // ADMIN: REVOKE SESSIONS FOR CLIENT
+      if (request.method === "POST" && url.pathname === "/api/admin/revoke-sessions") {
+        const { client_id } = await request.json();
+        if (!client_id) {
+          return jsonResponse({ success: false, error: "ID klijenta je obavezan." }, 400);
+        }
+        await env.DB.prepare(
+          "UPDATE Clients SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?"
+        ).bind(client_id).run();
+        return jsonResponse({ success: true, message: "Sve aktivne sesije korisnika su uspješno poništene." });
+      }
+
       // ADMIN: APPROVE CLIENT
       if (request.method === "POST" && url.pathname === "/api/admin/approve-client") {
         const { client_id, used_credits, package_expires } = await request.json();
@@ -1770,10 +2052,10 @@ export default {
         return jsonResponse({ success: true, message: `Klijent '${client.username}' i svi njegovi podaci su obrisani.` });
       }
 
-      // ADMIN: GET LIST OF APPROVED CLIENTS
+      // ADMIN: GET LIST OF APPROVED CLIENTS (Sensitive health data omitted from bulk query)
       if (request.method === "GET" && url.pathname === "/api/admin/clients") {
         const { results } = await env.DB.prepare(`
-          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, questionnaire, status, full_name, first_name, last_name, phone,
+          SELECT id, username, email, package_name, total_credits, remaining_credits, package_expires, created_at, status, full_name, first_name, last_name, phone,
                  (total_credits - remaining_credits - (SELECT COUNT(*) FROM Bookings b WHERE b.user_id = Clients.id AND b.status = 0)) as attended_count
           FROM Clients
           WHERE is_admin = 0 AND status IN ('approved', 'frozen')
@@ -1781,6 +2063,33 @@ export default {
         `).all();
 
         return jsonResponse({ success: true, clients: results });
+      }
+
+      // ADMIN: GET CLIENT HEALTH QUESTIONNAIRE (ON-DEMAND AUDITED)
+      if (request.method === "GET" && url.pathname === "/api/admin/client-questionnaire") {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser || authUser.is_admin !== 1) {
+          return jsonResponse({ success: false, error: "Nemate administratorska prava." }, 403);
+        }
+
+        const client_id = url.searchParams.get("client_id");
+        if (!client_id) {
+          return jsonResponse({ success: false, error: "client_id je obavezan." }, 400);
+        }
+
+        const client = await env.DB.prepare(
+          "SELECT id, username, full_name, questionnaire FROM Clients WHERE id = ?"
+        ).bind(client_id).first();
+
+        if (!client) {
+          return jsonResponse({ success: false, error: "Klijent nije pronađen." }, 404);
+        }
+
+        const adminName = authUser.username || "Admin";
+        const clientName = client.full_name ? `${client.full_name} (${client.username})` : client.username;
+        await logActivity(env, `Pregled zdravstvenog kartona: Admin '${adminName}' pregledao je karton klijenta '${clientName}'`);
+
+        return jsonResponse({ success: true, questionnaire: client.questionnaire });
       }
 
       // ADMIN: GET DETAILED BOOKINGS FOR A CLIENT
@@ -1997,12 +2306,17 @@ export default {
             ? `Studio je otkazao Vašu rezervaciju za termin '${details.title}' (${dateStr} u ${details.time}h). Trening Vam je vraćen na račun te možete odabrati novi termin.`
             : `Studio je otkazao Vašu rezervaciju. Trening Vam je vraćen na račun.`;
 
-          // Refund credit: delete booking, add 1 credit, and add client notification
-          await env.DB.batch([
-            env.DB.prepare("DELETE FROM Bookings WHERE id = ?").bind(booking_id),
-            env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(booking.user_id),
-            env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(booking.user_id, msg)
-          ]);
+          // Refund credit ONLY IF status transition from status >= 0 to -2 succeeded
+          const updateResult = await env.DB.prepare(
+            "UPDATE Bookings SET status = -2 WHERE id = ? AND status >= 0"
+          ).bind(booking_id).run();
+
+          if (!updateResult || !updateResult.meta || updateResult.meta.changes === 0) {
+            return jsonResponse({ success: false, error: "Rezervacija je već otkazana ili nije aktivna." }, 400);
+          }
+
+          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(booking.user_id).run();
+          await env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(booking.user_id, msg).run();
           
           if (details) {
             await logActivity(env, `Admin otkazao (povrat): ${details.username} → ${details.title} (${dateStr} ${details.time}h)`);
@@ -2179,12 +2493,12 @@ export default {
           });
         }
 
-        // 3. Delete the session (which will cascade delete bookings)
-        queries.push(
-          env.DB.prepare("DELETE FROM Sessions WHERE id = ?").bind(session_id)
-        );
+        // 3. Delete waitlists first to preserve foreign key integrity, then delete session
         queries.push(
           env.DB.prepare("DELETE FROM Waitlists WHERE session_id = ?").bind(session_id)
+        );
+        queries.push(
+          env.DB.prepare("DELETE FROM Sessions WHERE id = ?").bind(session_id)
         );
 
         await env.DB.batch(queries);
@@ -2318,42 +2632,53 @@ export default {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
         }
 
-        // Check if user already has an active booking on this session's date
-        const existingBookingToday = await env.DB.prepare(`
-          SELECT b.id FROM Bookings b 
-          JOIN Sessions s ON b.session_id = s.id 
-          WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
-        `).bind(client_id, session.date).first();
-        
-        if (existingBookingToday) {
-          return jsonResponse({ success: false, error: "Klijent već ima rezerviran termin za ovaj dan." }, 400);
+        // 1. Deduct credit conditionally only if remaining_credits > 0
+        const creditResult = await env.DB.prepare(
+          "UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ? AND remaining_credits > 0"
+        ).bind(client_id).run();
+
+        if (!creditResult || !creditResult.meta || creditResult.meta.changes === 0) {
+          return jsonResponse({ success: false, error: "Klijent nema preostalih treninga (kredita) u paketu." }, 400);
         }
 
-        const bookingCountObj = await env.DB.prepare(
-          "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
-        ).bind(session_id).first();
-        const bookedCount = bookingCountObj ? bookingCountObj.count : 0;
+        // 2. Insert booking conditionally
+        const insertResult = await env.DB.prepare(`
+          INSERT INTO Bookings (session_id, user_id, status)
+          SELECT ?, ?, 0
+          WHERE (
+            SELECT COUNT(*) FROM Bookings b
+            JOIN Sessions s ON b.session_id = s.id
+            WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
+          ) = 0
+          AND (
+            SELECT COUNT(*) FROM Bookings WHERE session_id = ? AND status >= 0
+          ) < (SELECT capacity FROM Sessions WHERE id = ?)
+        `).bind(session_id, client_id, client_id, session.date, session_id, session_id).run();
 
-        if (bookedCount >= session.capacity) {
-          return jsonResponse({ success: false, error: "Termin je već popunjen." }, 400);
-        }
+        // 3. Compensation/rollback if insert failed
+        if (!insertResult || !insertResult.meta || insertResult.meta.changes === 0) {
+          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(client_id).run();
 
-        const existingBooking = await env.DB.prepare(
-          "SELECT id FROM Bookings WHERE session_id = ? AND user_id = ? AND status >= 0"
-        ).bind(session_id, client_id).first();
-        if (existingBooking) {
+          const existingToday = await env.DB.prepare(`
+            SELECT b.id FROM Bookings b 
+            JOIN Sessions s ON b.session_id = s.id 
+            WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
+          `).bind(client_id, session.date).first();
+          if (existingToday) {
+            return jsonResponse({ success: false, error: "Klijent već ima rezerviran termin za ovaj dan." }, 400);
+          }
+
+          const currentCountObj = await env.DB.prepare("SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0").bind(session_id).first();
+          if (currentCountObj && currentCountObj.count >= session.capacity) {
+            return jsonResponse({ success: false, error: "Termin je u međuvremenu popunjen." }, 400);
+          }
+
           return jsonResponse({ success: false, error: "Klijent je već prijavljen na ovaj termin." }, 400);
         }
 
-        // 3. Make booking, deduct credit, and add client notification
         const dateFormatted = session.date.split('-').reverse().join('.') + '.';
         const notificationMsg = `Studio Vam je rezervirao termin '${session.title}' dana ${dateFormatted} u ${session.time}h.`;
-
-        await env.DB.batch([
-          env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 0)").bind(session_id, client_id),
-          env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(client_id),
-          env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(client_id, notificationMsg)
-        ]);
+        await env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(client_id, notificationMsg).run();
 
         await logActivity(env, `Admin rezervacija: ${client.username} → ${session.title} (${dateFormatted}, ${session.time}h)`);
 

@@ -2228,6 +2228,16 @@
       ? "http://localhost:8787"
       : "https://agram-backend.filip-kontek.workers.dev";
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // Auth check
     const username  = localStorage.getItem("username");
     const isAdmin   = localStorage.getItem("is_admin");
@@ -3906,12 +3916,17 @@
             tbody.innerHTML = "";
             pending.forEach(client => {
               const tr = document.createElement("tr");
+              const safeFullName = escapeHtml(client.full_name || client.username);
+              const safeUsername = escapeHtml(client.username);
+              const safeEmail = escapeHtml(client.email);
+              const safePhone = escapeHtml(client.phone || '');
+              const encodedUsername = encodeURIComponent(client.username || '');
               tr.innerHTML = `
-                <td><strong>${client.full_name || client.username}</strong><br><span style="font-size: 1.1rem; color: var(--text-muted);">Korisničko ime: ${client.username}</span></td>
-                <td>${client.email}${client.phone ? `<br><span style="font-size: 1.15rem; color: var(--text-muted);">Tel: ${client.phone}</span>` : ''}</td>
+                <td><strong>${safeFullName}</strong><br><span style="font-size: 1.1rem; color: var(--text-muted);">Korisničko ime: ${safeUsername}</span></td>
+                <td>${safeEmail}${safePhone ? `<br><span style="font-size: 1.15rem; color: var(--text-muted);">Tel: ${safePhone}</span>` : ''}</td>
                 <td>
-                  <button class="btn-action btn-checkin" onclick="approveClient(${client.id}, '${client.username}')">Odobri</button>
-                  <button class="btn-action btn-delete" style="margin-left: 8px;" onclick="rejectClient(${client.id}, '${client.username}')">Odbaci</button>
+                  <button class="btn-action btn-checkin" onclick="approveClient(${client.id}, decodeURIComponent('${encodedUsername}'))">Odobri</button>
+                  <button class="btn-action btn-delete" style="margin-left: 8px;" onclick="rejectClient(${client.id}, decodeURIComponent('${encodedUsername}'))">Odbaci</button>
                 </td>
               `;
               tbody.appendChild(tr);
@@ -3926,18 +3941,23 @@
               card.className = "mobile-client-card";
               card.style.borderColor = "#b22222";
               card.style.background = "rgba(178, 34, 34, 0.01)";
+              const safeFullName = escapeHtml(client.full_name || client.username);
+              const safeUsername = escapeHtml(client.username);
+              const safeEmail = escapeHtml(client.email);
+              const safePhone = escapeHtml(client.phone || '');
+              const encodedUsername = encodeURIComponent(client.username || '');
               card.innerHTML = `
                 <div class="mobile-client-header">
                   <div>
-                    <div class="mobile-client-username">${client.full_name || client.username}</div>
-                    <div style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 4px;">Korisničko ime: ${client.username}</div>
-                    <div class="mobile-client-email">${client.email}</div>
-                    ${client.phone ? `<div style="font-size: 1.15rem; color: var(--text-muted); margin-top: 2px;">Tel: ${client.phone}</div>` : ''}
+                    <div class="mobile-client-username">${safeFullName}</div>
+                    <div style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 4px;">Korisničko ime: ${safeUsername}</div>
+                    <div class="mobile-client-email">${safeEmail}</div>
+                    ${safePhone ? `<div style="font-size: 1.15rem; color: var(--text-muted); margin-top: 2px;">Tel: ${safePhone}</div>` : ''}
                   </div>
                 </div>
                 <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(178,34,34,0.1); padding-top: 8px;">
-                  <button class="mobile-btn-action mobile-btn-checkin" style="flex: 1;" onclick="approveClient(${client.id}, '${client.username}')">Odobri</button>
-                  <button class="mobile-btn-action mobile-btn-cancel-att" style="flex: 1;" onclick="rejectClient(${client.id}, '${client.username}')">Odbaci</button>
+                  <button class="mobile-btn-action mobile-btn-checkin" style="flex: 1;" onclick="approveClient(${client.id}, decodeURIComponent('${encodedUsername}'))">Odobri</button>
+                  <button class="mobile-btn-action mobile-btn-cancel-att" style="flex: 1;" onclick="rejectClient(${client.id}, decodeURIComponent('${encodedUsername}'))">Odbaci</button>
                 </div>
               `;
               mobileList.appendChild(card);
@@ -4024,15 +4044,21 @@
               const tr = document.createElement("tr");
               const requestDate = new Date(req.created_at);
               const formattedDate = requestDate.toLocaleString("hr-HR", { timeZone: "Europe/Zagreb" });
+              const safeFullName = escapeHtml(req.full_name || req.username);
+              const safeUsername = escapeHtml(req.username);
+              const safeEmail = escapeHtml(req.email);
+              const safePackageName = escapeHtml(req.package_name);
+              const encodedUsername = encodeURIComponent(req.username || '');
+              const encodedPackage = encodeURIComponent(req.package_name || '');
 
               tr.innerHTML = `
-                <td><strong>${req.full_name || req.username}</strong><br><span style="font-size: 1.1rem; color: var(--text-muted);">Korisničko ime: ${req.username}</span></td>
-                <td>${req.email}</td>
-                <td><span style="color: var(--primary-gold-dark); font-weight: 700;">${req.package_name}</span></td>
+                <td><strong>${safeFullName}</strong><br><span style="font-size: 1.1rem; color: var(--text-muted);">Korisničko ime: ${safeUsername}</span></td>
+                <td>${safeEmail}</td>
+                <td><span style="color: var(--primary-gold-dark); font-weight: 700;">${safePackageName}</span></td>
                 <td>${formattedDate}</td>
                 <td>
-                  <button class="btn-action btn-checkin" onclick="approvePackageRequest(${req.request_id}, '${req.username}', '${req.package_name}')">Odobri</button>
-                  <button class="btn-action btn-delete" style="margin-left: 8px;" onclick="rejectPackageRequest(${req.request_id}, '${req.username}', '${req.package_name}')">Odbaci</button>
+                  <button class="btn-action btn-checkin" onclick="approvePackageRequest(${req.request_id}, decodeURIComponent('${encodedUsername}'), decodeURIComponent('${encodedPackage}'))">Odobri</button>
+                  <button class="btn-action btn-delete" style="margin-left: 8px;" onclick="rejectPackageRequest(${req.request_id}, decodeURIComponent('${encodedUsername}'), decodeURIComponent('${encodedPackage}'))">Odbaci</button>
                 </td>
               `;
               tbody.appendChild(tr);
@@ -4050,24 +4076,30 @@
 
               const requestDate = new Date(req.created_at);
               const formattedDate = requestDate.toLocaleString("hr-HR", { timeZone: "Europe/Zagreb" });
+              const safeFullName = escapeHtml(req.full_name || req.username);
+              const safeUsername = escapeHtml(req.username);
+              const safeEmail = escapeHtml(req.email);
+              const safePackageName = escapeHtml(req.package_name);
+              const encodedUsername = encodeURIComponent(req.username || '');
+              const encodedPackage = encodeURIComponent(req.package_name || '');
 
               card.innerHTML = `
                 <div class="mobile-client-header">
                   <div>
-                    <div class="mobile-client-username">${req.full_name || req.username}</div>
-                    <div style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 4px;">Korisničko ime: ${req.username}</div>
-                    <div class="mobile-client-email">${req.email}</div>
+                    <div class="mobile-client-username">${safeFullName}</div>
+                    <div style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 4px;">Korisničko ime: ${safeUsername}</div>
+                    <div class="mobile-client-email">${safeEmail}</div>
                     <div style="margin-top: 6px; font-size: 1.15rem; color: var(--text-dark);">
-                      Traženi paket: <strong style="color: var(--primary-gold-dark);">${req.package_name}</strong>
+                      Traženi paket: <strong style="color: var(--primary-gold-dark);">${safePackageName}</strong>
                     </div>
                     <div style="margin-top: 4px; font-size: 1.0rem; color: var(--text-muted);">
                       Vrijeme: ${formattedDate}
                     </div>
                   </div>
                 </div>
-                <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(197, 168, 128, 0.15); padding-top: 8px;">
-                  <button class="mobile-btn-action mobile-btn-checkin" style="flex: 1;" onclick="approvePackageRequest(${req.request_id}, '${req.username}', '${req.package_name}')">Odobri</button>
-                  <button class="mobile-btn-action mobile-btn-cancel-att" style="flex: 1;" onclick="rejectPackageRequest(${req.request_id}, '${req.username}', '${req.package_name}')">Odbaci</button>
+                <div style="display: flex; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(197,168,128,0.2); padding-top: 8px;">
+                  <button class="mobile-btn-action mobile-btn-checkin" style="flex: 1;" onclick="approvePackageRequest(${req.request_id}, decodeURIComponent('${encodedUsername}'), decodeURIComponent('${encodedPackage}'))">Odobri</button>
+                  <button class="mobile-btn-action mobile-btn-cancel-att" style="flex: 1;" onclick="rejectPackageRequest(${req.request_id}, decodeURIComponent('${encodedUsername}'), decodeURIComponent('${encodedPackage}'))">Odbaci</button>
                 </div>
               `;
               mobileList.appendChild(card);
@@ -4132,54 +4164,63 @@
       document.getElementById("q-modal-package").textContent = client.package_name || "Nema aktivnog paketa";
 
       const container = document.getElementById("q-answers-container");
-      container.innerHTML = "";
-
-      if (!client.questionnaire) {
-        container.innerHTML = "<p style='color: var(--text-muted); font-style: italic; font-size: 1.3rem; margin: 10px 0;'>Klijent još nije ispunio zdravstveni upitnik.</p>";
-        document.getElementById("view-questionnaire-modal").style.display = "flex";
-        return;
-      }
-
-      let answers = null;
-      try {
-        answers = typeof client.questionnaire === "string" ? JSON.parse(client.questionnaire) : client.questionnaire;
-      } catch (e) {
-        console.error("Greška pri parsiranju upitnika:", e);
-        container.innerHTML = "<p style='color: #b22222; font-weight: 600; font-size: 1.3rem; margin: 10px 0;'>Greška pri učitavanju zdravstvenog kartona.</p>";
-        document.getElementById("view-questionnaire-modal").style.display = "flex";
-        return;
-      }
-
-      if (!answers) {
-        container.innerHTML = "<p style='color: var(--text-muted); font-style: italic; font-size: 1.3rem; margin: 10px 0;'>Zdravstveni karton je prazan.</p>";
-        document.getElementById("view-questionnaire-modal").style.display = "flex";
-        return;
-      }
-
-      const questions = [
-        { key: "age", label: "Godine" },
-        { key: "gender", label: "Spol" },
-        { key: "activity", label: "Stupanj tjelesne aktivnosti" },
-        { key: "experience", label: "Iskustvo s pilatesom / reformerom" },
-        { key: "injuries_current", label: "Trenutne ozljede, bolove ili zdravstvene tegobe" },
-        { key: "injuries_past", label: "Prijašnje ozljede, kronični problemi ili operacije" },
-        { key: "pregnancy", label: "Trudnoća (samo za žene)" }
-      ];
-
-      questions.forEach(q => {
-        const itemDiv = document.createElement("div");
-        itemDiv.style.borderBottom = "1px solid var(--border-color)";
-        itemDiv.style.paddingBottom = "10px";
-
-        const val = answers[q.key] !== undefined && answers[q.key] !== null ? answers[q.key] : "—";
-        itemDiv.innerHTML = `
-          <div style="font-weight: 700; color: var(--text-dark); font-size: 1.15rem; text-transform: uppercase; margin-bottom: 4px;">${q.label}</div>
-          <div style="font-size: 1.35rem; color: #2c251e; word-wrap: break-word; white-space: pre-line;">${val}</div>
-        `;
-        container.appendChild(itemDiv);
-      });
-
+      container.innerHTML = "<p style='color: var(--primary-gold); font-size: 1.3rem; margin: 10px 0;'>Učitavanje zdravstvenog kartona...</p>";
       document.getElementById("view-questionnaire-modal").style.display = "flex";
+
+      try {
+        const token = localStorage.getItem("auth_token");
+        const res = await fetch(`${API_BASE}/api/admin/client-questionnaire?client_id=${client.id}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.success || !data.questionnaire) {
+          container.innerHTML = "<p style='color: var(--text-muted); font-style: italic; font-size: 1.3rem; margin: 10px 0;'>Klijent još nije ispunio zdravstveni upitnik ili karton nije pronađen.</p>";
+          return;
+        }
+
+        let answers = null;
+        try {
+          answers = typeof data.questionnaire === "string" ? JSON.parse(data.questionnaire) : data.questionnaire;
+        } catch (e) {
+          console.error("Greška pri parsiranju upitnika:", e);
+          container.innerHTML = "<p style='color: #b22222; font-weight: 600; font-size: 1.3rem; margin: 10px 0;'>Greška pri učitavanju zdravstvenog kartona.</p>";
+          return;
+        }
+
+        if (!answers) {
+          container.innerHTML = "<p style='color: var(--text-muted); font-style: italic; font-size: 1.3rem; margin: 10px 0;'>Zdravstveni karton je prazan.</p>";
+          return;
+        }
+
+        container.innerHTML = "";
+        const questions = [
+          { key: "age", label: "Godine" },
+          { key: "gender", label: "Spol" },
+          { key: "activity", label: "Stupanj tjelesne aktivnosti" },
+          { key: "experience", label: "Iskustvo s pilatesom / reformerom" },
+          { key: "injuries_current", label: "Trenutne ozljede, bolove ili zdravstvene tegobe" },
+          { key: "injuries_past", label: "Prijašnje ozljede, kronični problemi ili operacije" },
+          { key: "pregnancy", label: "Trudnoća (samo za žene)" }
+        ];
+
+        questions.forEach(q => {
+          const itemDiv = document.createElement("div");
+          itemDiv.style.borderBottom = "1px solid var(--border-color)";
+          itemDiv.style.paddingBottom = "10px";
+
+          const val = answers[q.key] !== undefined && answers[q.key] !== null ? escapeHtml(String(answers[q.key])) : "—";
+          itemDiv.innerHTML = `
+            <div style="font-weight: 700; color: var(--text-dark); font-size: 1.15rem; text-transform: uppercase; margin-bottom: 4px;">${escapeHtml(q.label)}</div>
+            <div style="font-size: 1.35rem; color: #2c251e; word-wrap: break-word; white-space: pre-line;">${val}</div>
+          `;
+          container.appendChild(itemDiv);
+        });
+
+      } catch (err) {
+        console.error("Error loading health questionnaire:", err);
+        container.innerHTML = "<p style='color: #b22222; font-weight: 600; font-size: 1.3rem; margin: 10px 0;'>Greška u komunikaciji sa serverom.</p>";
+      }
     }
 
     function closeQuestionnaireModal() {

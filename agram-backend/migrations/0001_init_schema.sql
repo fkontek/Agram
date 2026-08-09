@@ -50,7 +50,3 @@ CREATE TABLE IF NOT EXISTS WorkshopSignups (
     FOREIGN KEY (user_id) REFERENCES Clients(id) ON DELETE CASCADE,
     UNIQUE(news_id, user_id)
 );
-
--- Ubacivanje zadane admin role za testiranje (Korisničko ime: admin, Lozinka: admin123)
-INSERT OR IGNORE INTO Clients (username, email, password, is_admin, credits, must_change_password) 
-VALUES ('admin', 'filip.kontek@gmail.com', '240eb5185610ec85ed9b4765d75d27574fbec79fcc4e1140078a6ff60a0c6d2d', 1, 0, 0);
