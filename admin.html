@@ -2254,6 +2254,16 @@
       };
     }
 
+    function checkAuthError(res) {
+      if (res.status === 401 || res.status === 403) {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "prijava.html";
+        return true;
+      }
+      return false;
+    }
+
     // Globalne varijable za prikaz klijenata
     let allClientsMobile = [];
     let allClientsDesktop = [];
@@ -2294,10 +2304,13 @@
       document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
       document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
 
-      const activeBtn = Array.from(document.querySelectorAll(".tab-btn")).find(btn => btn.textContent.toLowerCase().includes(tabId.substring(0, 4)));
-      if (activeBtn) activeBtn.classList.add("active");
+      const targetTab = document.getElementById(`tab-${tabId}`);
+      if (targetTab) targetTab.classList.add("active");
 
-      document.getElementById(`tab-${tabId}`).classList.add("active");
+      const activeBtn = Array.from(document.querySelectorAll(".tab-btn")).find(btn => 
+        btn.getAttribute("onclick") && btn.getAttribute("onclick").includes(`'${tabId}'`)
+      );
+      if (activeBtn) activeBtn.classList.add("active");
 
       // Load data if switching
       if (tabId === "evidencija") loadDailyOverview();
@@ -2487,13 +2500,14 @@
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/sessions-overview?date=${date}`, { headers: authHeaders() });
+        if (checkAuthError(res)) return;
         const data = await res.json();
 
         if (res.ok && data.success) {
           container.innerHTML = "";
           mobileContainer.innerHTML = "";
 
-          if (data.sessions.length === 0) {
+          if (!data.sessions || data.sessions.length === 0) {
             container.innerHTML = `<p style="color: var(--text-muted); font-style: italic;">Nema kreiranih termina za ovaj dan.</p>`;
             mobileContainer.innerHTML = `<div class="mobile-empty">Nema kreiranih termina za ovaj dan.</div>`;
             return;
@@ -3506,7 +3520,7 @@
     function logout() {
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = "index.html";
+      window.location.href = "prijava.html";
     }
 
     // Custom Alert Modal Helpers
