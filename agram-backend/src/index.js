@@ -149,8 +149,8 @@ async function logActivity(env, details) {
 }
 
 // Get current date and time in Croatia timezone (Europe/Zagreb)
-function getCroatiaNow() {
-  const d = new Date();
+function getCroatiaNow(dateInput = null) {
+  const d = dateInput ? new Date(dateInput) : new Date();
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "Europe/Zagreb",
     year: "numeric", month: "2-digit", day: "2-digit",
@@ -702,14 +702,12 @@ async function sendDailyReportEmail(env, dateStr = null) {
 async function sendBookingReminders(env, event = null) {
   try {
     await ensureDbColumns(env);
-    const croatiaNow = getCroatiaNow();
+    const croatiaNow = getCroatiaNow(event?.scheduledTime);
 
-    // Enforce that local Croatia hour is 20:00 when triggered by cron
-    if (event && event.cron) {
-      if (croatiaNow.getHours() !== 20) {
-        console.log(`Skipping sendBookingReminders: current Croatia hour is ${croatiaNow.getHours()}, expected 20.`);
-        return;
-      }
+    // Enforce that local Croatia hour is 20:00 when triggered by scheduled cron
+    if (!event?.force && croatiaNow.getHours() !== 20) {
+      console.log(`Skipping sendBookingReminders: current Croatia hour is ${croatiaNow.getHours()}, expected 20.`);
+      return;
     }
 
     const tomorrow = new Date(croatiaNow.getTime() + 24 * 60 * 60 * 1000);
@@ -2639,34 +2637,41 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    const promises = [];
-    
-    // 1. Instagram Feed Sync: runs on 12-hour schedule
-    if (!event.cron || event.cron === "0 */12 * * *") {
-      promises.push(syncInstagramFeed(env));
-    }
+    const scheduledTimestamp = event.scheduledTime || Date.now();
+    const croatiaNow = getCroatiaNow(scheduledTimestamp);
 
-    // 1.5. Daily Booking Reminders: runs strictly at 20:00 Croatia time (cron 0 18,19 * * *)
-    if (!event.cron || event.cron === "0 18,19 * * *") {
-      promises.push(sendBookingReminders(env, event));
-    }
+    console.log("[SCHEDULED EVENT]", {
+      cron: event.cron,
+      scheduledTime: event.scheduledTime,
+      croatiaTime: croatiaNow.toISOString(),
+      croatiaHour: croatiaNow.getHours()
+    });
 
-    // 1.6. Auto generate weekly schedules: runs on 12-hour schedule as well
-    if (!event.cron || event.cron === "0 */12 * * *") {
-      promises.push(checkAndAutoGenerateSchedules(env));
-    }
-    
-    // 2. Weekly Report Email: runs automatically on Fridays in the evening
-    if (!event.cron || event.cron === "15 20,21 * * 5") {
-      const croatiaNow = getCroatiaNow();
-      // Only execute if it's Friday and local time is 22:15 (hour 22), or if running locally/tests without cron property
-      if ((croatiaNow.getDay() === 5 && croatiaNow.getHours() === 22) || !event.cron) {
-        promises.push(sendWeeklyReportEmail(env));
-      }
-    }
-    
-    if (promises.length > 0) {
-      ctx.waitUntil(Promise.all(promises));
+    switch (event.cron) {
+      case "0 */12 * * *":
+        console.log("Executing scheduled task: 0 */12 * * * (syncInstagramFeed, checkAndAutoGenerateSchedules)");
+        ctx.waitUntil(Promise.all([
+          syncInstagramFeed(env),
+          checkAndAutoGenerateSchedules(env)
+        ]));
+        return;
+
+      case "0 18,19 * * *":
+        console.log("Executing scheduled task: 0 18,19 * * * (sendBookingReminders)");
+        ctx.waitUntil(sendBookingReminders(env, event));
+        return;
+
+      case "15 20,21 * * 5":
+        console.log("Executing scheduled task: 15 20,21 * * 5 (sendWeeklyReportEmail)");
+        if (croatiaNow.getDay() === 5 && croatiaNow.getHours() === 22) {
+          ctx.waitUntil(sendWeeklyReportEmail(env));
+        } else {
+          console.log(`Skipping weekly report: croatia day=${croatiaNow.getDay()} (expected 5), hour=${croatiaNow.getHours()} (expected 22)`);
+        }
+        return;
+
+      default:
+        console.warn(`Unknown cron trigger: ${event.cron}`);
     }
   }
 };

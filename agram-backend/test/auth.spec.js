@@ -200,6 +200,7 @@ describe('JWT Authentication integration tests', () => {
     // 4. Trigger worker.scheduled
     const ctx = createExecutionContext();
     const event = {
+      cron: "15 20,21 * * 5",
       scheduledTime: Date.now()
     };
     
@@ -431,9 +432,9 @@ describe('JWT Authentication integration tests', () => {
     `).run();
 
     // 4. Trigger worker.scheduled
-    // 4. Trigger worker.scheduled without cron property to simulate manual/scheduled execution
+    // 4. Trigger worker.scheduled with exact cron property
     const ctx = createExecutionContext();
-    const event = { scheduledTime: Date.now() };
+    const event = { cron: "0 18,19 * * *", scheduledTime: Date.now(), force: true };
     
     await worker.scheduled(event, env, ctx);
     await waitOnExecutionContext(ctx);
@@ -465,7 +466,7 @@ describe('JWT Authentication integration tests', () => {
 
     // 3. First scheduled run
     const ctx1 = createExecutionContext();
-    const event1 = { scheduledTime: Date.now() };
+    const event1 = { cron: "0 18,19 * * *", scheduledTime: Date.now(), force: true };
     await worker.scheduled(event1, env, ctx1);
     await waitOnExecutionContext(ctx1);
 
@@ -475,7 +476,7 @@ describe('JWT Authentication integration tests', () => {
 
     // 4. Second scheduled run (simulating duplicate cron invocation)
     const ctx2 = createExecutionContext();
-    const event2 = { scheduledTime: Date.now() + 1000 };
+    const event2 = { cron: "0 18,19 * * *", scheduledTime: Date.now() + 1000, force: true };
     await worker.scheduled(event2, env, ctx2);
     await waitOnExecutionContext(ctx2);
 
