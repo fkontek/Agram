@@ -230,7 +230,7 @@ async function getAuthUser(request, env) {
   };
 }
 
-const TARGET_PBKDF2_ITERATIONS = 600000;
+const TARGET_PBKDF2_ITERATIONS = 100000;
 
 function timingSafeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
@@ -371,7 +371,9 @@ async function verifyPassword(password, storedPassword) {
   if (storedPassword.startsWith("pbkdf2:")) {
     const parts = storedPassword.split(":");
     if (parts.length !== 4) return { valid: false, needsRehash: false };
-    const iterations = parseInt(parts[1], 10);
+    let iterations = parseInt(parts[1], 10);
+    if (isNaN(iterations) || iterations <= 0) return { valid: false, needsRehash: false };
+    if (iterations > 100000) iterations = 100000;
     const saltHex = parts[2];
     const targetHashHex = parts[3];
 
