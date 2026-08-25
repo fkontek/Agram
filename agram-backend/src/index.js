@@ -595,40 +595,65 @@ async function autoGenerateWeeks(env, baseMonday) {
 
 // Ensure database columns and tables exist (auto-migration fallback)
 async function ensureDbColumns(env) {
-  try {
-    await env.DB.prepare("ALTER TABLE Clients ADD COLUMN has_seen_onboarding INTEGER DEFAULT 0").run();
-  } catch (e) {}
-  try {
-    await env.DB.prepare("ALTER TABLE Clients ADD COLUMN token_version INTEGER DEFAULT 1").run();
-  } catch (e) {}
-  try {
-    await env.DB.prepare("ALTER TABLE Clients ADD COLUMN reset_token_hash TEXT").run();
-  } catch (e) {}
-  try {
-    await env.DB.prepare("ALTER TABLE Clients ADD COLUMN reset_token_expires INTEGER").run();
-  } catch (e) {}
-  try {
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS SentReminders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        target_date TEXT NOT NULL,
-        reminder_type TEXT NOT NULL DEFAULT '24h_booking',
-        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, target_date, reminder_type)
-      )
-    `).run();
-  } catch (e) {}
-  try {
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS RateLimits (
-        key TEXT PRIMARY KEY,
-        attempts INTEGER DEFAULT 1,
-        first_attempt INTEGER,
-        last_attempt INTEGER
-      )
-    `).run();
-  } catch (e) {}
+  const alterQueries = [
+    "ALTER TABLE Clients ADD COLUMN has_seen_onboarding INTEGER DEFAULT 0",
+    "ALTER TABLE Clients ADD COLUMN token_version INTEGER DEFAULT 1",
+    "ALTER TABLE Clients ADD COLUMN reset_token_hash TEXT",
+    "ALTER TABLE Clients ADD COLUMN reset_token_expires INTEGER",
+    "ALTER TABLE Clients ADD COLUMN full_name TEXT",
+    "ALTER TABLE Clients ADD COLUMN first_name TEXT",
+    "ALTER TABLE Clients ADD COLUMN last_name TEXT",
+    "ALTER TABLE Clients ADD COLUMN phone TEXT",
+    "ALTER TABLE Clients ADD COLUMN questionnaire TEXT"
+  ];
+
+  for (const q of alterQueries) {
+    try {
+      await env.DB.prepare(q).run();
+    } catch (e) {}
+  }
+
+  const tableQueries = [
+    `CREATE TABLE IF NOT EXISTS SentReminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      target_date TEXT NOT NULL,
+      reminder_type TEXT NOT NULL DEFAULT '24h_booking',
+      sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, target_date, reminder_type)
+    )`,
+    `CREATE TABLE IF NOT EXISTS RateLimits (
+      key TEXT PRIMARY KEY,
+      attempts INTEGER DEFAULT 1,
+      first_attempt INTEGER,
+      last_attempt INTEGER
+    )`,
+    `CREATE TABLE IF NOT EXISTS ActivityLogs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      details TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS PackageRequests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      package_name TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS ClientNotifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      message TEXT NOT NULL,
+      is_read INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`
+  ];
+
+  for (const q of tableQueries) {
+    try {
+      await env.DB.prepare(q).run();
+    } catch (e) {}
+  }
 }
 
 function getClientIp(request) {
@@ -1414,9 +1439,17 @@ export default {
           return jsonResponse({ success: false, error: "Korisničko ime/e-mail i lozinka su obavezni." }, 400);
         }
 
-        const user = await env.DB.prepare(
-          "SELECT id, username, password, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name, first_name, last_name, phone, COALESCE(has_seen_onboarding, 0) as has_seen_onboarding, COALESCE(token_version, 1) as token_version FROM Clients WHERE username = ? OR email = ?"
-        ).bind(username, username).first();
+        let user;
+        try {
+          user = await env.DB.prepare(
+            "SELECT id, username, password, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name, first_name, last_name, phone, COALESCE(has_seen_onboarding, 0) as has_seen_onboarding, COALESCE(token_version, 1) as token_version FROM Clients WHERE username = ? OR email = ?"
+          ).bind(username, username).first();
+        } catch (dbErr) {
+          console.error("Login full query failed, trying fallback query:", dbErr);
+          user = await env.DB.prepare(
+            "SELECT id, username, password, email, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status FROM Clients WHERE username = ? OR email = ?"
+          ).bind(username, username).first();
+        }
 
         if (!user) {
           return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401);
