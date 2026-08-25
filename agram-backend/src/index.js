@@ -16,7 +16,12 @@ function getCorsHeaders(request = null) {
   let allowedOrigin = "https://pilates-reformer-agram.com";
 
   if (origin) {
-    if (ALLOWED_ORIGINS.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    if (
+      ALLOWED_ORIGINS.includes(origin) ||
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+      /\.pages\.dev$/.test(origin) ||
+      /\.pilates-reformer-agram\.com$/.test(origin)
+    ) {
       allowedOrigin = origin;
     }
   }
