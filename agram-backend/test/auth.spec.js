@@ -695,4 +695,77 @@ describe('JWT Authentication integration tests', () => {
     const waitlistOpenRes = await worker.fetch(waitlistOpenReq, env, createExecutionContext());
     expect(waitlistOpenRes.status).toBe(400);
   });
+
+  it('encrypts health questionnaire at rest and decrypts on retrieval', async () => {
+    const loginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'clientuser', password: 'clientpass' })
+    });
+    const loginRes = await worker.fetch(loginReq, env, createExecutionContext());
+    const loginData = await loginRes.json();
+    const token = loginData.token;
+
+    // 1. Submit health questionnaire
+    const saveReq = new Request('http://example.com/api/client/questionnaire', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers: { injuries: "Nema", pregnant: "Ne" } })
+    });
+    const saveRes = await worker.fetch(saveReq, env, createExecutionContext());
+    expect(saveRes.status).toBe(200);
+
+    // 2. Verify DB column stores encrypted ciphertext starting with enc:
+    const dbClient = await env.DB.prepare("SELECT questionnaire FROM Clients WHERE id = 1").first();
+    expect(dbClient.questionnaire).toBeTypeOf('string');
+    expect(dbClient.questionnaire.startsWith('enc:')).toBe(true);
+
+    // 3. Admin retrieves health questionnaire and gets decrypted JSON
+    const adminLoginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'adminuser', password: 'adminpass' })
+    });
+    const adminLoginRes = await worker.fetch(adminLoginReq, env, createExecutionContext());
+    const adminToken = (await adminLoginRes.json()).token;
+
+    const getReq = new Request('http://example.com/api/admin/client-questionnaire?client_id=1', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
+    const getRes = await worker.fetch(getReq, env, createExecutionContext());
+    expect(getRes.status).toBe(200);
+    const getData = await getRes.json();
+    expect(getData.success).toBe(true);
+    expect(JSON.parse(getData.questionnaire)).toEqual({ injuries: "Nema", pregnant: "Ne" });
+  });
+
+  it('enforces input validation on registration and invalid package names', async () => {
+    // 1. Invalid email
+    const regReq = new Request('http://example.com/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ first_name: 'Ana', last_name: 'Horvat', username: 'anahorvat', email: 'not-an-email', phone: '0912345678' })
+    });
+    const regRes = await worker.fetch(regReq, env, createExecutionContext());
+    expect(regRes.status).toBe(400);
+
+    // 2. Invalid package name
+    const loginReq = new Request('http://example.com/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'clientuser', password: 'clientpass' })
+    });
+    const loginRes = await worker.fetch(loginReq, env, createExecutionContext());
+    const token = (await loginRes.json()).token;
+
+    const pkgReq = new Request('http://example.com/api/client/request-package', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ package_name: 'Paket 999999' })
+    });
+    const pkgRes = await worker.fetch(pkgReq, env, createExecutionContext());
+    expect(pkgRes.status).toBe(400);
+  });
 });
+

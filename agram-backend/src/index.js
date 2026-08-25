@@ -3,17 +3,43 @@
  * Handles booking system, user authentication, credits, and admin actions.
  */
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Content-Type": "application/json"
-};
+const ALLOWED_ORIGINS = [
+  "https://pilates-reformer-agram.com",
+  "https://www.pilates-reformer-agram.com",
+  "http://localhost",
+  "http://127.0.0.1",
+  "http://example.com"
+];
 
-function jsonResponse(data, status = 200) {
+function getCorsHeaders(request = null) {
+  const origin = request && typeof request.headers?.get === "function" ? request.headers.get("Origin") : null;
+  let allowedOrigin = "https://pilates-reformer-agram.com";
+
+  if (origin) {
+    if (ALLOWED_ORIGINS.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      allowedOrigin = origin;
+    }
+  }
+
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Vary": "Origin",
+    "Content-Type": "application/json",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://calendar.google.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https:; frame-ancestors 'none';"
+  };
+}
+
+function jsonResponse(data, status = 200, request = null) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: corsHeaders
+    headers: getCorsHeaders(request)
   });
 }
 
@@ -76,33 +102,63 @@ async function verifyHMAC(message, signature, secret) {
 }
 
 async function createJWT(payload, secret) {
+  const now = Math.floor(Date.now() / 1000);
+  const fullPayload = {
+    iss: "agram-backend",
+    aud: "agram-app",
+    iat: now,
+    exp: now + 7 * 24 * 60 * 60, // 7 days default
+    ...payload
+  };
   const header = { alg: "HS256", typ: "JWT" };
   const headerPart = arrayBufferToBase64Url(new TextEncoder().encode(JSON.stringify(header)));
-  const payloadPart = arrayBufferToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const payloadPart = arrayBufferToBase64Url(new TextEncoder().encode(JSON.stringify(fullPayload)));
   const message = `${headerPart}.${payloadPart}`;
   const signaturePart = await signHMAC(message, secret);
   return `${message}.${signaturePart}`;
 }
 
 async function verifyJWT(token, secret) {
-  if (!token || typeof token !== "string") return null;
+  if (!token || typeof token !== "string" || !secret) return null;
   const parts = token.split(".");
   if (parts.length !== 3) return null;
 
   const [headerPart, payloadPart, signaturePart] = parts;
-  const message = `${headerPart}.${payloadPart}`;
 
+  // 1. Verify Header (alg === "HS256" && typ === "JWT")
+  try {
+    const header = JSON.parse(new TextDecoder().decode(base64UrlToArrayBuffer(headerPart)));
+    if (!header || header.alg !== "HS256" || header.typ !== "JWT") {
+      return null;
+    }
+  } catch (e) {
+    return null;
+  }
+
+  // 2. Verify HMAC Signature
+  const message = `${headerPart}.${payloadPart}`;
   const isValid = await verifyHMAC(message, signaturePart, secret);
   if (!isValid) return null;
 
+  // 3. Verify Payload Claims (exp, iat, iss, aud, token_version)
   try {
     const payload = JSON.parse(new TextDecoder().decode(base64UrlToArrayBuffer(payloadPart)));
-    if (payload.exp && typeof payload.exp === "number") {
-      const now = Math.floor(Date.now() / 1000);
-      if (now > payload.exp) {
-        return null;
-      }
+    const now = Math.floor(Date.now() / 1000);
+
+    // Require valid exp, iat, iss, aud, and token_version
+    if (!payload.exp || typeof payload.exp !== "number" || now > payload.exp) {
+      return null;
     }
+    if (!payload.iat || typeof payload.iat !== "number") {
+      return null;
+    }
+    if (payload.iss !== "agram-backend" || payload.aud !== "agram-app") {
+      return null;
+    }
+    if (payload.token_version === undefined || payload.token_version === null) {
+      return null;
+    }
+
     return payload;
   } catch (e) {
     return null;
@@ -113,7 +169,10 @@ function getJwtSecret(env) {
   if (env && env.JWT_SECRET) {
     return env.JWT_SECRET;
   }
-  return "dev-secret-key-change-this-in-prod";
+  if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "test") {
+    return "vitest-testing-jwt-secret-key-32-bytes!!";
+  }
+  throw new Error("Missing JWT_SECRET environment variable in Cloudflare Worker configuration.");
 }
 
 async function getAuthUser(request, env) {
@@ -122,7 +181,14 @@ async function getAuthUser(request, env) {
     return null;
   }
   const token = authHeader.substring(7);
-  const secret = getJwtSecret(env);
+  let secret;
+  try {
+    secret = getJwtSecret(env);
+  } catch (err) {
+    console.error("JWT Secret Error:", err.message);
+    return null;
+  }
+
   const decoded = await verifyJWT(token, secret);
   if (!decoded || !decoded.user_id) {
     return null;
@@ -144,8 +210,8 @@ async function getAuthUser(request, env) {
     return null;
   }
 
-  // Reject tokens with stale token_version
-  if (decoded.token_version !== undefined && decoded.token_version !== dbUser.token_version) {
+  // Reject tokens with missing or stale token_version
+  if (decoded.token_version === undefined || decoded.token_version !== dbUser.token_version) {
     return null;
   }
 
@@ -158,7 +224,19 @@ async function getAuthUser(request, env) {
   };
 }
 
-// Validate password strength (at least 8 characters)
+const TARGET_PBKDF2_ITERATIONS = 600000;
+
+function timingSafeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+// Validate password strength (at least 8 characters, at most 128)
 function validatePasswordStrength(password) {
   if (!password || typeof password !== 'string') {
     return "Lozinka je obavezna.";
@@ -166,7 +244,69 @@ function validatePasswordStrength(password) {
   if (password.length < 8) {
     return "Lozinka mora imati najmanje 8 znakova.";
   }
+  if (password.length > 128) {
+    return "Lozinka ne smije imati više od 128 znakova.";
+  }
   return null;
+}
+
+// Input validation helpers for email, username, names, phone, dates, times, and image URLs
+function validateAndNormalizeEmail(email) {
+  if (!email || typeof email !== 'string') return null;
+  const trimmed = email.trim().toLowerCase();
+  if (trimmed.length > 254) return null;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(trimmed) ? trimmed : null;
+}
+
+function validateUsername(username) {
+  if (!username || typeof username !== 'string') return "Korisničko ime je obavezno.";
+  const trimmed = username.trim();
+  if (trimmed.length < 3 || trimmed.length > 50) return "Korisničko ime mora imati između 3 i 50 znakova.";
+  if (!/^[a-zA-Z0-9_.-]+$/.test(trimmed)) return "Korisničko ime smije sadržavati samo slova, brojeve, točku, crticu i donju crtu.";
+  return null;
+}
+
+function validateName(name, fieldName = "Ime") {
+  if (!name || typeof name !== 'string') return `${fieldName} je obavezno polje.`;
+  const trimmed = name.trim();
+  if (trimmed.length < 1 || trimmed.length > 50) return `${fieldName} mora imati između 1 i 50 znakova.`;
+  return null;
+}
+
+function validatePhone(phone) {
+  if (!phone || typeof phone !== 'string') return "Kontakt broj je obavezan.";
+  const trimmed = phone.trim();
+  if (trimmed.length < 6 || trimmed.length > 25) return "Kontakt broj mora imati između 6 i 25 znakova.";
+  if (!/^[0-9+\s()-]+$/.test(trimmed)) return "Broj telefona sadrži nevažeće znakove.";
+  return null;
+}
+
+function validateDateStr(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+}
+
+function validateTimeStr(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return false;
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(timeStr);
+}
+
+function validateCapacity(cap) {
+  const num = parseInt(cap, 10);
+  return !isNaN(num) && num >= 1 && num <= 20 ? num : null;
+}
+
+function validateImageUrl(urlStr) {
+  if (!urlStr) return null;
+  if (typeof urlStr !== 'string' || urlStr.length > 1000) return "URL slike je predugačak ili neispravan.";
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "URL slike mora koristiti HTTP ili HTTPS protokol.";
+    return null;
+  } catch (e) {
+    return "Neispravan format URL-a slike.";
+  }
 }
 
 // HTML escaping utility for sanitizing user inputs in HTML responses/emails
@@ -190,8 +330,8 @@ async function hashPasswordSha256(password) {
     .join('');
 }
 
-// Secure password hashing utility using PBKDF2 with SHA-256, 100,000 iterations, and random salt
-async function hashPassword(password) {
+// Secure password hashing utility using PBKDF2 with SHA-256, 600,000 iterations (OWASP recommendation), and random salt
+async function hashPassword(password, iterations = TARGET_PBKDF2_ITERATIONS) {
   const encoder = new TextEncoder();
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey(
@@ -205,7 +345,7 @@ async function hashPassword(password) {
     {
       name: "PBKDF2",
       salt: salt,
-      iterations: 100000,
+      iterations: iterations,
       hash: "SHA-256"
     },
     keyMaterial,
@@ -213,12 +353,14 @@ async function hashPassword(password) {
   );
   const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
   const hashHex = Array.from(new Uint8Array(derivedKey)).map(b => b.toString(16).padStart(2, '0')).join('');
-  return `pbkdf2:100000:${saltHex}:${hashHex}`;
+  return `pbkdf2:${iterations}:${saltHex}:${hashHex}`;
 }
 
 // Verify candidate password against stored password string (supports PBKDF2 and legacy SHA-256)
 async function verifyPassword(password, storedPassword) {
-  if (!storedPassword) return { valid: false, needsRehash: false };
+  if (!storedPassword || !password || typeof password !== 'string' || password.length > 128) {
+    return { valid: false, needsRehash: false };
+  }
 
   if (storedPassword.startsWith("pbkdf2:")) {
     const parts = storedPassword.split(":");
@@ -227,7 +369,10 @@ async function verifyPassword(password, storedPassword) {
     const saltHex = parts[2];
     const targetHashHex = parts[3];
 
-    const salt = new Uint8Array(saltHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    const saltBytes = saltHex.match(/.{1,2}/g);
+    if (!saltBytes) return { valid: false, needsRehash: false };
+    const salt = new Uint8Array(saltBytes.map(byte => parseInt(byte, 16)));
+
     const encoder = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
@@ -247,12 +392,14 @@ async function verifyPassword(password, storedPassword) {
       256
     );
     const candidateHashHex = Array.from(new Uint8Array(derivedKey)).map(b => b.toString(16).padStart(2, '0')).join('');
-    return { valid: candidateHashHex === targetHashHex, needsRehash: false };
+    const isValid = timingSafeEqual(candidateHashHex, targetHashHex);
+    const needsRehash = isValid && (iterations < TARGET_PBKDF2_ITERATIONS);
+    return { valid: isValid, needsRehash };
   }
 
   const legacyHash = await hashPasswordSha256(password);
-  const valid = legacyHash === storedPassword;
-  return { valid, needsRehash: valid };
+  const isValid = timingSafeEqual(legacyHash, storedPassword);
+  return { valid: isValid, needsRehash: isValid };
 }
 
 // Generate cryptographically secure random token (hex)
@@ -272,6 +419,65 @@ function generateTempPassword() {
     password += chars.charAt(array[i] % chars.length);
   }
   return password;
+}
+
+// AES-256-GCM Application-Level Encryption for Sensitive Health Data (GDPR Compliance)
+async function encryptHealthData(textData, envSecret) {
+  if (!textData) return null;
+  const encoder = new TextEncoder();
+  const secretKeyData = encoder.encode(envSecret || "agram-health-secret-key-32bytes-min!");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    await crypto.subtle.digest("SHA-256", secretKeyData),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"]
+  );
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    encoder.encode(textData)
+  );
+  const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
+  const encryptedHex = Array.from(new Uint8Array(encrypted)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `enc:${ivHex}:${encryptedHex}`;
+}
+
+async function decryptHealthData(cipherText, envSecret) {
+  if (!cipherText) return null;
+  if (!cipherText.startsWith("enc:")) {
+    return cipherText;
+  }
+  try {
+    const parts = cipherText.split(":");
+    if (parts.length !== 3) return null;
+    const ivHex = parts[1];
+    const encryptedHex = parts[2];
+
+    const iv = new Uint8Array(ivHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    const encrypted = new Uint8Array(encryptedHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+
+    const encoder = new TextEncoder();
+    const secretKeyData = encoder.encode(envSecret || "agram-health-secret-key-32bytes-min!");
+    const key = await crypto.subtle.importKey(
+      "raw",
+      await crypto.subtle.digest("SHA-256", secretKeyData),
+      { name: "AES-GCM" },
+      false,
+      ["decrypt"]
+    );
+
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      encrypted
+    );
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    console.error("Error decrypting health questionnaire:", e);
+    return null;
+  }
 }
 
 // Log activity to database
@@ -295,6 +501,20 @@ function getCroatiaNow(dateInput = null) {
   const parts = formatter.formatToParts(d);
   const partVal = type => parts.find(p => p.type === type).value;
   return new Date(`${partVal('year')}-${partVal('month')}-${partVal('day')}T${partVal('hour')}:${partVal('minute')}:${partVal('second')}`);
+}
+
+// Format date to human-readable Croatia timezone string (YYYY-MM-DD HH:MM:SS)
+function formatCroatiaString(dateInput = null) {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Zagreb",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false
+  });
+  const parts = formatter.formatToParts(d);
+  const partVal = type => parts.find(p => p.type === type).value;
+  return `${partVal('year')}-${partVal('month')}-${partVal('day')} ${partVal('hour')}:${partVal('minute')}:${partVal('second')}`;
 }
 
 // Format Date object to YYYY-MM-DD
@@ -399,6 +619,62 @@ async function ensureDbColumns(env) {
       )
     `).run();
   } catch (e) {}
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS RateLimits (
+        key TEXT PRIMARY KEY,
+        attempts INTEGER DEFAULT 1,
+        first_attempt INTEGER,
+        last_attempt INTEGER
+      )
+    `).run();
+  } catch (e) {}
+}
+
+function getClientIp(request) {
+  return request.headers.get("cf-connecting-ip") ||
+         request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+         "127.0.0.1";
+}
+
+async function checkRateLimit(env, ip, action, maxAttempts = 5, windowSeconds = 60) {
+  if (!env || !env.DB) return { allowed: true };
+  const key = `${action}:${ip}`;
+  const now = Math.floor(Date.now() / 1000);
+
+  try {
+    const record = await env.DB.prepare(
+      "SELECT attempts, first_attempt FROM RateLimits WHERE key = ?"
+    ).bind(key).first();
+
+    if (!record) {
+      await env.DB.prepare(
+        "INSERT INTO RateLimits (key, attempts, first_attempt, last_attempt) VALUES (?, 1, ?, ?)"
+      ).bind(key, now, now).run();
+      return { allowed: true };
+    }
+
+    if (now - record.first_attempt > windowSeconds) {
+      await env.DB.prepare(
+        "UPDATE RateLimits SET attempts = 1, first_attempt = ?, last_attempt = ? WHERE key = ?"
+      ).bind(now, now, key).run();
+      return { allowed: true };
+    }
+
+    if (record.attempts >= maxAttempts) {
+      const retryAfter = windowSeconds - (now - record.first_attempt);
+      return { allowed: false, retryAfter: Math.max(retryAfter, 1) };
+    }
+
+    await env.DB.prepare(
+      "UPDATE RateLimits SET attempts = attempts + 1, last_attempt = ? WHERE key = ?"
+    ).bind(now, key).run();
+
+    return { allowed: true };
+  } catch (e) {
+    console.error("Rate limit check error:", e);
+    return { allowed: true };
+  }
 }
 
 // Check if Week 3 Monday has sessions, if not, generate schedules
@@ -422,13 +698,34 @@ async function checkAndAutoGenerateSchedules(env) {
   }
 }
 
+// Allowed packages whitelist & limits
+const ALLOWED_PACKAGES = {
+  "Paket 4": 4,
+  "Paket 8": 8,
+  "Paket 12": 12,
+  "Paket 16": 16,
+  "Poluindividualni 4": 4,
+  "Poluindividualni 8": 8,
+  "Poluindividualni 12": 12,
+  "Privatni 4": 4,
+  "Privatni 8": 8,
+  "Privatni 12": 12,
+  "Nema paketa": 0,
+  "Bez paketa": 0
+};
+
 // Helper to get limit from package name
 function getPackageLimit(packageName) {
   if (!packageName || packageName === "Nema paketa" || packageName === "Bez paketa") {
     return 0;
   }
+  if (ALLOWED_PACKAGES[packageName] !== undefined) {
+    return ALLOWED_PACKAGES[packageName];
+  }
   const match = packageName.match(/\d+/);
-  return match ? parseInt(match[0], 10) : 0;
+  if (!match) return 0;
+  const val = parseInt(match[0], 10);
+  return (val > 0 && val <= 50) ? val : 0;
 }
 
 // Send email using Resend API
@@ -512,16 +809,18 @@ async function notifyWaitlist(env, sessionId) {
     const dateStr = session.date.split('-').reverse().join('.') + '.';
     const todayStr = formatDate(getCroatiaNow());
 
-    // 4. Try to auto-book the first eligible user
-    let bookedUser = null;
+    // Auto-cleanup past waitlists for expired sessions
+    await env.DB.prepare("DELETE FROM Waitlists WHERE session_id IN (SELECT id FROM Sessions WHERE date < ?)").bind(todayStr).run();
+
+    // 4. Try to auto-book the first eligible waitlisted user atomically
     for (const user of waitlisted.results) {
-      // Skip frozen users
-      if (user.status === "frozen") continue;
-      // Skip users with no credits
-      if (user.remaining_credits <= 0) continue;
-      // Skip users with expired package
-      if (user.package_expires && user.package_expires < todayStr) continue;
-      // Skip users who already have a booking on the same day
+      // Auto-prune ineligible users from waitlist so they don't clog position 1
+      if (user.status === "frozen" || user.remaining_credits <= 0 || (user.package_expires && user.package_expires < todayStr)) {
+        await env.DB.prepare("DELETE FROM Waitlists WHERE id = ?").bind(user.waitlist_id).run();
+        continue;
+      }
+
+      // Skip users who already have an active booking on the same day
       const existingBookingToday = await env.DB.prepare(`
         SELECT b.id FROM Bookings b
         JOIN Sessions s ON b.session_id = s.id
@@ -529,42 +828,64 @@ async function notifyWaitlist(env, sessionId) {
       `).bind(user.user_id, session.date).first();
       if (existingBookingToday) continue;
 
-      // This user is eligible — auto-book them!
-      bookedUser = user;
-      break;
-    }
-
-    if (bookedUser) {
-      // Auto-book: create booking, deduct credit, remove from waitlist, notify
+      // Prepare atomic batch transaction for waitlist promotion
       const confirmMsg = `Automatski ste dodani u termin '${session.title}' (${dateStr} u ${session.time}h) s liste čekanja. Kredit je oduzet.`;
-      await env.DB.batch([
-        env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 0)").bind(sessionId, bookedUser.user_id),
-        env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(bookedUser.user_id),
-        env.DB.prepare("DELETE FROM Waitlists WHERE id = ?").bind(bookedUser.waitlist_id),
-        env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(bookedUser.user_id, confirmMsg)
+      
+      const [insertRes, creditRes, deleteWaitlistRes] = await env.DB.batch([
+        env.DB.prepare(`
+          INSERT INTO Bookings (session_id, user_id, status)
+          SELECT ?, ?, 0
+          WHERE (
+            SELECT COUNT(*) FROM Bookings WHERE session_id = ? AND status >= 0
+          ) < (SELECT capacity FROM Sessions WHERE id = ?)
+          AND NOT EXISTS (
+            SELECT 1 FROM Bookings b JOIN Sessions s ON b.session_id = s.id
+            WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
+          )
+        `).bind(sessionId, user.user_id, sessionId, sessionId, user.user_id, session.date),
+        env.DB.prepare(
+          "UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ? AND remaining_credits > 0"
+        ).bind(user.user_id),
+        env.DB.prepare(
+          "DELETE FROM Waitlists WHERE id = ?"
+        ).bind(user.waitlist_id),
+        env.DB.prepare(
+          "INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)"
+        ).bind(user.user_id, confirmMsg)
       ]);
 
-      // Send confirmation email
-      const emailSubject = `Dodani ste u termin: ${session.title}`;
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Dodani ste u termin!</h2>
-          <p>Bok <b>${bookedUser.username}</b>,</p>
-          <p>Oslobodilo se mjesto i automatski ste dodani u termin s liste čekanja:</p>
-          <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
-            <tr><td><b>Termin:</b></td><td>${session.title}</td></tr>
-            <tr><td><b>Datum i vrijeme:</b></td><td>${dateStr} u ${session.time}h</td></tr>
-          </table>
-          <p>Vidimo se!</p>
-          <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
-          <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
-        </div>
-      `;
-      await sendEmail(env, bookedUser.email, emailSubject, emailHtml);
+      const insertOk = insertRes && insertRes.meta && insertRes.meta.changes === 1;
+      const creditOk = creditRes && creditRes.meta && creditRes.meta.changes === 1;
+      const deleteOk = deleteWaitlistRes && deleteWaitlistRes.meta && deleteWaitlistRes.meta.changes === 1;
 
-      await logActivity(env, `Wait lista → booking: ${bookedUser.username} → ${session.title} (${dateStr}, ${session.time}h)`);
+      if (insertOk && creditOk && deleteOk) {
+        // Send confirmation email
+        const emailSubject = `Dodani ste u termin: ${session.title}`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Dodani ste u termin!</h2>
+            <p>Bok <b>${user.username}</b>,</p>
+            <p>Oslobodilo se mjesto i automatski ste dodani u termin s liste čekanja:</p>
+            <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
+              <tr><td><b>Termin:</b></td><td>${session.title}</td></tr>
+              <tr><td><b>Datum i vrijeme:</b></td><td>${dateStr} u ${session.time}h</td></tr>
+            </table>
+            <p>Vidimo se!</p>
+            <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+            <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
+          </div>
+        `;
+        await sendEmail(env, user.email, emailSubject, emailHtml);
+
+        await logActivity(env, `Wait lista → booking: ${user.username} → ${session.title} (${dateStr}, ${session.time}h)`);
+        break; // Stop after successfully promoting one user
+      } else {
+        // Rollback credit if credit deduction succeeded but booking/waitlist delete failed
+        if (creditOk && (!insertOk || !deleteOk)) {
+          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user.user_id).run();
+        }
+      }
     }
-    // Note: Other waitlisted users are NOT removed — they stay for future cancellations
   } catch (e) {
     console.error("Greška u notifyWaitlist:", e);
   }
@@ -599,6 +920,10 @@ async function autoConfirmBookings(env) {
         await env.DB.batch(updates);
       }
     }
+
+    // Auto-cleanup past waitlists for expired sessions
+    const todayStr = formatDate(nowCroatia);
+    await env.DB.prepare("DELETE FROM Waitlists WHERE session_id IN (SELECT id FROM Sessions WHERE date < ?)").bind(todayStr).run();
   } catch (e) {
     console.error("Error in autoConfirmBookings:", e);
   }
@@ -902,6 +1227,25 @@ async function sendBookingReminders(env, event = null) {
       const userSessions = userData.sessions;
       const bookingIds = userSessions.map(s => s.booking_id);
 
+      // ATOMIC CLAIM: Insert into SentReminders FIRST before attempting email send.
+      // If another concurrent cron worker already claimed it, UNIQUE constraint will fail / changes will be 0.
+      let claimed = false;
+      try {
+        const claimResult = await env.DB.prepare(`
+          INSERT INTO SentReminders (user_id, target_date, reminder_type)
+          VALUES (?, ?, '24h_booking')
+        `).bind(userId, tomorrowStr).run();
+        claimed = !!(claimResult && claimResult.meta && claimResult.meta.changes === 1);
+      } catch (e) {
+        // Unique constraint violation means another worker already claimed this reminder
+        claimed = false;
+      }
+
+      if (!claimed) {
+        console.log(`Reminder for user_id ${userId} on date ${tomorrowStr} already claimed by another execution.`);
+        continue;
+      }
+
       // Format all sessions for this user in the email
       const sessionRowsHtml = userSessions.map(s => {
         const dateFormatted = s.date.split('-').reverse().join('.') + '.';
@@ -931,19 +1275,18 @@ async function sendBookingReminders(env, event = null) {
       const idempotencyKey = `reminder-user-${userId}-${tomorrowStr}`;
       const emailSent = await sendEmail(env, userData.email, emailSubject, emailHtml, idempotencyKey);
 
-      // ONLY mark as sent in database if email sending succeeded!
+      // If email succeeded, mark Bookings as reminder_sent = 1
       if (emailSent) {
-        await env.DB.prepare(`
-          INSERT OR IGNORE INTO SentReminders (user_id, target_date, reminder_type)
-          VALUES (?, ?, '24h_booking')
-        `).bind(userId, tomorrowStr).run();
-
         const placeholders = bookingIds.map(() => '?').join(',');
         await env.DB.prepare(
           `UPDATE Bookings SET reminder_sent = 1 WHERE id IN (${placeholders})`
         ).bind(...bookingIds).run();
       } else {
-        console.error(`Failed to send reminder email to user_id ${userId} for date ${tomorrowStr}. Will retry on next run.`);
+        // If email sending failed, rollback SentReminders claim so retry can happen later
+        await env.DB.prepare(
+          "DELETE FROM SentReminders WHERE user_id = ? AND target_date = ? AND reminder_type = '24h_booking'"
+        ).bind(userId, tomorrowStr).run();
+        console.error(`Failed to send reminder email to user_id ${userId} for date ${tomorrowStr}. Claim rolled back.`);
       }
     }
   } catch (e) {
@@ -954,24 +1297,29 @@ async function sendBookingReminders(env, event = null) {
 // Synchronize Instagram Feed
 async function syncInstagramFeed(env) {
   try {
-    // 1. Get access token from Settings
-    const tokenObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_access_token'").first();
-    if (!tokenObj || !tokenObj.value) {
-      console.warn("Instagram access token not configured in Settings.");
+    // 1. Get access token (prefer env secret binding over DB settings)
+    let token = env.INSTAGRAM_ACCESS_TOKEN;
+    if (!token) {
+      const tokenObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_access_token'").first();
+      token = tokenObj ? tokenObj.value : null;
+    }
+
+    if (!token) {
+      console.warn("Instagram access token not configured.");
       return false;
     }
-    const token = tokenObj.value;
 
     // 2. Fetch latest media (limit 6) from Instagram Basic Display API
-    const res = await fetch(`https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&limit=6&access_token=${token}`);
+    const res = await fetch(`https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&limit=6&access_token=${encodeURIComponent(token)}`);
     if (!res.ok) {
       const errorText = await res.text();
-      console.error("Instagram API error fetching media:", errorText);
+      const sanitizedError = errorText.replace(/access_token=[^&]+/gi, "access_token=REDACTED");
+      console.error("Instagram API error fetching media:", sanitizedError);
       return false;
     }
     const data = await res.json();
     if (!data || !data.data || !Array.isArray(data.data)) {
-      console.error("Invalid response from Instagram API:", data);
+      console.error("Invalid response format from Instagram API.");
       return false;
     }
 
@@ -1012,7 +1360,7 @@ async function syncInstagramFeed(env) {
 
     if (!tokenUpdated || tokenUpdated < thirtyDaysAgo) {
       console.log("Refreshing Instagram access token...");
-      const refreshRes = await fetch(`https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${token}`);
+      const refreshRes = await fetch(`https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(token)}`);
       if (refreshRes.ok) {
         const refreshData = await refreshRes.json();
         if (refreshData && refreshData.access_token) {
@@ -1023,7 +1371,9 @@ async function syncInstagramFeed(env) {
           console.log("Instagram access token successfully refreshed.");
         }
       } else {
-        console.error("Failed to refresh Instagram access token:", await refreshRes.text());
+        const errText = await refreshRes.text();
+        const sanitizedErr = errText.replace(/access_token=[^&]+/gi, "access_token=REDACTED");
+        console.error("Failed to refresh Instagram access token:", sanitizedErr);
       }
     }
 
@@ -1042,7 +1392,7 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: corsHeaders
+        headers: getCorsHeaders(request)
       });
     }
 
@@ -1053,6 +1403,12 @@ export default {
 
       // LOGIN
       if (request.method === "POST" && url.pathname === "/api/login") {
+        const ip = getClientIp(request);
+        const rateCheck = await checkRateLimit(env, ip, "login", 10, 60);
+        if (!rateCheck.allowed) {
+          return jsonResponse({ success: false, error: "Previše pokušaja prijave. Molimo pričekajte minutu." }, 429);
+        }
+
         const { username, password } = await request.json();
         if (!username || !password) {
           return jsonResponse({ success: false, error: "Korisničko ime/e-mail i lozinka su obavezni." }, 400);
@@ -1071,6 +1427,14 @@ export default {
           return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401);
         }
 
+        // Reject login for pending or suspended accounts
+        if (user.status === 'pending') {
+          return jsonResponse({ success: false, error: "Vaš račun je u postupku odobrenja od strane administratora." }, 403);
+        }
+        if (user.status === 'suspended') {
+          return jsonResponse({ success: false, error: "Vaš korisnički račun je suspendiran. Za više informacija kontaktirajte administratora." }, 403);
+        }
+
         // Automatic migration of legacy SHA-256 hashes to PBKDF2 upon successful login
         if (authResult.needsRehash) {
           const newHash = await hashPassword(password);
@@ -1086,26 +1450,39 @@ export default {
           exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 // 7 days
         }, getJwtSecret(env));
 
-        return jsonResponse({ success: true, user, token });
+        const { password: _password, reset_token_hash: _reset, ...safeUser } = user;
+        return jsonResponse({ success: true, user: safeUser, token });
       }
 
       // CHECK USERNAME AVAILABILITY
       if (request.method === "GET" && url.pathname === "/api/check-username") {
+        const ip = getClientIp(request);
+        const rateCheck = await checkRateLimit(env, ip, "identity-check", 30, 60);
+        if (!rateCheck.allowed) {
+          return jsonResponse({ success: false, error: "Previše upita." }, 429);
+        }
+
         const username = url.searchParams.get("username");
         if (!username) {
           return jsonResponse({ success: false, error: "Korisničko ime je obavezno." }, 400);
         }
-        const existing = await env.DB.prepare("SELECT id FROM Clients WHERE username = ?").bind(username).first();
+        const existing = await env.DB.prepare("SELECT id FROM Clients WHERE username = ?").bind(username.trim()).first();
         return jsonResponse({ success: true, available: !existing });
       }
 
       // CHECK EMAIL EXISTENCE
       if (request.method === "GET" && url.pathname === "/api/check-email") {
+        const ip = getClientIp(request);
+        const rateCheck = await checkRateLimit(env, ip, "identity-check", 30, 60);
+        if (!rateCheck.allowed) {
+          return jsonResponse({ success: false, error: "Previše upita." }, 429);
+        }
+
         const email = url.searchParams.get("email");
         if (!email) {
           return jsonResponse({ success: false, error: "E-mail je obavezan." }, 400);
         }
-        const existing = await env.DB.prepare("SELECT id, status FROM Clients WHERE email = ?").bind(email).first();
+        const existing = await env.DB.prepare("SELECT id, status FROM Clients WHERE email = ?").bind(email.trim()).first();
         if (existing) {
           return jsonResponse({ success: true, exists: true, status: existing.status });
         }
@@ -1114,20 +1491,37 @@ export default {
 
       // REGISTER (Public registration, status 'pending' awaiting admin approval)
       if (request.method === "POST" && url.pathname === "/api/register") {
-        const { first_name, last_name, username, email, phone } = await request.json();
-        
-        if (!first_name || !last_name || !username || !email || !phone) {
-          return jsonResponse({ success: false, error: "Sva polja su obavezna (ime, prezime, korisničko ime, e-mail i kontakt broj)." }, 400);
+        const ip = getClientIp(request);
+        const rateCheck = await checkRateLimit(env, ip, "register", 5, 600);
+        if (!rateCheck.allowed) {
+          return jsonResponse({ success: false, error: "Previše zahtjeva za registraciju. Molimo pričekajte." }, 429);
         }
 
+        const { first_name, last_name, username, email, phone } = await request.json();
+        
+        const firstNameErr = validateName(first_name, "Ime");
+        if (firstNameErr) return jsonResponse({ success: false, error: firstNameErr }, 400);
+
+        const lastNameErr = validateName(last_name, "Prezime");
+        if (lastNameErr) return jsonResponse({ success: false, error: lastNameErr }, 400);
+
+        const usernameErr = validateUsername(username);
+        if (usernameErr) return jsonResponse({ success: false, error: usernameErr }, 400);
+
+        const normalizedEmail = validateAndNormalizeEmail(email);
+        if (!normalizedEmail) return jsonResponse({ success: false, error: "Neispravan format e-mail adrese." }, 400);
+
+        const phoneErr = validatePhone(phone);
+        if (phoneErr) return jsonResponse({ success: false, error: phoneErr }, 400);
+
         // Check if username already exists
-        const existingUsername = await env.DB.prepare("SELECT id FROM Clients WHERE username = ?").bind(username).first();
+        const existingUsername = await env.DB.prepare("SELECT id FROM Clients WHERE username = ?").bind(username.trim()).first();
         if (existingUsername) {
           return jsonResponse({ success: false, error: "Korisničko ime je već zauzeto." }, 400);
         }
 
         // Check if email already exists
-        const existingEmail = await env.DB.prepare("SELECT id FROM Clients WHERE email = ?").bind(email).first();
+        const existingEmail = await env.DB.prepare("SELECT id FROM Clients WHERE email = ?").bind(normalizedEmail).first();
         if (existingEmail) {
           return jsonResponse({ success: false, error: "Korisnik s ovom e-mail adresom već ima račun." }, 400);
         }
@@ -1138,7 +1532,7 @@ export default {
         await env.DB.prepare(`
           INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, status, questionnaire, full_name, first_name, last_name, phone)
           VALUES (?, ?, 'PENDING', 0, 1, 'Nema aktivnog paketa', 0, 0, NULL, 'pending', NULL, ?, ?, ?, ?)
-        `).bind(username, email, fullName, first_name.trim(), last_name.trim(), phone.trim()).run();
+        `).bind(username.trim(), normalizedEmail, fullName, first_name.trim(), last_name.trim(), phone.trim()).run();
 
         await logActivity(env, `Nova registracija: ${fullName}`);
 
@@ -1148,11 +1542,22 @@ export default {
         });
       }
 
-      // CHANGE PASSWORD (must change temp password)
+      // CHANGE PASSWORD (requires valid JWT session)
       if (request.method === "POST" && url.pathname === "/api/change-password") {
-        const { user_id, old_password, new_password } = await request.json();
-        if (!user_id || !old_password || !new_password) {
-          return jsonResponse({ success: false, error: "Sva polja su obavezna." }, 400);
+        const ip = getClientIp(request);
+        const rateCheck = await checkRateLimit(env, ip, "change-pass", 5, 300);
+        if (!rateCheck.allowed) {
+          return jsonResponse({ success: false, error: "Previše pokušaja promjene lozinke. Molimo pričekajte 5 minuta." }, 429);
+        }
+
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+
+        const { old_password, new_password } = await request.json();
+        if (!old_password || !new_password) {
+          return jsonResponse({ success: false, error: "Sva polja su obavezna (trenutna i nova lozinka)." }, 400);
         }
 
         const passwordErr = validatePasswordStrength(new_password);
@@ -1160,7 +1565,8 @@ export default {
           return jsonResponse({ success: false, error: passwordErr }, 400);
         }
 
-        const user = await env.DB.prepare("SELECT id, password FROM Clients WHERE id = ?").bind(user_id).first();
+        const user_id = authUser.user_id;
+        const user = await env.DB.prepare("SELECT id, username, email, password FROM Clients WHERE id = ?").bind(user_id).first();
         if (!user) {
           return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
         }
@@ -1173,11 +1579,35 @@ export default {
         const hashedNew = await hashPassword(new_password);
         await env.DB.prepare("UPDATE Clients SET password = ?, must_change_password = 0, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?").bind(hashedNew, user_id).run();
 
+        await logActivity(env, `Promjena lozinke: ${user.username}`);
+
+        // Send confirmation email
+        if (user.email) {
+          const emailSubject = "Agram Pilates - Obavijest o promjeni lozinke";
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+              <h2 style="color: #a98e65;">Lozinka je uspješno promijenjena</h2>
+              <p>Bok <b>${escapeHtml(user.username)}</b>,</p>
+              <p>Obavještavamo Vas da je lozinka za Vaš korisnički račun uspješno promijenjena.</p>
+              <p>Ako vi niste zatražili ovu promjenu, odmah kontaktirajte administratora studija!</p>
+              <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+              <p style="font-size: 11px; color: #7c7267;">Pilates Reformer Agram</p>
+            </div>
+          `;
+          ctx.waitUntil(sendEmail(env, user.email, emailSubject, emailHtml));
+        }
+
         return jsonResponse({ success: true, message: "Lozinka je uspješno promijenjena!" });
       }
 
       // FORGOT PASSWORD (secure email reset token flow)
       if (request.method === "POST" && url.pathname === "/api/forgot-password") {
+        const ip = getClientIp(request);
+        const rateCheck = await checkRateLimit(env, ip, "forgot-pass", 3, 300);
+        if (!rateCheck.allowed) {
+          return jsonResponse({ success: false, error: "Previše zahtjeva za resetiranje lozinke. Molimo pričekajte 5 minuta." }, 429);
+        }
+
         const { email } = await request.json();
         const genericMessage = "Ako račun s navedenom e-mail adresom postoji, poslali smo vam upute za poništavanje lozinke na e-mail.";
         
@@ -1187,9 +1617,9 @@ export default {
 
         const client = await env.DB.prepare(
           "SELECT id, username, email, status FROM Clients WHERE email = ?"
-        ).bind(email).first();
+        ).bind(email.trim()).first();
 
-        if (client && client.status === "approved") {
+        if (client && (client.status === "approved" || client.status === "frozen")) {
           const rawToken = generateSecureToken(32);
           const tokenHash = await hashPasswordSha256(rawToken);
           const expires = Math.floor(Date.now() / 1000) + 3600; // 1 hour
@@ -1225,6 +1655,12 @@ export default {
 
       // RESET PASSWORD WITH TOKEN
       if (request.method === "POST" && url.pathname === "/api/reset-password") {
+        const ip = getClientIp(request);
+        const rateCheck = await checkRateLimit(env, ip, "reset-pass", 5, 300);
+        if (!rateCheck.allowed) {
+          return jsonResponse({ success: false, error: "Previše pokušaja resetiranja lozinke." }, 429);
+        }
+
         const { reset_token, new_password } = await request.json();
         if (!reset_token || !new_password) {
           return jsonResponse({ success: false, error: "Token i nova lozinka su obavezni." }, 400);
@@ -1239,7 +1675,7 @@ export default {
         const nowSec = Math.floor(Date.now() / 1000);
 
         const client = await env.DB.prepare(
-          "SELECT id, username, reset_token_expires FROM Clients WHERE reset_token_hash = ?"
+          "SELECT id, username, email, reset_token_expires FROM Clients WHERE reset_token_hash = ?"
         ).bind(tokenHash).first();
 
         if (!client || !client.reset_token_expires || client.reset_token_expires < nowSec) {
@@ -1247,11 +1683,42 @@ export default {
         }
 
         const hashedNew = await hashPassword(new_password);
-        await env.DB.prepare(
-          "UPDATE Clients SET password = ?, reset_token_hash = NULL, reset_token_expires = NULL, must_change_password = 0, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?"
-        ).bind(hashedNew, client.id).run();
+
+        // Atomic UPDATE: consume token, update password, invalidate stale JWT sessions, and verify 1 row was changed
+        const updateRes = await env.DB.prepare(`
+          UPDATE Clients 
+          SET password = ?, 
+              reset_token_hash = NULL, 
+              reset_token_expires = NULL, 
+              must_change_password = 0, 
+              token_version = COALESCE(token_version, 1) + 1 
+          WHERE id = ? 
+            AND reset_token_hash = ? 
+            AND reset_token_expires >= ?
+            AND status != 'suspended'
+        `).bind(hashedNew, client.id, tokenHash, nowSec).run();
+
+        if (!updateRes || !updateRes.meta || updateRes.meta.changes === 0) {
+          return jsonResponse({ success: false, error: "Poveznica za poništavanje lozinke je nevažeća, istekla ili je već iskorištena." }, 400);
+        }
 
         await logActivity(env, `Lozinka uspješno poništena s tokenom: ${client.username}`);
+
+        // Send password change confirmation email
+        if (client.email) {
+          const emailSubject = "Agram Pilates - Obavijest o promjeni lozinke";
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
+              <h2 style="color: #a98e65;">Lozinka je uspješno promijenjena</h2>
+              <p>Bok <b>${escapeHtml(client.username)}</b>,</p>
+              <p>Obavještavamo Vas da je lozinka za Vaš korisnički račun uspješno promijenjena.</p>
+              <p>Ako vi niste zatražili ovu promjenu, odmah kontaktirajte administratora studija!</p>
+              <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
+              <p style="font-size: 11px; color: #7c7267;">Pilates Reformer Agram</p>
+            </div>
+          `;
+          ctx.waitUntil(sendEmail(env, client.email, emailSubject, emailHtml));
+        }
 
         return jsonResponse({ success: true, message: "Lozinka je uspješno poništena! Sada se možete prijaviti s novom lozinkom." });
       }
@@ -1381,16 +1848,7 @@ export default {
           }
         }
 
-        // 1. Deduct credit conditionally only if remaining_credits > 0
-        const creditResult = await env.DB.prepare(
-          "UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ? AND remaining_credits > 0"
-        ).bind(user_id).run();
-
-        if (!creditResult || !creditResult.meta || creditResult.meta.changes === 0) {
-          return jsonResponse({ success: false, error: "Nemate dovoljno preostalih treninga u paketu." }, 400);
-        }
-
-        // 2. Check for duplicate active booking on the same date
+        // 1. Check for duplicate active booking on the same date
         const existingBookingToday = await env.DB.prepare(`
           SELECT b.id FROM Bookings b 
           JOIN Sessions s ON b.session_id = s.id 
@@ -1398,40 +1856,67 @@ export default {
         `).bind(user_id, session.date).first();
 
         if (existingBookingToday) {
-          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id).run();
           return jsonResponse({ success: false, error: "Već imate rezerviran termin za ovaj dan. Nije moguće rezervirati više termina u istom danu." }, 400);
         }
 
-        // 3. Check capacity
+        // 2. Check capacity
         const bookingCountObj = await env.DB.prepare(
           "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
         ).bind(session_id).first();
         const bookedCount = bookingCountObj ? bookingCountObj.count : 0;
 
         if (bookedCount >= session.capacity) {
-          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id).run();
           return jsonResponse({ success: false, error: "Termin je već popunjen." }, 400);
         }
 
-        // 4. Check for existing row (active or cancelled) to handle re-booking vs new insert
+        // 3. Check for existing row (active or cancelled) to handle re-booking vs new insert
         const existingRow = await env.DB.prepare(
           "SELECT id, status FROM Bookings WHERE session_id = ? AND user_id = ?"
         ).bind(session_id, user_id).first();
 
+        if (existingRow && existingRow.status >= 0) {
+          return jsonResponse({ success: false, error: "Već ste prijavljeni na ovaj termin." }, 400);
+        }
+
+        // 4. ATOMIC BATCH TRANSACTION: Deduct credit & Insert/Update booking in 1 atomic D1 batch!
+        const batchQueries = [
+          env.DB.prepare(
+            "UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ? AND remaining_credits > 0"
+          ).bind(user_id)
+        ];
+
         if (existingRow) {
-          if (existingRow.status >= 0) {
-            await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id).run();
-            return jsonResponse({ success: false, error: "Već ste prijavljeni na ovaj termin." }, 400);
-          }
-          // Re-book previously cancelled session
-          await env.DB.prepare(
-            "UPDATE Bookings SET status = 0, reminder_sent = 0 WHERE id = ?"
-          ).bind(existingRow.id).run();
+          batchQueries.push(
+            env.DB.prepare(
+              "UPDATE Bookings SET status = 0, reminder_sent = 0 WHERE id = ? AND status < 0"
+            ).bind(existingRow.id)
+          );
         } else {
-          // New booking
-          await env.DB.prepare(
-            "INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 0)"
-          ).bind(session_id, user_id).run();
+          batchQueries.push(
+            env.DB.prepare(`
+              INSERT INTO Bookings (session_id, user_id, status)
+              SELECT ?, ?, 0
+              WHERE (
+                SELECT COUNT(*) FROM Bookings WHERE session_id = ? AND status >= 0
+              ) < (SELECT capacity FROM Sessions WHERE id = ?)
+              AND NOT EXISTS (
+                SELECT 1 FROM Bookings b JOIN Sessions s ON b.session_id = s.id
+                WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
+              )
+            `).bind(session_id, user_id, session_id, session_id, user_id, session.date)
+          );
+        }
+
+        const [creditRes, bookingRes] = await env.DB.batch(batchQueries);
+
+        if (!creditRes || !creditRes.meta || creditRes.meta.changes === 0) {
+          return jsonResponse({ success: false, error: "Nemate dovoljno preostalih treninga u paketu." }, 400);
+        }
+
+        if (!bookingRes || !bookingRes.meta || bookingRes.meta.changes === 0) {
+          // If booking insertion failed due to concurrent race condition, rollback credit
+          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id).run();
+          return jsonResponse({ success: false, error: "Termin je u međuvremenu popunjen ili već imate rezervaciju na ovaj dan." }, 400);
         }
 
         const dateStr = session.date.split('-').reverse().join('.') + '.';
@@ -1455,12 +1940,12 @@ export default {
           const emailHtml = `
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
               <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Uspješna rezervacija termina!</h2>
-              <p>Bok <b>${client.username}</b>,</p>
+              <p>Bok <b>${escapeHtml(client.username)}</b>,</p>
               <p>Potvrđujemo da ste uspješno rezervirali sljedeći termin:</p>
               <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
-                <tr><td><b>Termin:</b></td><td>${session.title}</td></tr>
-                <tr><td><b>Datum i vrijeme:</b></td><td>${dateStrFormatted} u ${session.time}h</td></tr>
-                <tr><td><b>Trener:</b></td><td>${session.instructor || 'Adrijana'}</td></tr>
+                <tr><td><b>Termin:</b></td><td>${escapeHtml(session.title)}</td></tr>
+                <tr><td><b>Datum i vrijeme:</b></td><td>${escapeHtml(dateStrFormatted)} u ${escapeHtml(session.time)}h</td></tr>
+                <tr><td><b>Trener:</b></td><td>${escapeHtml(session.instructor || 'Adrijana')}</td></tr>
               </table>
               
               <p style="margin-top: 25px; margin-bottom: 25px; text-align: center;">
@@ -1534,16 +2019,20 @@ export default {
         let messageText = "";
 
         if (diffHours >= 12) {
-          // In-time cancel: Refund credit ONLY IF status transition from 0 to -2 succeeded
-          const updateResult = await env.DB.prepare(
-            "UPDATE Bookings SET status = -2 WHERE session_id = ? AND user_id = ? AND status = 0"
-          ).bind(session_id, user_id).run();
+          // In-time cancel: Refund credit ONLY IF status transition from 0 to -2 AND credit update succeed atomically
+          const [updateResult, refundResult] = await env.DB.batch([
+            env.DB.prepare(
+              "UPDATE Bookings SET status = -2 WHERE session_id = ? AND user_id = ? AND status = 0"
+            ).bind(session_id, user_id),
+            env.DB.prepare(
+              "UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?"
+            ).bind(user_id)
+          ]);
 
           if (!updateResult || !updateResult.meta || updateResult.meta.changes === 0) {
             return jsonResponse({ success: false, error: "Rezervacija je već otkazana ili nije aktivna." }, 400);
           }
 
-          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(user_id).run();
           refunded = true;
           messageText = "Termin je otkazan. Trening Vam je vraćen na račun. Molimo Vas da rezervirate idući slobodan termin ili nas osobno kontaktirate za dogovor.";
         } else {
@@ -1584,8 +2073,8 @@ export default {
         }
         const user_id = authUser.user_id;
 
-        // 1. Check if client exists
-        const client = await env.DB.prepare("SELECT username, status FROM Clients WHERE id = ?").bind(user_id).first();
+        // 1. Check if client exists, has credits, and valid package
+        const client = await env.DB.prepare("SELECT username, status, remaining_credits, package_expires FROM Clients WHERE id = ?").bind(user_id).first();
         if (!client) {
           return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
         }
@@ -1594,14 +2083,23 @@ export default {
           return jsonResponse({ success: false, error: "Vaša članarina je trenutno zaleđena. Nije moguće prijaviti se na listu čekanja." }, 400);
         }
 
+        const croatiaNow = getCroatiaNow();
+        const todayStr = formatDate(croatiaNow);
+
+        if (client.remaining_credits <= 0) {
+          return jsonResponse({ success: false, error: "Nemate preostalih treninga u paketu za prijavu na listu čekanja." }, 400);
+        }
+
+        if (client.package_expires && client.package_expires < todayStr) {
+          return jsonResponse({ success: false, error: "Vaš paket je istekao. Nije moguće prijaviti se na listu čekanja." }, 400);
+        }
+
         // 2. Check if session exists and is in the future
         const session = await env.DB.prepare("SELECT title, date, time, capacity FROM Sessions WHERE id = ?").bind(session_id).first();
         if (!session) {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
         }
 
-        const croatiaNow = getCroatiaNow();
-        const todayStr = formatDate(croatiaNow);
         if (session.date < todayStr) {
           return jsonResponse({ success: false, error: "Nije moguće prijaviti se na listu čekanja za termin u prošlosti." }, 400);
         }
@@ -1621,7 +2119,7 @@ export default {
           return jsonResponse({ success: false, error: "Termin još nije popunjen. Možete ga izravno rezervirati." }, 400);
         }
 
-        // 3. Check if user is already booked
+        // 4. Check if user is already booked
         const existingBooking = await env.DB.prepare(
           "SELECT id FROM Bookings WHERE session_id = ? AND user_id = ? AND status >= 0"
         ).bind(session_id, user_id).first();
@@ -1629,7 +2127,7 @@ export default {
           return jsonResponse({ success: false, error: "Već ste prijavljeni na ovaj termin." }, 400);
         }
 
-        // 4. Check if user already has an active booking on this session's date
+        // 5. Check if user already has an active booking on this session's date
         const existingBookingToday = await env.DB.prepare(`
           SELECT b.id FROM Bookings b 
           JOIN Sessions s ON b.session_id = s.id 
@@ -1640,17 +2138,23 @@ export default {
           return jsonResponse({ success: false, error: "Već imate rezerviran termin za ovaj dan. Nije moguće biti na listi čekanja za drugi termin istog dana." }, 400);
         }
 
-        // 5. Insert into Waitlists
+        // 6. Insert into Waitlists and calculate exact position by counting predecessors
         try {
           await env.DB.prepare(
             "INSERT INTO Waitlists (session_id, user_id) VALUES (?, ?)"
           ).bind(session_id, user_id).run();
 
-          // Count position on waitlist
-          const posObj = await env.DB.prepare(
-            "SELECT COUNT(*) as pos FROM Waitlists WHERE session_id = ?"
-          ).bind(session_id).first();
-          const position = posObj ? posObj.pos : 1;
+          const myWaitlist = await env.DB.prepare(
+            "SELECT id, created_at FROM Waitlists WHERE session_id = ? AND user_id = ?"
+          ).bind(session_id, user_id).first();
+
+          let position = 1;
+          if (myWaitlist) {
+            const posObj = await env.DB.prepare(
+              "SELECT COUNT(*) as pos FROM Waitlists WHERE session_id = ? AND (created_at < ? OR (created_at = ? AND id <= ?))"
+            ).bind(session_id, myWaitlist.created_at, myWaitlist.created_at, myWaitlist.id).first();
+            position = posObj ? posObj.pos : 1;
+          }
 
           const dateStr = session.date.split('-').reverse().join('.') + '.';
           await logActivity(env, `Wait lista: ${client.username} → ${session.title} (${dateStr}, ${session.time}h) [${position}. na listi]`);
@@ -1742,6 +2246,11 @@ export default {
           LIMIT 10
         `).bind(userId).all();
 
+        const secret = getJwtSecret(env);
+        if (userDetails && userDetails.questionnaire) {
+          userDetails.questionnaire = await decryptHealthData(userDetails.questionnaire, secret);
+        }
+
         return jsonResponse({
           success: true,
           user: userDetails,
@@ -1775,108 +2284,7 @@ export default {
         return jsonResponse({ success: true });
       }
 
-      // QR CODE CHECK-IN
-      if (request.method === "POST" && url.pathname === "/api/check-in") {
-        const authUser = await getAuthUser(request, env);
-        if (!authUser) {
-          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
-        }
-        const user_id = authUser.user_id;
 
-        const nowCroatia = getCroatiaNow();
-        const todayStr = formatDate(nowCroatia);
-        const currentHour = nowCroatia.getHours();
-        const currentMin = nowCroatia.getMinutes();
-
-        // Load username for activity log
-        const clientObj = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
-        const clientName = clientObj ? clientObj.username : `Korisnik ID ${user_id}`;
-
-        // 1. Look for a booking for today
-        const bookingsToday = await env.DB.prepare(`
-          SELECT b.id as booking_id, b.status, s.id as session_id, s.time, s.title
-          FROM Bookings b
-          JOIN Sessions s ON b.session_id = s.id
-          WHERE b.user_id = ? AND s.date = ? AND b.status = 0
-        `).bind(user_id, todayStr).all();
-
-        for (const booking of bookingsToday.results) {
-          const [sHour, sMin] = booking.time.split(':').map(Number);
-          // Check if session starts within +/- 60 minutes of now
-          const diffMinutes = Math.abs((sHour * 60 + sMin) - (currentHour * 60 + currentMin));
-          if (diffMinutes <= 60) {
-            // Confirm attendance
-            await env.DB.prepare("UPDATE Bookings SET status = 1 WHERE id = ?").bind(booking.booking_id).run();
-            await logActivity(env, `Check-in: ${clientName} → ${booking.title} (${booking.time}h)`);
-            return jsonResponse({ 
-              success: true, 
-              message: `Uspješna prijava (check-in) na termin: ${booking.title} u ${booking.time}. Dobrodošli u studio Agram!` 
-            });
-          }
-        }
-
-        // 2. If no booking exists, check if there is an active session running now that has spots
-        const sessionsToday = await env.DB.prepare(
-          "SELECT id, title, time, capacity, type FROM Sessions WHERE date = ?"
-        ).bind(todayStr).all();
-
-        for (const session of sessionsToday.results) {
-          const [sHour, sMin] = session.time.split(':').map(Number);
-          const diffMinutes = Math.abs((sHour * 60 + sMin) - (currentHour * 60 + currentMin));
-          
-          if (diffMinutes <= 45) { // If starts within 45 min
-            // Check capacity
-            const countObj = await env.DB.prepare(
-              "SELECT COUNT(*) as count FROM Bookings WHERE session_id = ? AND status >= 0"
-            ).bind(session.id).first();
-            const booked = countObj ? countObj.count : 0;
-
-            if (booked < session.capacity) {
-              // Check client credits
-              const client = await env.DB.prepare("SELECT username, email, remaining_credits, package_expires, package_name FROM Clients WHERE id = ?").bind(user_id).first();
-              if (client && client.remaining_credits > 0 && (!client.package_expires || client.package_expires >= todayStr)) {
-                // Book dynamically and check-in
-                await env.DB.batch([
-                  env.DB.prepare("INSERT INTO Bookings (session_id, user_id, status) VALUES (?, ?, 1)").bind(session.id, user_id),
-                  env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ?").bind(user_id)
-                ]);
-                await logActivity(env, `Auto check-in: ${clientName} → ${session.title} (${session.time}h)`);
-
-                // If they had exactly 1 credit remaining, they used their last credit! Send notification email.
-                if (client.remaining_credits === 1 && client.email) {
-                  const emailSubject = "Agram Pilates - Iskoristili ste sve treninge iz paketa";
-                  const emailHtml = `
-                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
-                      <h2 style="color: #a98e65;">Svi treninzi su iskorišteni</h2>
-                      <p>Bok <b>${client.username}</b>,</p>
-                      <p>Obavještavamo Vas da ste upravo automatskom prijavom na termin <b>'${session.title}'</b> iskoristili zadnji preostali trening iz Vašeg paketa <b>${client.package_name}</b>.</p>
-                      <p>Kako biste mogli nastaviti s vježbanjem i rezervirati nove termine, molimo Vas da odaberete novi paket unutar aplikacije.</p>
-                      <p style="margin-top: 30px;">
-                        <a href="https://pilates-reformer-agram.com/dashboard.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
-                          Otvori Profil i odaberi paket
-                        </a>
-                      </p>
-                      <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
-                      <p style="font-size: 11px; color: #7c7267;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
-                    </div>
-                  `;
-                  ctx.waitUntil(sendEmail(env, client.email, emailSubject, emailHtml));
-                }
-
-                return jsonResponse({
-                  success: true,
-                  message: `Automatski ste prijavljeni na slobodni termin: ${session.title} u ${session.time}. Skinut vam je 1 trening.`
-                });
-              }
-            }
-          }
-        }
-
-        return jsonResponse({
-          success: false,
-          error: "Nemate rezerviran termin u ovom satu, niti ima trenutno slobodnih grupa za automatsku prijavu."
-        }, 400);
-      }
 
 
       // CLIENT: SAVE HEALTH QUESTIONNAIRE
@@ -1892,7 +2300,10 @@ export default {
         const user_id = authUser.user_id;
 
         const answersStr = JSON.stringify(answers);
-        await env.DB.prepare("UPDATE Clients SET questionnaire = ? WHERE id = ?").bind(answersStr, user_id).run();
+        const secret = getJwtSecret(env);
+        const encryptedData = await encryptHealthData(answersStr, secret);
+
+        await env.DB.prepare("UPDATE Clients SET questionnaire = ? WHERE id = ?").bind(encryptedData, user_id).run();
         
         // Log activity
         const user = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
@@ -1901,6 +2312,59 @@ export default {
         }
         
         return jsonResponse({ success: true, message: "Upitnik uspješno spremljen." });
+      }
+
+      // CLIENT: EXPORT PERSONAL DATA (GDPR Right to Data Portability)
+      if (request.method === "POST" && url.pathname === "/api/client/export-data") {
+        const authUser = await getAuthUser(request, env);
+        if (!authUser) {
+          return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
+        }
+        const user_id = authUser.user_id;
+
+        const client = await env.DB.prepare(
+          "SELECT id, username, email, full_name, first_name, last_name, phone, package_name, remaining_credits, package_expires, questionnaire, created_at FROM Clients WHERE id = ?"
+        ).bind(user_id).first();
+
+        if (!client) {
+          return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
+        }
+
+        const secret = getJwtSecret(env);
+        const questionnaireData = await decryptHealthData(client.questionnaire, secret);
+
+        const { results: bookings } = await env.DB.prepare(`
+          SELECT b.id, b.status, b.created_at, s.title, s.date, s.time
+          FROM Bookings b
+          JOIN Sessions s ON b.session_id = s.id
+          WHERE b.user_id = ?
+        `).bind(user_id).all();
+
+        await logActivity(env, `GDPR izvoz podataka: Korisnik '${client.username}' zatražio je izvoz svojih podataka.`);
+
+        let parsedQuestionnaire = null;
+        if (questionnaireData) {
+          try { parsedQuestionnaire = JSON.parse(questionnaireData); } catch (e) { parsedQuestionnaire = questionnaireData; }
+        }
+
+        return jsonResponse({
+          success: true,
+          export_date: new Date().toISOString(),
+          profile: {
+            username: client.username,
+            email: client.email,
+            full_name: client.full_name,
+            first_name: client.first_name,
+            last_name: client.last_name,
+            phone: client.phone,
+            package_name: client.package_name,
+            remaining_credits: client.remaining_credits,
+            package_expires: client.package_expires,
+            created_at: client.created_at
+          },
+          health_questionnaire: parsedQuestionnaire,
+          booking_history: bookings
+        });
       }
 
       // CLIENT: MARK ONBOARDING TOUR AS COMPLETED
@@ -2089,7 +2553,10 @@ export default {
         const clientName = client.full_name ? `${client.full_name} (${client.username})` : client.username;
         await logActivity(env, `Pregled zdravstvenog kartona: Admin '${adminName}' pregledao je karton klijenta '${clientName}'`);
 
-        return jsonResponse({ success: true, questionnaire: client.questionnaire });
+        const secret = getJwtSecret(env);
+        const decryptedQuestionnaire = await decryptHealthData(client.questionnaire, secret);
+
+        return jsonResponse({ success: true, questionnaire: decryptedQuestionnaire });
       }
 
       // ADMIN: GET DETAILED BOOKINGS FOR A CLIENT
@@ -2306,17 +2773,22 @@ export default {
             ? `Studio je otkazao Vašu rezervaciju za termin '${details.title}' (${dateStr} u ${details.time}h). Trening Vam je vraćen na račun te možete odabrati novi termin.`
             : `Studio je otkazao Vašu rezervaciju. Trening Vam je vraćen na račun.`;
 
-          // Refund credit ONLY IF status transition from status >= 0 to -2 succeeded
-          const updateResult = await env.DB.prepare(
-            "UPDATE Bookings SET status = -2 WHERE id = ? AND status >= 0"
-          ).bind(booking_id).run();
+          // Refund credit ONLY IF status transition from status = 0 (Reserved) to -2 succeeded
+          const [updateResult, refundResult] = await env.DB.batch([
+            env.DB.prepare(
+              "UPDATE Bookings SET status = -2 WHERE id = ? AND status = 0"
+            ).bind(booking_id),
+            env.DB.prepare(
+              "UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?"
+            ).bind(booking.user_id),
+            env.DB.prepare(
+              "INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)"
+            ).bind(booking.user_id, msg)
+          ]);
 
           if (!updateResult || !updateResult.meta || updateResult.meta.changes === 0) {
-            return jsonResponse({ success: false, error: "Rezervacija je već otkazana ili nije aktivna." }, 400);
+            return jsonResponse({ success: false, error: "Rezervacija je već otkazana ili je trening već odrađen." }, 400);
           }
-
-          await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(booking.user_id).run();
-          await env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(booking.user_id, msg).run();
           
           if (details) {
             await logActivity(env, `Admin otkazao (povrat): ${details.username} → ${details.title} (${dateStr} ${details.time}h)`);
@@ -2392,19 +2864,32 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/admin/create-session") {
         const { title, instructor, date, time, capacity, type } = await request.json();
         
-        if (!title || !date || !time) {
-          return jsonResponse({ success: false, error: "Naziv, datum i vrijeme su obavezni." }, 400);
+        if (!title || typeof title !== 'string' || title.trim().length > 100) {
+          return jsonResponse({ success: false, error: "Naziv termina je obavezan i mora biti kraći od 100 znakova." }, 400);
+        }
+
+        if (!validateDateStr(date)) {
+          return jsonResponse({ success: false, error: "Neispravan format datuma (očekuje se YYYY-MM-DD)." }, 400);
+        }
+
+        if (!validateTimeStr(time)) {
+          return jsonResponse({ success: false, error: "Neispravan format vremena (očekuje se HH:MM)." }, 400);
+        }
+
+        const capNum = validateCapacity(capacity);
+        if (!capNum) {
+          return jsonResponse({ success: false, error: "Kapacitet mora biti broj između 1 i 20." }, 400);
         }
 
         await env.DB.prepare(`
           INSERT INTO Sessions (title, instructor, date, time, capacity, type)
           VALUES (?, ?, ?, ?, ?, ?)
         `).bind(
-          title,
-          instructor || "Adrijana",
+          title.trim(),
+          (instructor && typeof instructor === 'string' && instructor.trim().length <= 50) ? instructor.trim() : "Adrijana",
           date,
           time,
-          parseInt(capacity) || 4,
+          capNum,
           type || "grupni"
         ).run();
 
@@ -2560,17 +3045,26 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/admin/create-news") {
         const { title, content, image_url, is_workshop } = await request.json();
         
-        if (!title || !content) {
-          return jsonResponse({ success: false, error: "Naslov i sadržaj su obavezni." }, 400);
+        if (!title || typeof title !== 'string' || title.trim().length > 150) {
+          return jsonResponse({ success: false, error: "Naslov obavijesti je obavezan i mora biti kraći od 150 znakova." }, 400);
+        }
+
+        if (!content || typeof content !== 'string' || content.trim().length > 10000) {
+          return jsonResponse({ success: false, error: "Sadržaj obavijesti je obavezan i mora biti kraći od 10,000 znakova." }, 400);
+        }
+
+        const imgErr = validateImageUrl(image_url);
+        if (imgErr) {
+          return jsonResponse({ success: false, error: imgErr }, 400);
         }
 
         await env.DB.prepare(`
           INSERT INTO News (title, content, image_url, is_workshop)
           VALUES (?, ?, ?, ?)
         `).bind(
-          title,
-          content,
-          image_url || null,
+          title.trim(),
+          content.trim(),
+          image_url ? image_url.trim() : null,
           parseInt(is_workshop) || 0
         ).run();
 
@@ -2632,30 +3126,30 @@ export default {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
         }
 
-        // 1. Deduct credit conditionally only if remaining_credits > 0
-        const creditResult = await env.DB.prepare(
-          "UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ? AND remaining_credits > 0"
-        ).bind(client_id).run();
+        // ATOMIC BATCH TRANSACTION: Deduct credit & Insert booking in 1 atomic D1 batch!
+        const [creditResult, insertResult] = await env.DB.batch([
+          env.DB.prepare(
+            "UPDATE Clients SET remaining_credits = remaining_credits - 1 WHERE id = ? AND remaining_credits > 0"
+          ).bind(client_id),
+          env.DB.prepare(`
+            INSERT INTO Bookings (session_id, user_id, status)
+            SELECT ?, ?, 0
+            WHERE (
+              SELECT COUNT(*) FROM Bookings b
+              JOIN Sessions s ON b.session_id = s.id
+              WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
+            ) = 0
+            AND (
+              SELECT COUNT(*) FROM Bookings WHERE session_id = ? AND status >= 0
+            ) < (SELECT capacity FROM Sessions WHERE id = ?)
+          `).bind(session_id, client_id, client_id, session.date, session_id, session_id)
+        ]);
 
         if (!creditResult || !creditResult.meta || creditResult.meta.changes === 0) {
           return jsonResponse({ success: false, error: "Klijent nema preostalih treninga (kredita) u paketu." }, 400);
         }
 
-        // 2. Insert booking conditionally
-        const insertResult = await env.DB.prepare(`
-          INSERT INTO Bookings (session_id, user_id, status)
-          SELECT ?, ?, 0
-          WHERE (
-            SELECT COUNT(*) FROM Bookings b
-            JOIN Sessions s ON b.session_id = s.id
-            WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
-          ) = 0
-          AND (
-            SELECT COUNT(*) FROM Bookings WHERE session_id = ? AND status >= 0
-          ) < (SELECT capacity FROM Sessions WHERE id = ?)
-        `).bind(session_id, client_id, client_id, session.date, session_id, session_id).run();
-
-        // 3. Compensation/rollback if insert failed
+        // Compensation/rollback if insert failed
         if (!insertResult || !insertResult.meta || insertResult.meta.changes === 0) {
           await env.DB.prepare("UPDATE Clients SET remaining_credits = remaining_credits + 1 WHERE id = ?").bind(client_id).run();
 
@@ -2688,8 +3182,8 @@ export default {
           const emailHtml = `
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
               <h2 style="color: #a98e65;">Svi treninzi su iskorišteni</h2>
-              <p>Bok <b>${client.username}</b>,</p>
-              <p>Obavještavamo Vas da je studio upravo rezervirao termin <b>'${session.title}'</b> za Vas čime ste iskoristili zadnji preostali trening iz Vašeg paketa <b>${client.package_name}</b>.</p>
+              <p>Bok <b>${escapeHtml(client.username)}</b>,</p>
+              <p>Obavještavamo Vas da je studio upravo rezervirao termin <b>'${escapeHtml(session.title)}'</b> za Vas čime ste iskoristili zadnji preostali trening iz Vašeg paketa <b>${escapeHtml(client.package_name)}</b>.</p>
               <p>Kako biste mogli nastaviti s vježbanjem i rezervirati nove termine, molimo Vas da odaberete novi paket unutar aplikacije.</p>
               <p style="margin-top: 30px;">
                 <a href="https://pilates-reformer-agram.com/dashboard.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
@@ -2766,14 +3260,24 @@ export default {
           return jsonResponse({ success: false, error: "Niste prijavljeni." }, 401);
         }
         const { package_name } = await request.json();
-        if (!package_name) {
-          return jsonResponse({ success: false, error: "Nedostaju parametri." }, 400);
+        if (!package_name || typeof package_name !== 'string' || package_name.length > 50) {
+          return jsonResponse({ success: false, error: "Nedostaju ili su neispravni parametri." }, 400);
         }
+
+        const pkgLimit = getPackageLimit(package_name);
+        if (pkgLimit <= 0) {
+          return jsonResponse({ success: false, error: "Odabrani paket nije važeći." }, 400);
+        }
+
         const user_id = authUser.user_id;
 
-        const client = await env.DB.prepare("SELECT username, email, remaining_credits, package_expires, package_name FROM Clients WHERE id = ?").bind(user_id).first();
+        const client = await env.DB.prepare("SELECT username, email, status, remaining_credits, package_expires, package_name FROM Clients WHERE id = ?").bind(user_id).first();
         if (!client) {
           return jsonResponse({ success: false, error: "Korisnik nije pronađen." }, 404);
+        }
+
+        if (client.status === "frozen") {
+          return jsonResponse({ success: false, error: "Vaša članarina je trenutno zaleđena. Nije moguće slati zahtjeve za novi paket." }, 400);
         }
 
         const todayStr = formatDate(getCroatiaNow());
@@ -2784,26 +3288,31 @@ export default {
           return jsonResponse({ success: false, error: "Nije moguće zatražiti novi paket dok ne iskoristite sve treninge iz postojećeg." }, 400);
         }
 
-        const activeRequest = await env.DB.prepare("SELECT id FROM PackageRequests WHERE user_id = ? AND status = 'pending'").bind(user_id).first();
-        if (activeRequest) {
+        // Save request to DB atomically (race condition free check-and-insert)
+        const insertRes = await env.DB.prepare(`
+          INSERT INTO PackageRequests (user_id, package_name, status)
+          SELECT ?, ?, 'pending'
+          WHERE NOT EXISTS (
+            SELECT 1 FROM PackageRequests WHERE user_id = ? AND status = 'pending'
+          )
+        `).bind(user_id, package_name, user_id).run();
+
+        if (!insertRes || !insertRes.meta || insertRes.meta.changes === 0) {
           return jsonResponse({ success: false, error: "Već imate aktivan zahtjev za paket na čekanju." }, 400);
         }
-
-        // Save request to DB
-        await env.DB.prepare("INSERT INTO PackageRequests (user_id, package_name, status) VALUES (?, ?, 'pending')").bind(user_id, package_name).run();
 
         // Log activity
         await logActivity(env, `Zahtjev za paket: ${client.username} → ${package_name}`);
 
         // Send email to admin
         const adminEmail = "adrijana.kontek@gmail.com";
-        const subject = `Agram Pilates - Zahtjev za paket: ${client.username}`;
+        const subject = `Agram Pilates - Zahtjev za paket: ${escapeHtml(client.username)}`;
         const htmlContent = `
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
             <h2 style="color: #a98e65;">Zahtjev za aktivaciju paketa</h2>
-            <p>Klijent <b>${client.username}</b> (e-mail: ${client.email}) je zatražio aktivaciju sljedećeg paketa:</p>
+            <p>Klijent <b>${escapeHtml(client.username)}</b> (e-mail: ${escapeHtml(client.email)}) je zatražio aktivaciju sljedećeg paketa:</p>
             <p style="font-size: 1.2rem; background-color: #f5eedf; padding: 15px; border-radius: 8px; border: 1px solid #ebdcc5; font-weight: bold; color: #2c251e;">
-              ${package_name}
+              ${escapeHtml(package_name)}
             </p>
             <p style="margin-top: 20px;">
               Molimo Vas da se prijavite u <a href="https://pilates-reformer-agram.com/admin.html">Admin panel</a>, kako biste odobrili ili odbili ovaj zahtjev.
@@ -2841,7 +3350,9 @@ export default {
           respMsg = `Klijent '${client.username}' je uspješno zaleđen.`;
         }
 
-        await env.DB.prepare("UPDATE Clients SET status = ? WHERE id = ?").bind(newStatus, client_id).run();
+        await env.DB.prepare(
+          "UPDATE Clients SET status = ?, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?"
+        ).bind(newStatus, client_id).run();
         await logActivity(env, actionMsg);
 
         return jsonResponse({ success: true, message: respMsg, newStatus });
@@ -2865,17 +3376,19 @@ export default {
         
         let user_id = req_user_id;
         let package_name = req_pkg_name;
-        
-        if (request_id && (!user_id || !package_name)) {
-          const reqObj = await env.DB.prepare("SELECT user_id, package_name FROM PackageRequests WHERE id = ?").bind(request_id).first();
-          if (reqObj) {
-            user_id = reqObj.user_id;
-            package_name = reqObj.package_name;
+        let targetRequestId = request_id || null;
+
+        if (request_id) {
+          const reqObj = await env.DB.prepare("SELECT user_id, package_name, status FROM PackageRequests WHERE id = ? AND status = 'pending'").bind(request_id).first();
+          if (!reqObj) {
+            return jsonResponse({ success: false, error: "Zahtjev nije pronađen ili je već obrađen." }, 404);
           }
+          user_id = reqObj.user_id;
+          package_name = reqObj.package_name;
         }
-        
+
         if (!user_id || !package_name) {
-          return jsonResponse({ success: false, error: "Nedostaju obavezni podaci (user_id, package_name)." }, 400);
+          return jsonResponse({ success: false, error: "Nedostaju obavezni podaci (user_id, package_name ili važeći request_id)." }, 400);
         }
 
         const client = await env.DB.prepare("SELECT username, email FROM Clients WHERE id = ?").bind(user_id).first();
@@ -2884,23 +3397,37 @@ export default {
         }
 
         const limit = getPackageLimit(package_name);
+        if (limit <= 0) {
+          return jsonResponse({ success: false, error: "Odabrani paket nije važeći." }, 400);
+        }
+
         const used = (used_credits !== undefined && used_credits !== null && used_credits !== "") ? Math.max(0, parseInt(used_credits) || 0) : 0;
         const remaining = Math.max(0, limit - used);
 
         const defaultExpiresDate = new Date(getCroatiaNow().getTime() + 30 * 24 * 60 * 60 * 1000);
         const expiresStr = package_expires || formatDate(defaultExpiresDate);
 
-        // Approve: update client credits, mark request as approved, notify client
+        // Approve: update client credits, mark request as approved atomically
         const msg = `Vaš zahtjev za aktivaciju paketa '${package_name}' je odobren! Paket je aktiviran.`;
         
-        await env.DB.batch([
+        const batchQueries = [
           env.DB.prepare("UPDATE Clients SET package_name = ?, total_credits = ?, remaining_credits = ?, package_expires = ? WHERE id = ?")
             .bind(package_name, limit, remaining, expiresStr, user_id),
-          env.DB.prepare("UPDATE PackageRequests SET status = 'approved' WHERE id = ?")
-            .bind(request_id),
           env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)")
             .bind(user_id, msg)
-        ]);
+        ];
+
+        if (targetRequestId) {
+          batchQueries.push(
+            env.DB.prepare("UPDATE PackageRequests SET status = 'approved' WHERE id = ? AND status = 'pending'")
+              .bind(targetRequestId)
+          );
+        }
+
+        const results = await env.DB.batch(batchQueries);
+        if (targetRequestId && results[2] && results[2].meta && results[2].meta.changes === 0) {
+          return jsonResponse({ success: false, error: "Zahtjev je u međuvremenu već obrađen." }, 400);
+        }
 
         await logActivity(env, `Odobren paket: ${client.username} → ${package_name}`);
 
@@ -2909,8 +3436,8 @@ export default {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
             <h2 style="color: #a98e65;">Paket je uspješno aktiviran!</h2>
-            <p>Bok <b>${client.username}</b>,</p>
-            <p>Obavještavamo Vas da je Vaš zahtjev odobren te je paket <b>'${package_name}'</b> (s ${limit} treninga) sada aktivan na Vašem profilu.</p>
+            <p>Bok <b>${escapeHtml(client.username)}</b>,</p>
+            <p>Obavještavamo Vas da je Vaš zahtjev odobren te je paket <b>'${escapeHtml(package_name)}'</b> (s ${limit} treninga) sada aktivan na Vašem profilu.</p>
             <p>Članarina vrijedi do <b>${expiresStr.split('-').reverse().join('.')}.</b></p>
             <p style="margin-top: 30px;">
               <a href="https://pilates-reformer-agram.com/dashboard.html" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 20px;">
@@ -2958,17 +3485,18 @@ export default {
 
     } catch (e) {
       console.error("Worker error:", e);
-      return jsonResponse({ success: false, error: "Interna pogreška poslužitelja: " + e.message }, 500);
+      return jsonResponse({ success: false, error: "Došlo je do interne pogreške na poslužitelju. Molimo pokušajte ponovno kasnije." }, 500);
     }
   },
   async scheduled(event, env, ctx) {
     const scheduledTimestamp = event.scheduledTime || Date.now();
     const croatiaNow = getCroatiaNow(scheduledTimestamp);
+    const croatiaTimeFormatted = formatCroatiaString(scheduledTimestamp);
 
     console.log("[SCHEDULED EVENT]", {
       cron: event.cron,
       scheduledTime: event.scheduledTime,
-      croatiaTime: croatiaNow.toISOString(),
+      croatiaTime: croatiaTimeFormatted,
       croatiaHour: croatiaNow.getHours()
     });
 

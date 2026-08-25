@@ -1089,6 +1089,16 @@
       };
     }
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // ---- Mobile tab switching ----
     function switchMobileTab(tab) {
       document.querySelectorAll('.mobile-panel').forEach(p => p.classList.remove('active'));
@@ -1147,8 +1157,8 @@
               return `
                 <li class="notif-item ${statusClass}">
                   <div class="notif-item-content">
-                    ${notif.message}
-                    <div class="notif-item-time" title="${notif.created_at}">${relTime}</div>
+                    ${escapeHtml(notif.message)}
+                    <div class="notif-item-time" title="${escapeHtml(notif.created_at)}">${escapeHtml(relTime)}</div>
                   </div>
                   <button class="notif-close-btn" onclick="markSingleNotificationAsRead(${notif.id})" title="Zatvori">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

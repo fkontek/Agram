@@ -555,9 +555,11 @@
       try {
         const res = await fetch(`${API_BASE}/api/change-password`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${tempUserSession.token}`
+          },
           body: JSON.stringify({
-            user_id: tempUserSession.id,
             old_password: tempUserSession.password_used,
             new_password: newPass
           })
@@ -862,6 +864,8 @@
       if (token) {
         document.getElementById("reset_token_val").value = token;
         document.getElementById("reset-token-modal").style.display = "flex";
+        // Immediately strip token from URL to prevent exposure in browser history & referrer headers
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     });
     // Toggle password visibility
