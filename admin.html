@@ -2256,8 +2256,10 @@
 
     function checkAuthError(res) {
       if (res.status === 401 || res.status === 403) {
+        const lastRead = localStorage.getItem("agram_last_read_log_id");
         localStorage.clear();
         sessionStorage.clear();
+        if (lastRead) localStorage.setItem("agram_last_read_log_id", lastRead);
         window.location.href = "prijava.html";
         return true;
       }
@@ -3683,19 +3685,35 @@
 
         if (res.ok && data.success) {
           const logs = data.logs || [];
-          const lastReadId = parseInt(localStorage.getItem("agram_last_read_log_id") || "0");
+          let lastReadId = parseInt(localStorage.getItem("agram_last_read_log_id") || "0", 10);
 
-          let unreadCount = 0;
-          let maxId = lastReadId;
-
+          let maxId = 0;
           logs.forEach(log => {
-            if (log.id > lastReadId) {
-              unreadCount++;
-            }
             if (log.id > maxId) {
               maxId = log.id;
             }
           });
+
+          // If lastReadId is 0 (first time opening panel), initialize it to current maxId so past 22+ logs aren't counted as unread
+          if (lastReadId === 0 && maxId > 0) {
+            lastReadId = maxId;
+            localStorage.setItem("agram_last_read_log_id", String(maxId));
+          }
+
+          let unreadCount = 0;
+          logs.forEach(log => {
+            if (log.id > lastReadId) {
+              unreadCount++;
+            }
+          });
+
+          const isMobileLogsTabActive = document.getElementById("mobile-panel-aktivnosti") ? document.getElementById("mobile-panel-aktivnosti").classList.contains("active") : false;
+
+          // If drawer is open or mobile logs tab is active, mark all current logs as read immediately
+          if ((drawerOpen || isMobileLogsTabActive) && maxId > lastReadId) {
+            localStorage.setItem("agram_last_read_log_id", String(maxId));
+            unreadCount = 0;
+          }
 
           // Desk i Mobile brojači
           const badge = document.getElementById("bell-badge-count");
@@ -3715,8 +3733,9 @@
             if (mobileBadge) mobileBadge.style.display = "none";
           }
 
+          const currentLastRead = parseInt(localStorage.getItem("agram_last_read_log_id") || "0", 10);
           const logsHtml = logs.map(log => {
-            const isNew = log.id > lastReadId;
+            const isNew = log.id > currentLastRead;
             const relativeTime = formatRelativeTime(log.created_at);
             
             let actionBtn = "";
@@ -3733,7 +3752,7 @@
             return `
               <div class="log-item ${isNew ? 'new-log' : ''}" ${itemClickAttr} style="display: flex; justify-content: space-between; align-items: center; gap: 12px;${itemClickAttr ? ' cursor: pointer;' : ''}">
                 <div style="flex: 1;">
-                  <div>${log.details}</div>
+                  <div>${escapeHtml(log.details)}</div>
                   <div class="log-time" title="${log.created_at}">${relativeTime}</div>
                 </div>
                 ${actionBtn}
@@ -3741,9 +3760,9 @@
             `;
           }).join('');
 
-          // Renderiraj u desktop drawer ako je otvoren
-          if (drawerOpen && !silent) {
-            const listContainer = document.getElementById("drawer-content-list");
+          // Renderiraj u desktop drawer
+          const listContainer = document.getElementById("drawer-content-list");
+          if (listContainer) {
             if (logs.length === 0) {
               listContainer.innerHTML = `<p style="text-align: center; color: var(--text-muted); font-style: italic; margin-top: 20px;">Nema zabilježenih aktivnosti.</p>`;
             } else {
@@ -3759,15 +3778,6 @@
             } else {
               mobileListContainer.innerHTML = logsHtml;
             }
-          }
-
-          const isMobileLogsTabActive = document.getElementById("mobile-panel-aktivnosti").classList.contains("active");
-          if ((drawerOpen || isMobileLogsTabActive) && maxId > lastReadId) {
-            localStorage.setItem("agram_last_read_log_id", maxId);
-            setTimeout(() => {
-              if (badge) badge.style.display = "none";
-              if (mobileBadge) mobileBadge.style.display = "none";
-            }, 1000);
           }
         }
       } catch (err) {
