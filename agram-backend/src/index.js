@@ -20,6 +20,7 @@ function getCorsHeaders(request = null) {
       ALLOWED_ORIGINS.includes(origin) ||
       /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
       /\.pages\.dev$/.test(origin) ||
+      /\.workers\.dev$/.test(origin) ||
       /\.pilates-reformer-agram\.com$/.test(origin)
     ) {
       allowedOrigin = origin;
@@ -600,6 +601,7 @@ async function autoGenerateWeeks(env, baseMonday) {
 
 // Ensure database columns and tables exist (auto-migration fallback)
 async function ensureDbColumns(env) {
+  if (!env || !env.DB) return;
   const alterQueries = [
     "ALTER TABLE Clients ADD COLUMN has_seen_onboarding INTEGER DEFAULT 0",
     "ALTER TABLE Clients ADD COLUMN token_version INTEGER DEFAULT 1",
@@ -1436,12 +1438,20 @@ export default {
         const ip = getClientIp(request);
         const rateCheck = await checkRateLimit(env, ip, "login", 10, 60);
         if (!rateCheck.allowed) {
-          return jsonResponse({ success: false, error: "Previše pokušaja prijave. Molimo pričekajte minutu." }, 429);
+          return jsonResponse({ success: false, error: "Previše pokušaja prijave. Molimo pričekajte minutu." }, 429, request);
         }
 
-        const { username, password } = await request.json();
+        let username, password;
+        try {
+          const reqBody = await request.json();
+          username = reqBody.username;
+          password = reqBody.password;
+        } catch (jsonErr) {
+          return jsonResponse({ success: false, error: "Korisničko ime/e-mail i lozinka su obavezni." }, 400, request);
+        }
+
         if (!username || !password) {
-          return jsonResponse({ success: false, error: "Korisničko ime/e-mail i lozinka su obavezni." }, 400);
+          return jsonResponse({ success: false, error: "Korisničko ime/e-mail i lozinka su obavezni." }, 400, request);
         }
 
         let user;
@@ -1457,20 +1467,20 @@ export default {
         }
 
         if (!user) {
-          return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401);
+          return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401, request);
         }
 
         const authResult = await verifyPassword(password, user.password);
         if (!authResult.valid) {
-          return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401);
+          return jsonResponse({ success: false, error: "Pogrešno korisničko ime/e-mail ili lozinka." }, 401, request);
         }
 
         // Reject login for pending or suspended accounts
         if (user.status === 'pending') {
-          return jsonResponse({ success: false, error: "Vaš račun je u postupku odobrenja od strane administratora." }, 403);
+          return jsonResponse({ success: false, error: "Vaš račun je u postupku odobrenja od strane administratora." }, 403, request);
         }
         if (user.status === 'suspended') {
-          return jsonResponse({ success: false, error: "Vaš korisnički račun je suspendiran. Za više informacija kontaktirajte administratora." }, 403);
+          return jsonResponse({ success: false, error: "Vaš korisnički račun je suspendiran. Za više informacija kontaktirajte administratora." }, 403, request);
         }
 
         // Automatic migration of legacy SHA-256 hashes to PBKDF2 upon successful login
@@ -1489,7 +1499,7 @@ export default {
         }, getJwtSecret(env));
 
         const { password: _password, reset_token_hash: _reset, ...safeUser } = user;
-        return jsonResponse({ success: true, user: safeUser, token });
+        return jsonResponse({ success: true, user: safeUser, token }, 200, request);
       }
 
       // CHECK USERNAME AVAILABILITY
@@ -3522,8 +3532,11 @@ export default {
       return jsonResponse({ success: false, error: "Stranica nije pronađena (404)." }, 404);
 
     } catch (e) {
-      console.error("Worker error:", e);
-      return jsonResponse({ success: false, error: "Došlo je do interne pogreške na poslužitelju. Molimo pokušajte ponovno kasnije." }, 500);
+      console.error("Worker error details:", e?.stack || e?.message || e);
+      return jsonResponse({
+        success: false,
+        error: `Došlo je do interne pogreške na poslužitelju. (${e?.message || 'Nepoznata greška'})`
+      }, 500, request);
     }
   },
   async scheduled(event, env, ctx) {
