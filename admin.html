@@ -2813,6 +2813,7 @@
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/clients`, { headers: authHeaders() });
+        if (checkAuthError(res)) return;
         const data = await res.json();
 
         if (res.ok && data.success) {

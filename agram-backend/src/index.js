@@ -42,10 +42,13 @@ function getCorsHeaders(request = null) {
   };
 }
 
+let currentActiveRequest = null;
+
 function jsonResponse(data, status = 200, request = null) {
+  const req = request || currentActiveRequest;
   return new Response(JSON.stringify(data), {
     status,
-    headers: getCorsHeaders(request)
+    headers: getCorsHeaders(req)
   });
 }
 
@@ -1420,6 +1423,7 @@ async function syncInstagramFeed(env) {
 
 export default {
   async fetch(request, env, ctx) {
+    currentActiveRequest = request;
     const url = new URL(request.url);
 
     // 1. Handle CORS preflight requests
