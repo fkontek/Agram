@@ -325,15 +325,11 @@ p {
 }
 
 #header.scrolled .nav-bar {
-  padding: 5px 30px;
+  padding: 5px 20px;
 }
 
 #header.scrolled .hamburger {
   transform: scale(0.75);
-}
-
-#header.scrolled .nav-list ul a {
-  padding: 10px 20px;
 }
 
 /* Scroll margin adjustments to prevent header overlap */
@@ -1343,7 +1339,6 @@ p {
   }
 }
 
-/* Media query for desktop menu */
 @media only screen and (min-width: 1024px) {
   #header .hamburger {
     display: none;
@@ -1358,6 +1353,7 @@ p {
     height: auto;
     align-items: center;
     gap: 4px;
+    flex-wrap: nowrap;
   }
 
   #header .nav-list ul li {
@@ -1365,7 +1361,7 @@ p {
   }
 
   #header .nav-list ul li a {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     font-weight: 600;
     letter-spacing: 0.03rem;
     padding: 6px 8px;
@@ -1373,9 +1369,23 @@ p {
     color: var(--text-light);
   }
 
-  #header .nav-list ul li a:hover {
+  #header.scrolled .nav-list ul li a {
+    padding: 6px 8px;
+    font-size: 1.25rem;
+  }
+
+  #header .nav-list ul li a[href="prijava.html"] {
+    border: 1.5px solid var(--primary-gold);
+    border-radius: 20px;
+    padding: 5px 12px;
     color: var(--primary-gold);
-    transform: translateY(-1px);
+    margin-left: 6px;
+  }
+
+  #header .nav-list ul li a[href="prijava.html"]:hover {
+    background-color: var(--primary-gold);
+    color: var(--dark-bg);
+    transform: none;
   }
 }
 
@@ -1385,9 +1395,13 @@ p {
   }
 
   #header .nav-list ul li a {
-    font-size: 1.45rem;
+    font-size: 1.35rem;
     letter-spacing: 0.04rem;
-    padding: 8px 12px;
+    padding: 6px 10px;
+  }
+
+  #header.scrolled .nav-list ul li a {
+    padding: 6px 10px;
   }
 }
 
