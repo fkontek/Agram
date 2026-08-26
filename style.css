@@ -1344,8 +1344,14 @@ p {
     display: none;
   }
 
+  #header .nav-bar {
+    justify-content: flex-start;
+    gap: 24px;
+  }
+
   .brand-link {
     gap: 10px;
+    flex-shrink: 0;
   }
 
   .logo-icon {
@@ -1354,6 +1360,11 @@ p {
 
   .brand h1 {
     font-size: 1.35rem;
+  }
+
+  #header .nav-list {
+    display: flex;
+    align-items: center;
   }
 
   #header .nav-list ul {
@@ -1402,6 +1413,10 @@ p {
 }
 
 @media only screen and (min-width: 1280px) {
+  #header .nav-bar {
+    gap: 36px;
+  }
+
   .logo-icon {
     height: 50px;
   }
@@ -1426,6 +1441,10 @@ p {
 }
 
 @media only screen and (min-width: 1440px) {
+  #header .nav-bar {
+    gap: 48px;
+  }
+
   .logo-icon {
     height: 58px;
   }
