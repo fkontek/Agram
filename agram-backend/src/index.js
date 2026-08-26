@@ -1224,8 +1224,9 @@ async function sendBookingReminders(env, event = null) {
     const croatiaNow = getCroatiaNow(event?.scheduledTime);
 
     // Enforce that local Croatia hour is 20:00 when triggered by scheduled cron
-    if (!event?.force && croatiaNow.getHours() !== 20) {
-      console.log(`Skipping sendBookingReminders: current Croatia hour is ${croatiaNow.getHours()}, expected 20.`);
+    const currentHour = croatiaNow.getHours();
+    if (!event?.force && (currentHour < 20 || currentHour > 21)) {
+      console.log(`[BLOCK] Skipping sendBookingReminders: current Croatia hour is ${currentHour}, expected 20:00.`);
       return;
     }
 
@@ -3558,8 +3559,9 @@ export default {
     });
 
     switch (event.cron) {
+      case "0 10,14 * * *":
       case "0 */12 * * *":
-        console.log("Executing scheduled task: 0 */12 * * * (syncInstagramFeed, checkAndAutoGenerateSchedules)");
+        console.log("Executing scheduled task: Instagram Feed & Schedule Check (Daytime)");
         ctx.waitUntil(Promise.all([
           syncInstagramFeed(env),
           checkAndAutoGenerateSchedules(env)

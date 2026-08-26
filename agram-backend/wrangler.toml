@@ -14,5 +14,5 @@ EMAIL_FROM_ADDRESS = "Agram Pilates <info@pilates-reformer-agram.com>"
 JWT_SECRET = "dev-secret-key-for-local-testing-32-bytes-minimum!"
 
 [triggers]
-crons = ["0 */12 * * *", "0 18,19 * * *", "15 20,21 * * 5"]
+crons = ["0 10,14 * * *", "0 18,19 * * *", "15 20,21 * * 5"]
 

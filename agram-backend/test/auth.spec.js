@@ -568,7 +568,7 @@ describe('JWT Authentication integration tests', () => {
     // 3. Create a session with capacity 1 for 2026-08-25
     await env.DB.prepare(`
       INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
-      VALUES (999, 'Reformer Express', 'Adrijana', '2026-08-25', '14:00', 1, 'grupni')
+      VALUES (999, 'Reformer Express', 'Adrijana', '2026-08-28', '14:00', 1, 'grupni')
     `).run();
 
     // 4. User 1 books session -> Should succeed
