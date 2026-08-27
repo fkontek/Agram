@@ -1225,7 +1225,8 @@ async function sendBookingReminders(env, event = null) {
 
     // Enforce that local Croatia hour is 20:00 when triggered by scheduled cron
     const currentHour = croatiaNow.getHours();
-    if (!event?.force && (currentHour < 20 || currentHour > 21)) {
+    const isEveningCron = event?.cron?.includes("18") || event?.cron?.includes("19");
+    if (!event?.force && !isEveningCron && (currentHour < 19 || currentHour > 21)) {
       console.log(`[BLOCK] Skipping sendBookingReminders: current Croatia hour is ${currentHour}, expected 20:00.`);
       return;
     }
@@ -3550,40 +3551,41 @@ export default {
     const scheduledTimestamp = event.scheduledTime || Date.now();
     const croatiaNow = getCroatiaNow(scheduledTimestamp);
     const croatiaTimeFormatted = formatCroatiaString(scheduledTimestamp);
+    const currentHour = croatiaNow.getHours();
+    const currentDay = croatiaNow.getDay(); // 0 = Sun, 5 = Fri
+    const cronStr = event.cron || "";
 
     console.log("[SCHEDULED EVENT]", {
-      cron: event.cron,
+      cron: cronStr,
       scheduledTime: event.scheduledTime,
       croatiaTime: croatiaTimeFormatted,
-      croatiaHour: croatiaNow.getHours()
+      croatiaHour: currentHour,
+      croatiaDay: currentDay
     });
 
-    switch (event.cron) {
-      case "0 10,14 * * *":
-      case "0 */12 * * *":
-        console.log("Executing scheduled task: Instagram Feed & Schedule Check (Daytime)");
+    // 1. Daytime tasks at 12:00 and 16:00 Zagreb time (10:00 UTC & 14:00 UTC)
+    if (cronStr.includes("10") || cronStr.includes("14") || currentHour === 12 || currentHour === 16) {
+      if (currentHour >= 11 && currentHour <= 17) {
+        console.log("[CRON MATCH] Executing Daytime Instagram Feed & Schedule Auto-Gen");
         ctx.waitUntil(Promise.all([
           syncInstagramFeed(env),
           checkAndAutoGenerateSchedules(env)
         ]));
-        return;
+      }
+    }
 
-      case "0 18,19 * * *":
-        console.log("Executing scheduled task: 0 18,19 * * * (sendBookingReminders)");
-        ctx.waitUntil(sendBookingReminders(env, event));
-        return;
+    // 2. Evening Booking Reminders at 20:00 Zagreb time (18:00 UTC & 19:00 UTC)
+    if (cronStr.includes("18") || cronStr.includes("19") || (currentHour >= 19 && currentHour <= 21)) {
+      console.log("[CRON MATCH] Executing 24h Booking Reminders (20:00 Zagreb time)");
+      ctx.waitUntil(sendBookingReminders(env, event));
+    }
 
-      case "15 20,21 * * 5":
-        console.log("Executing scheduled task: 15 20,21 * * 5 (sendWeeklyReportEmail)");
-        if (croatiaNow.getDay() === 5 && croatiaNow.getHours() === 22) {
-          ctx.waitUntil(sendWeeklyReportEmail(env));
-        } else {
-          console.log(`Skipping weekly report: croatia day=${croatiaNow.getDay()} (expected 5), hour=${croatiaNow.getHours()} (expected 22)`);
-        }
-        return;
-
-      default:
-        console.warn(`Unknown cron trigger: ${event.cron}`);
+    // 3. Weekly Friday Report at 22:15 Zagreb time (20:15 UTC)
+    if (cronStr.includes("20") || cronStr.includes("21") || (currentDay === 5 && currentHour >= 21 && currentHour <= 23)) {
+      if (currentDay === 5 && (currentHour === 22 || currentHour === 23)) {
+        console.log("[CRON MATCH] Executing Weekly Friday Admin Report (22:00 Zagreb time)");
+        ctx.waitUntil(sendWeeklyReportEmail(env));
+      }
     }
   }
 };
