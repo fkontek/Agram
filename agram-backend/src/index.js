@@ -622,7 +622,7 @@ async function ensureDbColumns(env) {
   for (const q of alterQueries) {
     try {
       await env.DB.prepare(q).run();
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const tableQueries = [
@@ -664,14 +664,14 @@ async function ensureDbColumns(env) {
   for (const q of tableQueries) {
     try {
       await env.DB.prepare(q).run();
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 
 function getClientIp(request) {
   return request.headers.get("cf-connecting-ip") ||
-         request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-         "127.0.0.1";
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "127.0.0.1";
 }
 
 async function checkRateLimit(env, ip, action, maxAttempts = 5, windowSeconds = 60) {
@@ -720,11 +720,11 @@ async function checkAndAutoGenerateSchedules(env) {
     await ensureDbColumns(env);
     const croatiaNow = getCroatiaNow();
     const baseMonday = getGenerationBaseMonday(croatiaNow);
-    
+
     // Check if the Monday of Week 3 (baseMonday + 14 days) already has sessions
     const targetMonday = new Date(baseMonday.getTime() + 14 * 24 * 60 * 60 * 1000);
     const targetMondayStr = formatDate(targetMonday);
-    
+
     const hasSessions = await env.DB.prepare("SELECT 1 FROM Sessions WHERE date = ? LIMIT 1").bind(targetMondayStr).first();
     if (!hasSessions) {
       console.log(`checkAndAutoGenerateSchedules: Week 3 Monday (${targetMondayStr}) has no sessions. Triggering generation...`);
@@ -775,11 +775,11 @@ async function sendEmail(env, to, subject, htmlContent, idempotencyKey = null) {
 
   let recipient = to;
   let emailSubject = subject;
-  
+
   // Sandbox mode: if EMAIL_SANDBOX_MODE is true or default sender is used, redirect all emails to the specified test address.
   const isSandbox = env.EMAIL_SANDBOX_MODE !== "false" && (env.EMAIL_SANDBOX_MODE === "true" || !env.EMAIL_FROM_ADDRESS);
   const redirectTo = env.EMAIL_REDIRECT_TO || "filip.kontek@gmail.com";
-  
+
   if (isSandbox && redirectTo) {
     recipient = redirectTo;
     emailSubject = `[TEST ZA: ${to}] ${subject}`;
@@ -867,7 +867,7 @@ async function notifyWaitlist(env, sessionId) {
 
       // Prepare atomic batch transaction for waitlist promotion
       const confirmMsg = `Automatski ste dodani u termin '${session.title}' (${dateStr} u ${session.time}h) s liste čekanja. Kredit je oduzet.`;
-      
+
       const [insertRes, creditRes, deleteWaitlistRes] = await env.DB.batch([
         env.DB.prepare(`
           INSERT INTO Bookings (session_id, user_id, status)
@@ -932,7 +932,7 @@ async function notifyWaitlist(env, sessionId) {
 async function autoConfirmBookings(env) {
   try {
     const nowCroatia = getCroatiaNow();
-    
+
     // Select all bookings that are currently in status = 0 (Reserved)
     const activeBookings = await env.DB.prepare(`
       SELECT b.id, s.date, s.time, c.username
@@ -970,13 +970,13 @@ async function autoConfirmBookings(env) {
 function getWeeklyReportDates() {
   const croatiaNow = getCroatiaNow();
   const currentDay = croatiaNow.getDay(); // 0 = Sun, 1 = Mon, ..., 5 = Fri, 6 = Sat
-  
+
   // We want Monday of the current week
   const daysToSubtract = currentDay === 0 ? 6 : (currentDay - 1);
-  
+
   const monday = new Date(croatiaNow.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
   const friday = new Date(monday.getTime() + 4 * 24 * 60 * 60 * 1000);
-  
+
   return {
     mondayStr: formatDate(monday),
     fridayStr: formatDate(friday),
@@ -989,7 +989,7 @@ function getWeeklyReportDates() {
 async function sendWeeklyReportEmail(env) {
   try {
     const dates = getWeeklyReportDates();
-    
+
     // 1. Get all sessions for the week
     const sessionsRes = await env.DB.prepare(`
       SELECT id, title, date, time, instructor, type 
@@ -1039,7 +1039,7 @@ async function sendWeeklyReportEmail(env) {
 
     // Sort dates
     const sortedDates = Object.keys(grouped).sort();
-    
+
     sortedDates.forEach(dateStr => {
       const [y, m, d] = dateStr.split('-').map(Number);
       const localDate = new Date(y, m - 1, d);
@@ -1054,7 +1054,7 @@ async function sendWeeklyReportEmail(env) {
 
       grouped[dateStr].forEach(session => {
         const sessionAttendees = attendees.filter(a => a.session_id === session.id);
-        
+
         let attendeesListHtml = "";
         if (sessionAttendees.length === 0) {
           attendeesListHtml = `<li style="color: #7c7267; font-style: italic; list-style-type: none; margin-left: 0; padding-left: 0;">Nije bilo odrađenih dolazaka.</li>`;
@@ -1081,7 +1081,7 @@ async function sendWeeklyReportEmail(env) {
 
     const adminEmail = env.ADMIN_REPORT_EMAIL || "adrijana.kontek@gmail.com";
     const subject = `Agram Pilates - Tjedno izvješće o dolascima (${dates.mondayFormatted} - ${dates.fridayFormatted})`;
-    
+
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; padding: 15px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
         <h2 style="color: #a98e65; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-size: 1.1rem;">
@@ -1151,10 +1151,10 @@ async function sendDailyReportEmail(env, dateStr = null) {
 
     // 3. Build HTML report
     let sessionsHtml = "";
-    
+
     sessions.forEach(session => {
       const sessionAttendees = attendees.filter(a => a.session_id === session.id);
-      
+
       let attendeesListHtml = "";
       if (sessionAttendees.length === 0) {
         attendeesListHtml = `<li style="color: #7c7267; font-style: italic; list-style-type: none; margin-left: 0; padding-left: 0;">Nije bilo odrađenih dolazaka.</li>`;
@@ -1181,9 +1181,9 @@ async function sendDailyReportEmail(env, dateStr = null) {
       `;
     });
 
-    const adminEmail = env.ADMIN_REPORT_EMAIL || "adrijana.kontek@gmail.com";
+    const adminEmail = env.ADMIN_REPORT_EMAIL || "filip.kontek@gmail.com";
     const subject = `Agram Pilates - Dnevno izvješće o dolascima za ${dateFormatted}`;
-    
+
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; padding: 15px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
         <h2 style="color: #a98e65; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-size: 1.1rem;">
@@ -1233,7 +1233,7 @@ async function sendBookingReminders(env, event = null) {
 
     const tomorrow = new Date(croatiaNow.getTime() + 24 * 60 * 60 * 1000);
     const tomorrowStr = formatDate(tomorrow);
-    
+
     // Find all active bookings for tomorrow where status is Reserved (0) and reminder hasn't been sent (0)
     const activeBookings = await env.DB.prepare(`
       SELECT b.id as booking_id, b.user_id, c.username, c.email, s.title, s.time, s.date
@@ -1554,7 +1554,7 @@ export default {
         }
 
         const { first_name, last_name, username, email, phone } = await request.json();
-        
+
         const firstNameErr = validateName(first_name, "Ime");
         if (firstNameErr) return jsonResponse({ success: false, error: firstNameErr }, 400);
 
@@ -1666,7 +1666,7 @@ export default {
 
         const { email } = await request.json();
         const genericMessage = "Ako račun s navedenom e-mail adresom postoji, poslali smo vam upute za poništavanje lozinke na e-mail.";
-        
+
         if (!email) {
           return jsonResponse({ success: false, error: "E-mail adresa je obavezna." }, 400);
         }
@@ -1815,7 +1815,7 @@ export default {
         const daysToAdd = daysToSunday + 14; // Sunday of the week after next
         const maxDate = new Date(nowCroatia.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
         const maxDateStr = formatDate(maxDate);
-        
+
         // Fetch sessions up to today + 6 days, excluding past sessions from today
         // For future days: show all; for today: only show sessions that haven't started yet
         const { results } = await env.DB.prepare(`
@@ -1982,7 +1982,7 @@ export default {
         if (client.email) {
           const dateStrFormatted = session.date.split('-').reverse().join('.') + '.';
           const emailSubject = `Potvrda rezervacije: ${session.title}`;
-          
+
           // Generate Google Calendar Link
           const dateFormattedNoDashes = session.date.replace(/-/g, '');
           const timeFormattedNoColons = session.time.replace(/:/g, '');
@@ -1990,9 +1990,9 @@ export default {
           const startMinute = session.time.split(':')[1];
           const endHour = String(startHour + 1).padStart(2, '0');
           const endTimeFormatted = `${endHour}${startMinute}`;
-          
+
           const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Agram Pilates - ' + session.title)}&dates=${dateFormattedNoDashes}T${timeFormattedNoColons}00/${dateFormattedNoDashes}T${endTimeFormatted}00&ctz=Europe/Zagreb&details=${encodeURIComponent('Potvrda rezervacije za termin u Agram Pilates studiju.')}`;
-          
+
           const emailHtml = `
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
               <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Uspješna rezervacija termina!</h2>
@@ -2189,7 +2189,7 @@ export default {
           JOIN Sessions s ON b.session_id = s.id 
           WHERE b.user_id = ? AND s.date = ? AND b.status >= 0
         `).bind(user_id, session.date).first();
-        
+
         if (existingBookingToday) {
           return jsonResponse({ success: false, error: "Već imate rezerviran termin za ovaj dan. Nije moguće biti na listi čekanja za drugi termin istog dana." }, 400);
         }
@@ -2360,13 +2360,13 @@ export default {
         const encryptedData = await encryptHealthData(answersStr, secret);
 
         await env.DB.prepare("UPDATE Clients SET questionnaire = ? WHERE id = ?").bind(encryptedData, user_id).run();
-        
+
         // Log activity
         const user = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
         if (user) {
           await logActivity(env, `Ispunjen upitnik: ${user.username}`);
         }
-        
+
         return jsonResponse({ success: true, message: "Upitnik uspješno spremljen." });
       }
 
@@ -2649,7 +2649,7 @@ export default {
       // ADMIN: CREATE CLIENT (with auto email & temp password)
       if (request.method === "POST" && url.pathname === "/api/admin/create-client") {
         const { full_name, username, email, package_name, total_credits, expiration_days } = await request.json();
-        
+
         if (!username || !email) {
           return jsonResponse({ success: false, error: "Korisničko ime i e-mail su obavezni." }, 400);
         }
@@ -2667,7 +2667,7 @@ export default {
 
         const tempPass = generateTempPassword();
         const hashedTemp = await hashPassword(tempPass);
-        
+
         // Calculate expiration date
         let expiresStr = null;
         if (expiration_days) {
@@ -2692,12 +2692,12 @@ export default {
           INSERT INTO Clients (username, email, password, is_admin, must_change_password, package_name, total_credits, remaining_credits, package_expires, full_name, first_name, last_name)
           VALUES (?, ?, ?, 0, 1, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
-          username, 
-          email, 
-          hashedTemp, 
-          package_name || "Nema paketa", 
-          parseInt(total_credits) || 0, 
-          parseInt(total_credits) || 0, 
+          username,
+          email,
+          hashedTemp,
+          package_name || "Nema paketa",
+          parseInt(total_credits) || 0,
+          parseInt(total_credits) || 0,
           expiresStr,
           full_name || null,
           firstName,
@@ -2740,7 +2740,7 @@ export default {
       // ADMIN: UPDATE CLIENT PACKAGE / CREDITS
       if (request.method === "POST" && url.pathname === "/api/admin/update-client-credits") {
         const { client_id, package_name, total_credits, remaining_credits, package_expires } = await request.json();
-        
+
         if (!client_id) {
           return jsonResponse({ success: false, error: "Korisnik ID je obavezan." }, 400);
         }
@@ -2808,7 +2808,7 @@ export default {
         const booking = await env.DB.prepare(
           "SELECT user_id, session_id FROM Bookings WHERE id = ?"
         ).bind(booking_id).first();
-        
+
         if (!booking) {
           return jsonResponse({ success: false, error: "Rezervacija nije pronađena." }, 404);
         }
@@ -2825,7 +2825,7 @@ export default {
         const dateStr = details ? details.date.split('-').reverse().join('.') + '.' : '';
 
         if (refund) {
-          const msg = details 
+          const msg = details
             ? `Studio je otkazao Vašu rezervaciju za termin '${details.title}' (${dateStr} u ${details.time}h). Trening Vam je vraćen na račun te možete odabrati novi termin.`
             : `Studio je otkazao Vašu rezervaciju. Trening Vam je vraćen na račun.`;
 
@@ -2845,7 +2845,7 @@ export default {
           if (!updateResult || !updateResult.meta || updateResult.meta.changes === 0) {
             return jsonResponse({ success: false, error: "Rezervacija je već otkazana ili je trening već odrađen." }, 400);
           }
-          
+
           if (details) {
             await logActivity(env, `Admin otkazao (povrat): ${details.username} → ${details.title} (${dateStr} ${details.time}h)`);
           }
@@ -2864,7 +2864,7 @@ export default {
             env.DB.prepare("UPDATE Bookings SET status = -1 WHERE id = ?").bind(booking_id),
             env.DB.prepare("INSERT INTO ClientNotifications (user_id, message) VALUES (?, ?)").bind(booking.user_id, msg)
           ]);
-          
+
           if (details) {
             await logActivity(env, `Admin otkazao (bez povrata): ${details.username} → ${details.title} (${dateStr} ${details.time}h)`);
           }
@@ -2879,13 +2879,13 @@ export default {
       // ADMIN: GET LIST OF SESSIONS & ATTENDEES FOR A DATE
       if (request.method === "GET" && url.pathname === "/api/admin/sessions-overview") {
         const dateStr = url.searchParams.get("date") || formatDate(getCroatiaNow());
-        
+
         ctx.waitUntil(checkAndAutoGenerateSchedules(env));
         await autoConfirmBookings(env);
-        
+
         const cutoffDate = new Date(getCroatiaNow().getTime() + 12 * 60 * 60 * 1000);
         const cutoffStr = formatLocalDateTimeISO(cutoffDate);
-        
+
         // 1. Get all sessions for this date
         const sessions = await env.DB.prepare(`
           SELECT s.*, 
@@ -2919,7 +2919,7 @@ export default {
       // ADMIN: CREATE SESSION (Termin)
       if (request.method === "POST" && url.pathname === "/api/admin/create-session") {
         const { title, instructor, date, time, capacity, type } = await request.json();
-        
+
         if (!title || typeof title !== 'string' || title.trim().length > 100) {
           return jsonResponse({ success: false, error: "Naziv termina je obavezan i mora biti kraći od 100 znakova." }, 400);
         }
@@ -3050,7 +3050,7 @@ export default {
       // ADMIN: CHANGE SESSION TYPE
       if (request.method === "POST" && url.pathname === "/api/admin/change-session-type") {
         const { session_id, new_type } = await request.json();
-        
+
         if (!session_id || !new_type) {
           return jsonResponse({ success: false, error: "ID termina i novi tip su obavezni." }, 400);
         }
@@ -3100,7 +3100,7 @@ export default {
       // ADMIN: CREATE NEWS OR WORKSHOP
       if (request.method === "POST" && url.pathname === "/api/admin/create-news") {
         const { title, content, image_url, is_workshop } = await request.json();
-        
+
         if (!title || typeof title !== 'string' || title.trim().length > 150) {
           return jsonResponse({ success: false, error: "Naslov obavijesti je obavezan i mora biti kraći od 150 znakova." }, 400);
         }
@@ -3136,7 +3136,7 @@ export default {
 
         const { date } = await request.json();
         const dateStr = date || formatDate(getCroatiaNow());
-        
+
         const success = await sendDailyReportEmail(env, dateStr);
         if (success) {
           return jsonResponse({ success: true, message: `Dnevno izvješće za ${dateStr.split('-').reverse().join('.')}. je poslano na e-mail.` });
@@ -3148,7 +3148,7 @@ export default {
       // ADMIN: MANUALLY BOOK CLIENT TO SESSION
       if (request.method === "POST" && url.pathname === "/api/admin/book-client-manual") {
         const { session_id, client_id } = await request.json();
-        
+
         if (!session_id || !client_id) {
           return jsonResponse({ success: false, error: "Svi parametri su obavezni (session_id, client_id)." }, 400);
         }
@@ -3261,7 +3261,7 @@ export default {
         const tokenObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_access_token'").first();
         const lastSyncObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_last_synced_at'").first();
         const tokenUpdatedObj = await env.DB.prepare("SELECT value FROM Settings WHERE key = 'instagram_token_updated_at'").first();
-        
+
         return jsonResponse({
           success: true,
           isConfigured: !!(tokenObj && tokenObj.value),
@@ -3291,8 +3291,8 @@ export default {
         // Pokreni odmah prvu sinkronizaciju objava
         const syncSuccess = await syncInstagramFeed(env);
 
-        return jsonResponse({ 
-          success: true, 
+        return jsonResponse({
+          success: true,
           message: "Instagram token je uspješno spremljen!",
           syncSuccess
         });
@@ -3429,7 +3429,7 @@ export default {
       // ADMIN: APPROVE PACKAGE REQUEST
       if (request.method === "POST" && (url.pathname === "/api/admin/approve-package-request" || url.pathname === "/api/admin/package-requests/approve")) {
         const { request_id, user_id: req_user_id, package_name: req_pkg_name, used_credits, package_expires } = await request.json();
-        
+
         let user_id = req_user_id;
         let package_name = req_pkg_name;
         let targetRequestId = request_id || null;
@@ -3465,7 +3465,7 @@ export default {
 
         // Approve: update client credits, mark request as approved atomically
         const msg = `Vaš zahtjev za aktivaciju paketa '${package_name}' je odobren! Paket je aktiviran.`;
-        
+
         const batchQueries = [
           env.DB.prepare("UPDATE Clients SET package_name = ?, total_credits = ?, remaining_credits = ?, package_expires = ? WHERE id = ?")
             .bind(package_name, limit, remaining, expiresStr, user_id),
@@ -3521,7 +3521,7 @@ export default {
 
         const { user_id, package_name } = reqObj;
         const client = await env.DB.prepare("SELECT username FROM Clients WHERE id = ?").bind(user_id).first();
-        
+
         const msg = `Vaš zahtjev za aktivaciju paketa '${package_name}' je odbijen. Molimo kontaktirajte studio za detalje.`;
 
         await env.DB.batch([
