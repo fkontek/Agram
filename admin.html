@@ -2827,19 +2827,21 @@
           return;
         }
 
-        // Create compact 1-page A4 PDF container
+        // Create compact 1-page A4 PDF container (must be in viewport coordinate space for html2canvas)
         const container = document.createElement("div");
         container.id = "pdf-report-template";
         container.style.cssText = `
-          position: absolute;
-          left: -9999px;
-          top: -9999px;
+          position: fixed;
+          top: 0;
+          left: 0;
           width: 790px;
           padding: 20px 25px;
-          font-family: 'Montserrat', 'Arial', sans-serif;
+          font-family: 'Arial', sans-serif;
           color: #2c251e;
           background-color: #ffffff;
           box-sizing: border-box;
+          z-index: -9999;
+          visibility: visible;
         `;
 
         // Header
@@ -2934,7 +2936,7 @@
           margin: [6, 6, 6, 6],
           filename: `Dnevno_izvjesce_${dateFormatted.replace(/\./g, '_')}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
+          html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0, windowWidth: 800 },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
