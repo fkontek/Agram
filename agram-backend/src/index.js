@@ -1139,13 +1139,21 @@ async function sendDailyReportEmail(env, dateStr = null) {
     }
 
     // 2. Get checked-in attendees for all sessions of today (status = 1 means checked-in / attended)
+    const cutoffDate = new Date(croatiaNow.getTime() + 12 * 60 * 60 * 1000);
+    const cutoffStr = formatLocalDateTimeISO(cutoffDate);
+
     const attendeesRes = await env.DB.prepare(`
-      SELECT b.session_id, c.username, c.full_name, c.email, c.total_credits, c.remaining_credits
+      SELECT b.session_id, c.id as user_id, c.username, c.full_name, c.email, c.total_credits, c.remaining_credits,
+             (SELECT COUNT(*) FROM Bookings b2 
+              JOIN Sessions s2 ON b2.session_id = s2.id 
+              WHERE b2.user_id = c.id 
+                AND b2.status = 0 
+                AND (s2.date || 'T' || s2.time || ':00') >= ?) as cancelable_count
       FROM Bookings b
       JOIN Clients c ON b.user_id = c.id
       JOIN Sessions s ON b.session_id = s.id
       WHERE s.date = ? AND b.status = 1
-    `).bind(todayStr).all();
+    `).bind(cutoffStr, todayStr).all();
 
     const attendees = attendeesRes.results || [];
 
@@ -1163,8 +1171,10 @@ async function sendDailyReportEmail(env, dateStr = null) {
           const displayName = att.full_name ? `${att.full_name} (${att.username})` : att.username;
           const total = att.total_credits || 0;
           const remaining = att.remaining_credits || 0;
-          const done = total - remaining;
-          return `<li style="margin-bottom: 4px;"><b>${displayName}</b> - odrađeno ${done}/${total} treninga.</li>`;
+          const cancelable = att.cancelable_count || 0;
+          const totalRemaining = remaining + cancelable;
+          const completed = Math.max(0, total - totalRemaining);
+          return `<li style="margin-bottom: 4px;"><b>${escapeHtml(displayName)}</b> — odrađeno ${completed}/${total} treninga (preostalo ${totalRemaining}/${total}).</li>`;
         }).join('');
       }
 
