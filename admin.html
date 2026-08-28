@@ -1394,7 +1394,7 @@
               </svg>
               Pošalji izvješće na mail
             </button>
-            <button class="btn-email-report" onclick="downloadDailyReportPDF()" id="pdf-report-btn" style="background-color: var(--card-bg); color: var(--text-dark); border-color: var(--primary-gold-dark);">
+            <button class="btn-email-report" onclick="downloadDailyReportTXT()" id="txt-report-btn" style="background-color: var(--card-bg); color: var(--text-dark); border-color: var(--primary-gold-dark);">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
@@ -1402,7 +1402,7 @@
                 <line x1="16" y1="17" x2="8" y2="17"></line>
                 <polyline points="10 9 9 9 8 9"></polyline>
               </svg>
-              Preuzmi PDF izvješće
+              Preuzmi TXT izvješće
             </button>
           </div>
         </div>
@@ -1736,7 +1736,7 @@
               </svg>
               Pošalji izvješće na mail
             </button>
-            <button class="mobile-btn-report" onclick="downloadDailyReportPDF()" id="mobile-pdf-report-btn" style="background-color: var(--card-bg); color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark);">
+            <button class="mobile-btn-report" onclick="downloadDailyReportTXT()" id="mobile-txt-report-btn" style="background-color: var(--card-bg); color: var(--text-dark); border: 1.5px solid var(--primary-gold-dark);">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
@@ -1744,7 +1744,7 @@
                 <line x1="16" y1="17" x2="8" y2="17"></line>
                 <polyline points="10 9 9 9 8 9"></polyline>
               </svg>
-              Preuzmi PDF izvješće
+              Preuzmi TXT izvješće
             </button>
           </div>
         </div>
@@ -2782,27 +2782,27 @@
       }
     }
 
-    // Download Daily Report as 1-Page A4 PDF
-    async function downloadDailyReportPDF() {
+    // Download Daily Report as Lightweight 1-Column TXT file
+    async function downloadDailyReportTXT() {
       const dateVal = document.getElementById("overview-date")?.value || document.getElementById("mobile-overview-date")?.value;
       if (!dateVal) {
-        alert("Molimo odaberite datum za PDF izvješće.");
+        alert("Molimo odaberite datum za TXT izvješće.");
         return;
       }
 
-      const pdfBtn = document.getElementById("pdf-report-btn");
-      const mobPdfBtn = document.getElementById("mobile-pdf-report-btn");
-      const origText = pdfBtn ? pdfBtn.innerHTML : "Preuzmi PDF izvješće";
-      const mobOrigText = mobPdfBtn ? mobPdfBtn.innerHTML : "Preuzmi PDF izvješće";
+      const txtBtn = document.getElementById("txt-report-btn");
+      const mobTxtBtn = document.getElementById("mobile-txt-report-btn");
+      const origText = txtBtn ? txtBtn.innerHTML : "Preuzmi TXT izvješće";
+      const mobOrigText = mobTxtBtn ? mobTxtBtn.innerHTML : "Preuzmi TXT izvješće";
 
       const setLoading = (loading) => {
-        if (pdfBtn) {
-          pdfBtn.disabled = loading;
-          pdfBtn.innerHTML = loading ? "Generiranje PDF-a..." : origText;
+        if (txtBtn) {
+          txtBtn.disabled = loading;
+          txtBtn.innerHTML = loading ? "Generiranje..." : origText;
         }
-        if (mobPdfBtn) {
-          mobPdfBtn.disabled = loading;
-          mobPdfBtn.innerHTML = loading ? "Generiranje PDF-a..." : mobOrigText;
+        if (mobTxtBtn) {
+          mobTxtBtn.disabled = loading;
+          mobTxtBtn.innerHTML = loading ? "Generiranje..." : mobOrigText;
         }
       };
 
@@ -2814,7 +2814,7 @@
         const data = await res.json();
 
         if (!res.ok || !data.success) {
-          alert(data.error || "Greška pri dohvaćanju podataka za PDF.");
+          alert(data.error || "Greška pri dohvaćanju podataka za TXT.");
           return;
         }
 
@@ -2827,84 +2827,21 @@
           return;
         }
 
-        // Ensure html2pdf.js is loaded
-        if (typeof html2pdf === "undefined") {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement("script");
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
-        }
+        let txt = `==================================================\n`;
+        txt += `PILATES-REFORMER STUDIO AGRAM\n`;
+        txt += `DNEVNO IZVJEŠĆE O DOLASCIMA — ${dateFormatted}\n`;
+        txt += `==================================================\n\n`;
 
-        // Create visible modal overlay container for html2canvas rendering
-        const overlay = document.createElement("div");
-        overlay.id = "pdf-preview-overlay";
-        overlay.style.cssText = `
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
-          background: rgba(26, 21, 16, 0.75);
-          backdrop-filter: blur(4px);
-          z-index: 999999;
-          display: flex;
-          justify-content: center;
-          align-items: flex-start;
-          overflow-y: auto;
-          padding: 30px 15px;
-          box-sizing: border-box;
-        `;
+        sessions.forEach((session) => {
+          txt += `${session.time}h — ${session.title} (Trener: ${session.instructor})\n`;
+          txt += `--------------------------------------------------\n`;
 
-        const container = document.createElement("div");
-        container.id = "pdf-report-template";
-        container.style.cssText = `
-          width: 790px;
-          padding: 20px 25px;
-          font-family: 'Arial', sans-serif;
-          color: #2c251e;
-          background-color: #ffffff;
-          box-sizing: border-box;
-          border-radius: 6px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        `;
-
-        // Header
-        let pdfHtml = `
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #a98e65; padding-bottom: 8px; margin-bottom: 12px;">
-            <div>
-              <div style="font-size: 15px; font-weight: bold; color: #a98e65; letter-spacing: 0.8px; text-transform: uppercase;">
-                PILATES-REFORMER STUDIO AGRAM
-              </div>
-              <div style="font-size: 10px; color: #7c7267; margin-top: 2px;">
-                Ulica grada Vukovara 269b, Zagreb
-              </div>
-            </div>
-            <div style="text-align: right;">
-              <div style="font-size: 14px; font-weight: bold; color: #2c251e; text-transform: uppercase; letter-spacing: 0.5px;">
-                DNEVNO IZVJEŠĆE O DOLASCIMA
-              </div>
-              <div style="font-size: 11px; font-weight: bold; color: #a98e65; margin-top: 2px;">
-                Datum: ${dateFormatted}
-              </div>
-            </div>
-          </div>
-        `;
-
-        // 2-column compact grid layout
-        pdfHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">`;
-
-        sessions.forEach(session => {
           const sessionAttendees = attendees.filter(a => a.session_id === session.id);
-
-          let attendeesRows = "";
           if (sessionAttendees.length === 0) {
-            attendeesRows = `<div style="font-size: 9.5px; color: #7c7267; font-style: italic; padding: 2px 0;">Nije bilo prijavljenih korisnika.</div>`;
+            txt += `- Nije bilo prijavljenih korisnika.\n\n`;
           } else {
-            attendeesRows = sessionAttendees.map((att, idx) => {
-              const displayName = att.username;
+            sessionAttendees.forEach((att, idx) => {
+              const displayName = att.full_name ? `${att.full_name} (${att.username})` : att.username;
               const total = att.total_credits || 0;
               const remaining = att.remaining_credits || 0;
               const cancelable = att.cancelable_count || 0;
@@ -2912,72 +2849,33 @@
               const completed = Math.max(0, total - totalRemaining);
 
               let statusTag = "REZERVIRANO";
-              let statusColor = "#a98e65";
-              if (att.status === 1) {
-                statusTag = "ODRADIO";
-                statusColor = "#2e7d32";
-              } else if (att.status === -1) {
-                statusTag = "NEDOLAZAK";
-                statusColor = "#c62828";
-              }
+              if (att.status === 1) statusTag = "ODRADIO";
+              else if (att.status === -1) statusTag = "NEDOLAZAK";
 
-              return `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0; border-bottom: 1px dashed #eee; font-size: 9.5px;">
-                  <span style="font-weight: bold; color: #2c251e;">${idx + 1}. ${escapeHtml(displayName)}</span>
-                  <span style="white-space: nowrap;">
-                    <span style="font-weight: bold; color: ${statusColor}; margin-right: 4px; font-size: 8.5px;">[${statusTag}]</span>
-                    <span style="color: #555; font-size: 9px;">${completed}/${total} (ostalo ${totalRemaining})</span>
-                  </span>
-                </div>
-              `;
-            }).join('');
+              txt += `${idx + 1}. ${displayName} [${statusTag}] — odrađeno ${completed}/${total} (preostalo ${totalRemaining}/${total})\n`;
+            });
+            txt += `\n`;
           }
-
-          pdfHtml += `
-            <div style="background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 4px; padding: 6px 8px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #decba5; padding-bottom: 3px; margin-bottom: 4px;">
-                <span style="font-size: 10.5px; font-weight: bold; color: #2c251e;">${session.time}h — ${escapeHtml(session.title)}</span>
-                <span style="font-size: 9px; color: #7c7267;">Trener: ${escapeHtml(session.instructor)}</span>
-              </div>
-              <div>
-                ${attendeesRows}
-              </div>
-            </div>
-          `;
         });
 
-        pdfHtml += `</div>`;
+        txt += `==================================================\n`;
+        txt += `Automatski generiran izvještaj — Agram Pilates Studio\n`;
 
-        // Footer
-        pdfHtml += `
-          <div style="border-top: 1px solid #ebdcc5; padding-top: 6px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 8.5px; color: #7c7267;">
-            <span>Automatski generiran izvještaj — Agram Pilates Studio</span>
-            <span>Stranica 1 od 1</span>
-          </div>
-        `;
-
-        container.innerHTML = pdfHtml;
-        overlay.appendChild(container);
-        document.body.appendChild(overlay);
-
-        // Wait 200ms for full browser render paint
-        await new Promise(r => setTimeout(r, 200));
-
-        const opt = {
-          margin: [6, 6, 6, 6],
-          filename: `Dnevno_izvjesce_${dateFormatted.replace(/\./g, '_')}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        if (typeof html2pdf !== "undefined") {
-          await html2pdf().set(opt).from(container).save();
-        } else {
-          window.print();
-        }
-
-        document.body.removeChild(overlay);
+        const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Dnevno_izvjesce_${dateFormatted.replace(/\./g, '_')}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      } catch (err) {
+        alert("Greška pri generiranju TXT izvješća.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
       } catch (err) {
         alert("Greška pri generiranju PDF izvješća.");
         console.error(err);
