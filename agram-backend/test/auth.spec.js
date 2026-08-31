@@ -434,7 +434,7 @@ describe('JWT Authentication integration tests', () => {
     // 4. Trigger worker.scheduled
     // 4. Trigger worker.scheduled with exact cron property
     const ctx = createExecutionContext();
-    const event = { cron: "0 18,19 * * *", scheduledTime: Date.now(), force: true };
+    const event = { cron: "0 12 * * *", scheduledTime: Date.now(), force: true };
     
     await worker.scheduled(event, env, ctx);
     await waitOnExecutionContext(ctx);
@@ -466,7 +466,7 @@ describe('JWT Authentication integration tests', () => {
 
     // 3. First scheduled run
     const ctx1 = createExecutionContext();
-    const event1 = { cron: "0 18,19 * * *", scheduledTime: Date.now(), force: true };
+    const event1 = { cron: "0 12 * * *", scheduledTime: Date.now(), force: true };
     await worker.scheduled(event1, env, ctx1);
     await waitOnExecutionContext(ctx1);
 
@@ -476,7 +476,7 @@ describe('JWT Authentication integration tests', () => {
 
     // 4. Second scheduled run (simulating duplicate cron invocation)
     const ctx2 = createExecutionContext();
-    const event2 = { cron: "0 18,19 * * *", scheduledTime: Date.now() + 1000, force: true };
+    const event2 = { cron: "0 12 * * *", scheduledTime: Date.now() + 1000, force: true };
     await worker.scheduled(event2, env, ctx2);
     await waitOnExecutionContext(ctx2);
 
@@ -485,14 +485,14 @@ describe('JWT Authentication integration tests', () => {
     expect(sentCount2.cnt).toBe(1);
   });
 
-  it('ignores booking reminders when triggered by 12-hour sync cron (0 */12 * * *)', async () => {
+  it('ignores booking reminders when triggered by night cron (0 0 * * *)', async () => {
     const d = new Date();
     const tomorrow = new Date(d.getTime() + 24 * 60 * 60 * 1000);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
     await env.DB.prepare(`
       INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
-      VALUES (777, 'Tomorrow Pilates 12h Cron', 'Adrijana', ?, '15:00', 4, 'grupni')
+      VALUES (777, 'Tomorrow Pilates Night Cron', 'Adrijana', ?, '15:00', 4, 'grupni')
     `).bind(tomorrowStr).run();
 
     await env.DB.prepare(`
@@ -501,7 +501,7 @@ describe('JWT Authentication integration tests', () => {
     `).run();
 
     const ctx = createExecutionContext();
-    const event = { cron: "0 */12 * * *", scheduledTime: Date.now() };
+    const event = { cron: "0 0 * * *", scheduledTime: Date.now() };
     await worker.scheduled(event, env, ctx);
     await waitOnExecutionContext(ctx);
 
