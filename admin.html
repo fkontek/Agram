@@ -3095,13 +3095,15 @@
               </div>
             </div>
           </div>
-          <div class="mobile-client-package-info">
+          <div class="mobile-client-package-info" style="margin-top: 4px; font-size: 1.2rem;">
             <div>Paket: <strong>${client.package_name || 'Nema'}</strong></div>
           </div>
-          <div style="display: flex; justify-content: space-between; font-size: 1.15rem; color: var(--text-muted); margin-top: 4px; flex-wrap: wrap; gap: 8px;">
-            <div>Istječe: <strong>${expiresHtml}</strong></div>
+          <div style="font-size: 1.15rem; color: var(--text-muted); margin-top: 4px;">
+            Istječe: <strong>${expiresHtml}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 1.15rem; color: var(--text-muted); margin-top: 4px;">
             <div>Odrađeno: <strong style="color: #2e7559;">${attendedHtml}</strong></div>
-            <div>Rezervirano: <strong style="color: #666;">${reservedHtml}</strong></div>
+            <div>Rezervirano: <strong style="color: #555;">${reservedHtml}</strong></div>
           </div>
           <div id="mobile-client-details-${client.id}" style="display: none; width: 100%;">
             <div id="mobile-client-details-content-${client.id}"></div>
