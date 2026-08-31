@@ -351,7 +351,9 @@ p {
   background-position: center;
   position: relative;
   z-index: 1;
-  height: 85vh;
+  min-height: 480px;
+  height: 60vh;
+  max-height: 620px;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -1538,6 +1540,11 @@ p {
     font-size: 1.35rem;
   }
 
+
+  #hero {
+    min-height: 380px;
+    height: 55vh;
+  }
 
   #hero h1 {
     font-size: 3.4rem;
