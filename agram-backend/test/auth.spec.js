@@ -501,7 +501,7 @@ describe('JWT Authentication integration tests', () => {
     `).run();
 
     const ctx = createExecutionContext();
-    const event = { cron: "0 0 * * *", scheduledTime: Date.now() };
+    const event = { cron: "0 0 * * *", scheduledTime: new Date("2026-08-31T00:00:00Z").getTime() };
     await worker.scheduled(event, env, ctx);
     await waitOnExecutionContext(ctx);
 

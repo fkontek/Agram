@@ -1648,22 +1648,6 @@ export default {
 
         await logActivity(env, `Promjena lozinke: ${user.username}`);
 
-        // Send confirmation email
-        if (user.email) {
-          const emailSubject = "Agram Pilates - Obavijest o promjeni lozinke";
-          const emailHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
-              <h2 style="color: #a98e65;">Lozinka je uspješno promijenjena</h2>
-              <p>Bok <b>${escapeHtml(user.username)}</b>,</p>
-              <p>Obavještavamo Vas da je lozinka za Vaš korisnički račun uspješno promijenjena.</p>
-              <p>Ako vi niste zatražili ovu promjenu, odmah kontaktirajte administratora studija!</p>
-              <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
-              <p style="font-size: 11px; color: #7c7267;">Pilates Reformer Agram</p>
-            </div>
-          `;
-          ctx.waitUntil(sendEmail(env, user.email, emailSubject, emailHtml));
-        }
-
         return jsonResponse({ success: true, message: "Lozinka je uspješno promijenjena!" });
       }
 
@@ -1770,22 +1754,6 @@ export default {
         }
 
         await logActivity(env, `Lozinka uspješno poništena s tokenom: ${client.username}`);
-
-        // Send password change confirmation email
-        if (client.email) {
-          const emailSubject = "Agram Pilates - Obavijest o promjeni lozinke";
-          const emailHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5;">
-              <h2 style="color: #a98e65;">Lozinka je uspješno promijenjena</h2>
-              <p>Bok <b>${escapeHtml(client.username)}</b>,</p>
-              <p>Obavještavamo Vas da je lozinka za Vaš korisnički račun uspješno promijenjena.</p>
-              <p>Ako vi niste zatražili ovu promjenu, odmah kontaktirajte administratora studija!</p>
-              <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
-              <p style="font-size: 11px; color: #7c7267;">Pilates Reformer Agram</p>
-            </div>
-          `;
-          ctx.waitUntil(sendEmail(env, client.email, emailSubject, emailHtml));
-        }
 
         return jsonResponse({ success: true, message: "Lozinka je uspješno poništena! Sada se možete prijaviti s novom lozinkom." });
       }
@@ -3581,12 +3549,14 @@ export default {
     ]));
 
     // 2. Booking Reminders: strictly executed at 14:00 Zagreb afternoon (12:00 UTC)
-    // NEVER executed at night (02:00 AM) or outside afternoon window
-    if (cronStr.includes("12") || cronStr.includes("13") || (currentHour >= 13 && currentHour <= 15)) {
+    // NEVER executed for night cron triggers (e.g. 0 0 * * *) or outside afternoon window
+    const isNightCron = cronStr.startsWith("0 0 ") || cronStr.includes("0 2 ") || cronStr.includes("*/12");
+    const isAfternoonCron = cronStr.includes("12") || cronStr.includes("13") || (cronStr === "" && (currentHour >= 13 && currentHour <= 15));
+    if (!isNightCron && isAfternoonCron) {
       console.log("[CRON MATCH] Executing Booking Reminders (14:00 Zagreb afternoon)");
       ctx.waitUntil(sendBookingReminders(env, event));
     } else {
-      console.log(`[BLOCK] Reminders blocked at hour ${currentHour}. Only allowed at 14:00 afternoon.`);
+      console.log(`[BLOCK] Reminders blocked. cron: "${cronStr}", hour: ${currentHour}. Only allowed at 14:00 afternoon.`);
     }
 
     // 3. Weekly Friday Report at 22:15 Zagreb time (20:15 UTC)
