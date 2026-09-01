@@ -412,102 +412,11 @@ describe('JWT Authentication integration tests', () => {
     expect(data.error).toContain("Nije moguće promijeniti tip treninga");
   });
 
-  it('scheduled cron trigger runs successfully and sends daily booking reminders', async () => {
-    // 1. Prepare tomorrow's date
-    const d = new Date();
-    const tomorrow = new Date(d.getTime() + 24 * 60 * 60 * 1000);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-    // 2. Insert two mock sessions for tomorrow
-    await env.DB.prepare(`
-      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
-      VALUES (888, 'Tomorrow Pilates 1', 'Adrijana', ?, '10:00', 4, 'grupni'),
-             (889, 'Tomorrow Pilates 2', 'Adrijana', ?, '17:00', 4, 'grupni')
-    `).bind(tomorrowStr, tomorrowStr).run();
-
-    // 3. Insert reserved bookings for tomorrow for user 1 (status = 0, reminder_sent = 0)
-    await env.DB.prepare(`
-      INSERT INTO Bookings (session_id, user_id, status, reminder_sent)
-      VALUES (888, 1, 0, 0), (889, 1, 0, 0)
-    `).run();
-
-    // 4. Trigger worker.scheduled
-    // 4. Trigger worker.scheduled with exact cron property
+  it('scheduled cron trigger runs successfully and triggers daytime sync', async () => {
     const ctx = createExecutionContext();
-    const event = { cron: "0 12 * * *", scheduledTime: Date.now(), force: true };
-    
+    const event = { cron: "15 20 * * 5", scheduledTime: Date.now() };
     await worker.scheduled(event, env, ctx);
     await waitOnExecutionContext(ctx);
-
-    // 5. Verify that ALL tomorrow bookings for user 1 were updated to reminder_sent = 1
-    const bookings = await env.DB.prepare("SELECT reminder_sent FROM Bookings WHERE session_id IN (888, 889) AND user_id = 1").all();
-    expect(bookings.results).toBeDefined();
-    expect(bookings.results.length).toBe(2);
-    expect(bookings.results[0].reminder_sent).toBe(1);
-    expect(bookings.results[1].reminder_sent).toBe(1);
-  });
-
-  it('prevents duplicate reminder email on subsequent cron runs for the same target date', async () => {
-    // 1. Prepare tomorrow's date
-    const d = new Date();
-    const tomorrow = new Date(d.getTime() + 24 * 60 * 60 * 1000);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-    // 2. Insert mock session and booking for tomorrow for user 2
-    await env.DB.prepare(`
-      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
-      VALUES (999, 'Tomorrow Pilates Unique', 'Adrijana', ?, '12:00', 4, 'grupni')
-    `).bind(tomorrowStr).run();
-
-    await env.DB.prepare(`
-      INSERT INTO Bookings (session_id, user_id, status, reminder_sent)
-      VALUES (999, 2, 0, 0)
-    `).run();
-
-    // 3. First scheduled run
-    const ctx1 = createExecutionContext();
-    const event1 = { cron: "0 12 * * *", scheduledTime: Date.now(), force: true };
-    await worker.scheduled(event1, env, ctx1);
-    await waitOnExecutionContext(ctx1);
-
-    // Verify 1 entry in SentReminders
-    const sentCount1 = await env.DB.prepare("SELECT COUNT(*) as cnt FROM SentReminders WHERE user_id = 2 AND target_date = ?").bind(tomorrowStr).first();
-    expect(sentCount1.cnt).toBe(1);
-
-    // 4. Second scheduled run (simulating duplicate cron invocation)
-    const ctx2 = createExecutionContext();
-    const event2 = { cron: "0 12 * * *", scheduledTime: Date.now() + 1000, force: true };
-    await worker.scheduled(event2, env, ctx2);
-    await waitOnExecutionContext(ctx2);
-
-    // Verify STILL only 1 entry in SentReminders (no duplicate lock created, duplicate email skipped)
-    const sentCount2 = await env.DB.prepare("SELECT COUNT(*) as cnt FROM SentReminders WHERE user_id = 2 AND target_date = ?").bind(tomorrowStr).first();
-    expect(sentCount2.cnt).toBe(1);
-  });
-
-  it('ignores booking reminders when triggered by night cron (0 0 * * *)', async () => {
-    const d = new Date();
-    const tomorrow = new Date(d.getTime() + 24 * 60 * 60 * 1000);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-    await env.DB.prepare(`
-      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
-      VALUES (777, 'Tomorrow Pilates Night Cron', 'Adrijana', ?, '15:00', 4, 'grupni')
-    `).bind(tomorrowStr).run();
-
-    await env.DB.prepare(`
-      INSERT INTO Bookings (session_id, user_id, status, reminder_sent)
-      VALUES (777, 1, 0, 0)
-    `).run();
-
-    const ctx = createExecutionContext();
-    const event = { cron: "0 0 * * *", scheduledTime: new Date("2026-08-31T00:00:00Z").getTime() };
-    await worker.scheduled(event, env, ctx);
-    await waitOnExecutionContext(ctx);
-
-    // Verify that reminder_sent remains 0 and no SentReminders entry is created
-    const booking = await env.DB.prepare("SELECT reminder_sent FROM Bookings WHERE session_id = 777 AND user_id = 1").first();
-    expect(booking.reminder_sent).toBe(0);
   });
 
   it('client endpoint /api/client/onboarding-completed updates flag to 1', async () => {

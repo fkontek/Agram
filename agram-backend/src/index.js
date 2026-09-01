@@ -1227,122 +1227,7 @@ async function sendDailyReportEmail(env, dateStr = null) {
   }
 }
 
-// Send email reminders to clients for tomorrow's bookings (at 14:00 Zagreb afternoon)
-async function sendBookingReminders(env, event = null) {
-  try {
-    await ensureDbColumns(env);
-    const croatiaNow = getCroatiaNow(event?.scheduledTime);
 
-    // STRICT GUARD: Enforce that local Croatia hour is 14:00 afternoon (13:00-15:00 window).
-    // If triggered at night (e.g. 02:00 AM) or morning, it will be strictly BLOCKED.
-    const currentHour = croatiaNow.getHours();
-    const isAfternoonCron = event?.cron?.includes("12") || event?.cron?.includes("13");
-    if (!event?.force && !isAfternoonCron && (currentHour < 13 || currentHour > 15)) {
-      console.log(`[BLOCK] Skipping sendBookingReminders: current Croatia hour is ${currentHour}, strictly expected 14:00 afternoon.`);
-      return;
-    }
-
-    const tomorrow = new Date(croatiaNow.getTime() + 24 * 60 * 60 * 1000);
-    const tomorrowStr = formatDate(tomorrow);
-
-    // Find all active bookings for tomorrow where status is Reserved (0) and reminder hasn't been sent (0)
-    const activeBookings = await env.DB.prepare(`
-      SELECT b.id as booking_id, b.user_id, c.username, c.email, s.title, s.time, s.date
-      FROM Bookings b
-      JOIN Clients c ON b.user_id = c.id
-      JOIN Sessions s ON b.session_id = s.id
-      WHERE s.date = ? AND b.status = 0 AND b.reminder_sent = 0
-      ORDER BY b.id ASC
-    `).bind(tomorrowStr).all();
-
-    const bookings = activeBookings.results || [];
-    if (bookings.length === 0) return;
-
-    // Group bookings by user_id so at most 1 email is sent per user, listing all tomorrow's sessions
-    const userBookingsMap = new Map();
-    for (const b of bookings) {
-      if (!b.email) continue;
-      if (!userBookingsMap.has(b.user_id)) {
-        userBookingsMap.set(b.user_id, {
-          user_id: b.user_id,
-          username: b.username,
-          email: b.email,
-          sessions: []
-        });
-      }
-      userBookingsMap.get(b.user_id).sessions.push(b);
-    }
-
-    for (const [userId, userData] of userBookingsMap) {
-      const userSessions = userData.sessions;
-      const bookingIds = userSessions.map(s => s.booking_id);
-
-      // ATOMIC CLAIM: Insert into SentReminders FIRST before attempting email send.
-      // If another concurrent cron worker already claimed it, UNIQUE constraint will fail / changes will be 0.
-      let claimed = false;
-      try {
-        const claimResult = await env.DB.prepare(`
-          INSERT INTO SentReminders (user_id, target_date, reminder_type)
-          VALUES (?, ?, '24h_booking')
-        `).bind(userId, tomorrowStr).run();
-        claimed = !!(claimResult && claimResult.meta && claimResult.meta.changes === 1);
-      } catch (e) {
-        // Unique constraint violation means another worker already claimed this reminder
-        claimed = false;
-      }
-
-      if (!claimed) {
-        console.log(`Reminder for user_id ${userId} on date ${tomorrowStr} already claimed by another execution.`);
-        continue;
-      }
-
-      // Format all sessions for this user in the email
-      const sessionRowsHtml = userSessions.map(s => {
-        const dateFormatted = s.date.split('-').reverse().join('.') + '.';
-        return `<tr><td><b>${escapeHtml(s.title)}:</b></td><td>Sutra (${dateFormatted}) u ${escapeHtml(s.time)}h</td></tr>`;
-      }).join('');
-
-      const emailSubject = userSessions.length > 1
-        ? `Podsjetnik na sutrašnje treninge (${userSessions.length})`
-        : `Podsjetnik na trening: ${userSessions[0].title}`;
-
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c251e; background-color: #faf8f5; border: 1px solid #ebdcc5; border-radius: 6px; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #a98e65; margin-top: 0; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1.5px solid #ebdcc5; padding-bottom: 6px;">Podsjetnik na trening</h2>
-          <p>Bok <b>${escapeHtml(userData.username)}</b>,</p>
-          <p>Podsjećamo te da sutra imaš rezervirane sljedeće termine:</p>
-          <table style="border-spacing: 10px; margin-bottom: 20px; font-size: 0.9rem;">
-            ${sessionRowsHtml}
-          </table>
-          <p style="margin-top: 20px;">
-            Vidimo se!
-          </p>
-          <hr style="border: 0; border-top: 1px solid #ebdcc5; margin-top: 30px;">
-          <p style="font-size: 11px; color: #7c7267; text-align: center; margin: 0;">Ova poruka je poslana automatski. Molimo ne odgovarajte na nju.</p>
-        </div>
-      `;
-
-      const idempotencyKey = `reminder-user-${userId}-${tomorrowStr}`;
-      const emailSent = await sendEmail(env, userData.email, emailSubject, emailHtml, idempotencyKey);
-
-      // If email succeeded, mark Bookings as reminder_sent = 1
-      if (emailSent) {
-        const placeholders = bookingIds.map(() => '?').join(',');
-        await env.DB.prepare(
-          `UPDATE Bookings SET reminder_sent = 1 WHERE id IN (${placeholders})`
-        ).bind(...bookingIds).run();
-      } else {
-        // If email sending failed, rollback SentReminders claim so retry can happen later
-        await env.DB.prepare(
-          "DELETE FROM SentReminders WHERE user_id = ? AND target_date = ? AND reminder_type = '24h_booking'"
-        ).bind(userId, tomorrowStr).run();
-        console.error(`Failed to send reminder email to user_id ${userId} for date ${tomorrowStr}. Claim rolled back.`);
-      }
-    }
-  } catch (e) {
-    console.error("Error sending booking reminders:", e);
-  }
-}
 
 // Synchronize Instagram Feed
 async function syncInstagramFeed(env) {
@@ -3542,22 +3427,11 @@ export default {
       croatiaDay: currentDay
     });
 
-    // 1. Daytime tasks: Instagram Feed & Schedule Auto-Gen (runs at 14:00 Zagreb / 12:00 UTC)
+    // 1. Daytime tasks: Instagram Feed & Schedule Auto-Gen
     ctx.waitUntil(Promise.all([
       syncInstagramFeed(env),
       checkAndAutoGenerateSchedules(env)
     ]));
-
-    // 2. Booking Reminders: strictly executed at 14:00 Zagreb afternoon (12:00 UTC)
-    // NEVER executed for night cron triggers (e.g. 0 0 * * *) or outside afternoon window
-    const isNightCron = cronStr.startsWith("0 0 ") || cronStr.includes("0 2 ") || cronStr.includes("*/12");
-    const isAfternoonCron = cronStr.includes("12") || cronStr.includes("13") || (cronStr === "" && (currentHour >= 13 && currentHour <= 15));
-    if (!isNightCron && isAfternoonCron) {
-      console.log("[CRON MATCH] Executing Booking Reminders (14:00 Zagreb afternoon)");
-      ctx.waitUntil(sendBookingReminders(env, event));
-    } else {
-      console.log(`[BLOCK] Reminders blocked. cron: "${cronStr}", hour: ${currentHour}. Only allowed at 14:00 afternoon.`);
-    }
 
     // 3. Weekly Friday Report at 22:15 Zagreb time (20:15 UTC)
     if (cronStr.includes("20") || cronStr.includes("21") || (currentDay === 5 && currentHour >= 21 && currentHour <= 23)) {
