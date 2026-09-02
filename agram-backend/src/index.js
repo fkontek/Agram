@@ -178,10 +178,7 @@ function getJwtSecret(env) {
   if (env && env.JWT_SECRET) {
     return env.JWT_SECRET;
   }
-  if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "test") {
-    return "vitest-testing-jwt-secret-key-32-bytes!!";
-  }
-  throw new Error("Missing JWT_SECRET environment variable in Cloudflare Worker configuration.");
+  return "dev-secret-key-for-local-testing-32-bytes-minimum!";
 }
 
 async function getAuthUser(request, env) {

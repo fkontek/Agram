@@ -1532,9 +1532,6 @@
           // 4. Load sessions for booking
           loadAvailableSessions();
 
-          // 5. Check tomorrow booking reminders
-          checkTomorrowBookingReminders(data.upcoming);
-
         } else {
           alert("Greška pri učitavanju podataka profila.");
         }
@@ -1931,89 +1928,6 @@
       }
     }
 
-    function showBrowserNotification(booking) {
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Agram Pilates", {
-          body: `Hej, podsjećamo te da sutra imaš rezerviran termin u ${booking.time}h (${booking.title}).`,
-          icon: "./agram.ico"
-        });
-      }
-    }
-
-    function showReminderPopup(booking) {
-      const modal = document.createElement("div");
-      modal.style.position = "fixed";
-      modal.style.inset = "0";
-      modal.style.background = "rgba(26, 21, 16, 0.8)";
-      modal.style.backdropFilter = "blur(8px)";
-      modal.style.zIndex = "20000";
-      modal.style.display = "flex";
-      modal.style.justifyContent = "center";
-      modal.style.alignItems = "center";
-      modal.style.padding = "20px";
-      modal.style.animation = "fadeIn 0.3s ease-out";
-      
-      if (!document.getElementById("reminder-popup-animation-style")) {
-        const style = document.createElement("style");
-        style.id = "reminder-popup-animation-style";
-        style.textContent = `
-          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-          @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        `;
-        document.head.appendChild(style);
-      }
-
-      const content = document.createElement("div");
-      content.style.background = "white";
-      content.style.border = "1.5px solid var(--primary-gold, #c5a880)";
-      content.style.borderRadius = "16px";
-      content.style.padding = "30px";
-      content.style.maxWidth = "450px";
-      content.style.width = "100%";
-      content.style.boxShadow = "0 10px 25px rgba(0,0,0,0.15)";
-      content.style.textAlign = "center";
-      content.style.animation = "slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)";
-      content.style.position = "relative";
-
-      const bellIcon = `
-        <div style="width: 60px; height: 60px; background: rgba(197, 168, 128, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a98e65" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-          </svg>
-        </div>
-      `;
-
-      content.innerHTML = `
-        ${bellIcon}
-        <h3 style="color: var(--primary-gold-dark, #a98e65); margin: 0 0 10px; font-size: 1.6rem; text-transform: uppercase; font-family: 'Montserrat', sans-serif; font-weight: 600; letter-spacing: 0.5px;">Podsjetnik na trening</h3>
-        <p style="font-size: 1.25rem; line-height: 1.7rem; color: var(--text-dark, #2c251e); margin: 0 0 24px; font-family: 'Montserrat', sans-serif;">
-          Hej, podsjećamo te da sutra imaš rezerviran termin u <b>${booking.time}h</b> (${booking.title}).
-        </p>
-        <button id="close-reminder-btn" style="width: 100%; background: var(--primary-gold, #c5a880); border: none; color: white; font-weight: 700; padding: 12px; border-radius: 25px; text-transform: uppercase; font-size: 1.15rem; cursor: pointer; transition: background 0.2s; font-family: inherit;">
-          U redu
-        </button>
-      `;
-
-      modal.appendChild(content);
-      document.body.appendChild(modal);
-
-      const closeBtn = content.querySelector("#close-reminder-btn");
-      closeBtn.onclick = () => {
-        const remKey = String(booking.booking_id || (booking.date + '_' + booking.time));
-        try {
-          localStorage.setItem('agram_reminder_dismissed_' + remKey, 'true');
-          sessionStorage.setItem('agram_reminder_dismissed_' + remKey, 'true');
-        } catch (e) {}
-        modal.style.animation = "fadeIn 0.2s ease-out reverse";
-        content.style.animation = "slideUp 0.2s ease-out reverse";
-        setTimeout(() => {
-          modal.remove();
-        }, 180);
-      };
-    }
-
-    const shownRemindersSession = new Set();
     // Global calendar export helpers
     function addToGoogleCalendar(title, type, dateStr, timeStr) {
       let startTime = timeStr.split('-')[0].trim();
@@ -2093,42 +2007,7 @@
     }
     window.downloadAllUpcomingIcs = downloadAllUpcomingIcs;
 
-    function checkTomorrowBookingReminders(upcomingBookings) {
-      if (!upcomingBookings || upcomingBookings.length === 0) return;
-      
-      const d = new Date();
-      d.setDate(d.getDate() + 1);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const tomorrowStr = `${year}-${month}-${day}`;
-      
-      const tomorrowBookings = upcomingBookings.filter(b => b.date === tomorrowStr);
-      if (tomorrowBookings.length > 0) {
-        tomorrowBookings.forEach(b => {
-          const remKey = String(b.booking_id || (b.date + '_' + b.time));
-          
-          let isDismissed = false;
-          try {
-            if (localStorage.getItem('agram_reminder_dismissed_' + remKey) === 'true') isDismissed = true;
-            if (sessionStorage.getItem('agram_reminder_dismissed_' + remKey) === 'true') isDismissed = true;
-          } catch (e) {}
-          
-          if (shownRemindersSession.has(remKey)) isDismissed = true;
 
-          if (!isDismissed) {
-            shownRemindersSession.add(remKey);
-            try {
-              localStorage.setItem('agram_reminder_dismissed_' + remKey, 'true');
-              sessionStorage.setItem('agram_reminder_dismissed_' + remKey, 'true');
-            } catch (e) {}
-
-            showReminderPopup(b);
-            showBrowserNotification(b);
-          }
-        });
-      }
-    }
 
     // ---- Date helpers ----
     function formatDate(dateStr) {

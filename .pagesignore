@@ -1,0 +1,8 @@
+# Ignore backend directory from Cloudflare Pages static site deployment
+agram-backend/
+.git/
+.github/
+.vscode/
+node_modules/
+package.json
+package-lock.json
