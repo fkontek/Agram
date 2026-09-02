@@ -1922,8 +1922,8 @@ export default {
           return jsonResponse({ success: false, error: "Aktivna rezervacija nije pronađena ili je trening već odrađen/otkazan." }, 404);
         }
 
-        // 2. Get session date/time to check 12h limit
-        const session = await env.DB.prepare("SELECT date, time FROM Sessions WHERE id = ?").bind(session_id).first();
+        // 2. Get session title/date/time to check 12h limit
+        const session = await env.DB.prepare("SELECT title, date, time FROM Sessions WHERE id = ?").bind(session_id).first();
         if (!session) {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
         }
