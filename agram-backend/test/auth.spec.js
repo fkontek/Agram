@@ -474,11 +474,13 @@ describe('JWT Authentication integration tests', () => {
     const token2 = await loginUser('user2');
     const token3 = await loginUser('user3');
 
-    // 3. Create a session with capacity 1 for 2026-08-25
+    // 3. Create a session with capacity 1 for 2 days in the future
+    const futureDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    const futureDateStr = futureDate.toISOString().split('T')[0];
     await env.DB.prepare(`
       INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
-      VALUES (999, 'Reformer Express', 'Adrijana', '2026-09-02', '14:00', 1, 'grupni')
-    `).run();
+      VALUES (999, 'Reformer Express', 'Adrijana', ?, '14:00', 1, 'grupni')
+    `).bind(futureDateStr).run();
 
     // 4. User 1 books session -> Should succeed
     const bookReq1 = new Request('http://example.com/api/book', {

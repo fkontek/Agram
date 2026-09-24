@@ -1082,6 +1082,18 @@
       };
     }
 
+    function checkAuthError(res, data) {
+      if ((res && (res.status === 401 || res.status === 403)) || (data && data.error && (data.error.includes("Niste prijavljeni") || data.error.includes("istekla")))) {
+        const keysToRemove = ["user_id", "username", "auth_token", "is_admin", "full_name", "first_name", "last_name", "email", "phone"];
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        sessionStorage.clear();
+        alert("Vaša prijava je istekla ili više nije važeća. Molimo prijavite se ponovno.");
+        window.location.href = "prijava.html";
+        return true;
+      }
+      return false;
+    }
+
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -1533,7 +1545,8 @@
           loadAvailableSessions();
 
         } else {
-          alert("Greška pri učitavanju podataka profila.");
+          if (checkAuthError(res, data)) return;
+          alert(data?.error || "Greška pri učitavanju podataka profila.");
         }
       } catch (err) {
         console.error("Dashboard error:", err);
@@ -1630,6 +1643,9 @@
 
           renderDaySchedule(selectedDateVal);
           renderMobileDaySchedule(mobileDateVal);
+        } else {
+          if (checkAuthError(res, data)) return;
+          console.error("Greška pri dohvaćanju termina:", data?.error);
         }
       } catch (err) {
         console.error("Load sessions error:", err);
@@ -1852,6 +1868,7 @@
           alert("Rezervacija uspješna!");
           loadDashboardData();
         } else {
+          if (checkAuthError(res, data)) return;
           alert(data.error || "Greška pri rezervaciji.");
         }
       } catch (err) {
@@ -1873,6 +1890,7 @@
           alert(data.message);
           loadDashboardData();
         } else {
+          if (checkAuthError(res, data)) return;
           alert(data.error || "Greška pri otkazivanju.");
         }
       } catch (err) {
@@ -1893,6 +1911,7 @@
           alert(data.message || "Uspješno ste se prijavili na listu čekanja!");
           loadDashboardData();
         } else {
+          if (checkAuthError(res, data)) return;
           alert(data.error || "Greška pri prijavi na listu čekanja.");
         }
       } catch (err) {
@@ -1914,12 +1933,15 @@
           alert(data.message || "Maknuti ste s liste čekanja.");
           loadDashboardData();
         } else {
+          if (checkAuthError(res, data)) return;
           alert(data.error || "Greška pri uklanjanju s liste čekanja.");
         }
       } catch (err) {
         alert("Greška u komunikaciji sa serverom.");
       }
-    }    // ---- Notification & Reminder helpers ----
+    }
+
+    // ---- Notification & Reminder helpers ----
     function requestNotificationPermission() {
       if ("Notification" in window) {
         if (Notification.permission === "default") {
@@ -2125,6 +2147,7 @@
           closeRequestPackageModal();
           loadDashboardData();
         } else {
+          if (checkAuthError(res, data)) return;
           alert(data.error || "Greška pri slanju zahtjeva.");
         }
       } catch (err) {
@@ -2173,6 +2196,7 @@
               }
               loadDashboardData();
             } else {
+              if (checkAuthError(res, resData)) return;
               alert(resData.error || "Greška pri spremanju upitnika.");
             }
           } catch (err) {
