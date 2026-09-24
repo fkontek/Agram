@@ -542,11 +542,32 @@
 
 
     <script>
+      function isTokenExpired(token) {
+        if (!token || typeof token !== "string") return true;
+        try {
+          const parts = token.split(".");
+          if (parts.length !== 3) return true;
+          const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split("")
+              .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+              .join("")
+          );
+          const payload = JSON.parse(jsonPayload);
+          if (!payload.exp || Date.now() >= payload.exp * 1000) return true;
+          return false;
+        } catch (e) {
+          return true;
+        }
+      }
+
       const nav = document.querySelector(".main-nav");
       const username = localStorage.getItem("username");
+      const authToken = localStorage.getItem("auth_token");
       const isAdmin = localStorage.getItem("is_admin");
     
-      if (username) {
+      if (username && authToken && !isTokenExpired(authToken)) {
         const dest = isAdmin === "1" ? "admin.html" : "dashboard.html";
         // Show username, link to profile/admin, and remove "Prijava"
         nav.innerHTML += `
@@ -558,6 +579,11 @@
           li.textContent.trim().toLowerCase().includes("prijava")
         );
         if (prijavaLink) prijavaLink.remove();
+      } else if (username || authToken) {
+        // Clear stale session
+        const keysToRemove = ["user_id", "username", "auth_token", "is_admin", "full_name", "first_name", "last_name", "email", "phone"];
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        sessionStorage.clear();
       }
     </script>
     <script>

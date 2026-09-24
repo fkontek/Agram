@@ -482,17 +482,39 @@
     const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
       ? "http://localhost:8787"
       : "https://agram-backend.filip-kontek.workers.dev";
-    let tempUserSession = null;
+    function isTokenExpired(token) {
+      if (!token || typeof token !== "string") return true;
+      try {
+        const parts = token.split(".");
+        if (parts.length !== 3) return true;
+        const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split("")
+            .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+        const payload = JSON.parse(jsonPayload);
+        if (!payload.exp || Date.now() >= payload.exp * 1000) return true;
+        return false;
+      } catch (e) {
+        return true;
+      }
+    }
 
-    // Ako je korisnik već prijavljen, preusmjeri ga odmah na odgovarajući dashboard
+    // Ako je korisnik već prijavljen s važećim tokenom, preusmjeri ga odmah na odgovarajući dashboard
     const existingToken = localStorage.getItem("auth_token");
     const existingIsAdmin = localStorage.getItem("is_admin");
-    if (existingToken) {
+    if (existingToken && !isTokenExpired(existingToken)) {
       if (existingIsAdmin === "1") {
         window.location.href = "admin.html";
       } else {
         window.location.href = "dashboard.html";
       }
+    } else if (existingToken) {
+      const keysToRemove = ["user_id", "username", "auth_token", "is_admin", "full_name", "first_name", "last_name", "email", "phone"];
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      sessionStorage.clear();
     }
 
     // LOGIN LOGIC

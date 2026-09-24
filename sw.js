@@ -1,4 +1,4 @@
-const CACHE_NAME = "agram-pilates-v5";
+const CACHE_NAME = "agram-pilates-v6";
 const ASSETS = [
   "./",
   "./index.html",

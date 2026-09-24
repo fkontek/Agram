@@ -2263,12 +2263,36 @@
         .replace(/'/g, '&#39;');
     }
 
+    function isTokenExpired(token) {
+      if (!token || typeof token !== "string") return true;
+      try {
+        const parts = token.split(".");
+        if (parts.length !== 3) return true;
+        const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split("")
+            .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+        const payload = JSON.parse(jsonPayload);
+        if (!payload.exp || Date.now() >= payload.exp * 1000) return true;
+        return false;
+      } catch (e) {
+        return true;
+      }
+    }
+
     // Auth check
     const username  = localStorage.getItem("username");
     const isAdmin   = localStorage.getItem("is_admin");
     const authToken = localStorage.getItem("auth_token");
 
-    if (!username || isAdmin !== "1" || !authToken) {
+    if (!username || isAdmin !== "1" || !authToken || isTokenExpired(authToken)) {
+      const lastRead = localStorage.getItem("agram_last_read_log_id");
+      localStorage.clear();
+      sessionStorage.clear();
+      if (lastRead) localStorage.setItem("agram_last_read_log_id", lastRead);
       window.location.href = "prijava.html";
     }
 

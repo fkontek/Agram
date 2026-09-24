@@ -1022,7 +1022,30 @@
     // Splash screen kontrola uklonjena
     let dataLoaded = false;
 
-    if (!userId || !username || !authToken) {
+    function isTokenExpired(token) {
+      if (!token || typeof token !== "string") return true;
+      try {
+        const parts = token.split(".");
+        if (parts.length !== 3) return true;
+        const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split("")
+            .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+        const payload = JSON.parse(jsonPayload);
+        if (!payload.exp || Date.now() >= payload.exp * 1000) return true;
+        return false;
+      } catch (e) {
+        return true;
+      }
+    }
+
+    if (!userId || !username || !authToken || isTokenExpired(authToken)) {
+      const keysToRemove = ["user_id", "username", "auth_token", "is_admin", "full_name", "first_name", "last_name", "email", "phone"];
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      sessionStorage.clear();
       window.location.href = "prijava.html";
     } else {
       document.getElementById("user-name").textContent = username;
