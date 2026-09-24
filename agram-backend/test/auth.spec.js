@@ -605,6 +605,26 @@ describe('JWT Authentication integration tests', () => {
     });
     const waitlistOpenRes = await worker.fetch(waitlistOpenReq, env, createExecutionContext());
     expect(waitlistOpenRes.status).toBe(400);
+
+    // Verify booking fails if session date is after client's package expiration date
+    const futureExp = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const futureSession = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    await env.DB.prepare("UPDATE Clients SET package_expires = ? WHERE id = 1").bind(futureExp).run();
+
+    await env.DB.prepare(`
+      INSERT INTO Sessions (id, title, instructor, date, time, capacity, type)
+      VALUES (996, 'Beyond Package Expiry Session', 'Adrijana', ?, '10:00', 4, 'grupni')
+    `).bind(futureSession).run();
+
+    const beyondReq = new Request('http://example.com/api/book', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: 996 })
+    });
+    const beyondRes = await worker.fetch(beyondReq, env, createExecutionContext());
+    expect(beyondRes.status).toBe(400);
+    const beyondData = await beyondRes.json();
+    expect(beyondData.error).toContain('nakon datuma isteka');
   });
 
   it('encrypts health questionnaire at rest and decrypts on retrieval', async () => {

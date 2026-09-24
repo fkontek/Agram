@@ -1754,6 +1754,16 @@ export default {
           return jsonResponse({ success: false, error: "Nije moguće rezervirati termin više od 3 tjedna unaprijed." }, 400);
         }
 
+        // Check if session date is beyond package expiration date
+        if (client.package_expires && session.date > client.package_expires) {
+          const expFormatted = client.package_expires.split('-').reverse().join('.');
+          const sessionFormatted = session.date.split('-').reverse().join('.');
+          return jsonResponse({
+            success: false,
+            error: `Nije moguće rezervirati termin (${sessionFormatted}.) nakon datuma isteka Vašeg paketa (${expFormatted}.).`
+          }, 400);
+        }
+
         // Check package type compatibility
         if (client.package_name) {
           const pkgLower = client.package_name.toLowerCase();
@@ -2025,6 +2035,16 @@ export default {
           if (session.time <= nowHourMin) {
             return jsonResponse({ success: false, error: "Nije moguće prijaviti se na listu čekanja za termin koji je već započeo." }, 400);
           }
+        }
+
+        // Check if session date is beyond package expiration date
+        if (client.package_expires && session.date > client.package_expires) {
+          const expFormatted = client.package_expires.split('-').reverse().join('.');
+          const sessionFormatted = session.date.split('-').reverse().join('.');
+          return jsonResponse({
+            success: false,
+            error: `Nije moguće prijaviti se na listu čekanja za termin (${sessionFormatted}.) nakon datuma isteka Vašeg paketa (${expFormatted}.).`
+          }, 400);
         }
 
         // 3. Verify session is actually FULL before allowing waitlist join
@@ -3041,6 +3061,16 @@ export default {
         const session = await env.DB.prepare("SELECT * FROM Sessions WHERE id = ?").bind(session_id).first();
         if (!session) {
           return jsonResponse({ success: false, error: "Termin nije pronađen." }, 404);
+        }
+
+        // Check if session date is beyond package expiration date
+        if (client.package_expires && session.date > client.package_expires) {
+          const expFormatted = client.package_expires.split('-').reverse().join('.');
+          const sessionFormatted = session.date.split('-').reverse().join('.');
+          return jsonResponse({
+            success: false,
+            error: `Nije moguće rezervirati termin (${sessionFormatted}.) nakon datuma isteka klijentovog paketa (${expFormatted}.).`
+          }, 400);
         }
 
         // ATOMIC BATCH TRANSACTION: Deduct credit & Insert booking in 1 atomic D1 batch!

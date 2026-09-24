@@ -1014,6 +1014,7 @@
     let selectedDateVal = "";
     let userCreditsVal  = 0;
     let userPackageVal  = "";
+    let userPackageExpiresVal = "";
     let mobileDateVal   = "";
     let userBookedDates = [];
     let isUserFrozen    = false;
@@ -1196,6 +1197,7 @@
           const totalCredits = data.user.total_credits || 0;
           userCreditsVal = data.user.remaining_credits !== undefined ? data.user.remaining_credits : 0;
           userPackageVal = data.user.package_name || "Nema paketa";
+          userPackageExpiresVal = data.user.package_expires || "";
           
           const hasNoPackage = userPackageVal === "Nema paketa" || userPackageVal === "Nema aktivnog paketa";
           const isDismissed = localStorage.getItem("agram_welcome_notice_dismissed_" + username) === "true";
@@ -1693,6 +1695,8 @@
           } else {
             buttonHtml = `<button class="btn-book" style="opacity:0.5; cursor:not-allowed; width:100%;" disabled>Zaleđeno</button>`;
           }
+        } else if (userPackageExpiresVal && session.date > userPackageExpiresVal) {
+          buttonHtml = `<button class="btn-book" style="opacity:0.5; cursor:not-allowed; width:100%; background:#6c757d; border-color:#6c757d;" onclick="alert('Nije moguće rezervirati termin nakon datuma isteka Vašeg paketa (${formatDate(userPackageExpiresVal)}).')" disabled>Paket istječe</button>`;
         } else if (freeSpots <= 0) {
           if (session.user_waitlisted > 0) {
             cardClass += " user-waitlisted";
@@ -1797,6 +1801,8 @@
           } else {
             rightHtml = `<button class="mobile-btn-book" style="opacity:0.5;" disabled>Zaleđeno</button>`;
           }
+        } else if (userPackageExpiresVal && session.date > userPackageExpiresVal) {
+          rightHtml = `<button class="mobile-btn-book" style="opacity:0.5; background:#6c757d; border-color:#6c757d;" onclick="alert('Nije moguće rezervirati termin nakon datuma isteka Vašeg paketa (${formatDate(userPackageExpiresVal)}).')" disabled>Istječe</button>`;
         } else if (freeSpots <= 0) {
           if (session.user_waitlisted > 0) {
             rightHtml = `<button class="mobile-btn-cancel" style="border-color:var(--primary-gold-dark); color:var(--primary-gold-dark);" onclick="leaveWaitlist(${session.id})">Makni me</button>`;
