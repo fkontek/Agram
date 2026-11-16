@@ -27,10 +27,11 @@ menu_item.forEach(item=>{
 
 
 
-// Overlay za napomenu o cijenama
+// Overlay za napomenu o cijenama (sigurna provjera ako element postoji)
 window.addEventListener('DOMContentLoaded', () => {
   const overlay = document.getElementById('price-note-overlay');
   const closeBtn = document.getElementById('close-note');
+  if (!overlay || !closeBtn) return;
 
   // Prikaži overlay samo jednom po sesiji
   if (!sessionStorage.getItem('noteClosed')) {

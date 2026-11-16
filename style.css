@@ -633,6 +633,102 @@ p {
   font-size: 1.35rem;
 }
 
+/* Elegantna obavijest o cijenama i upitima */
+.pricing-notice-box {
+  width: 100%;
+  max-width: 800px;
+  margin: 35px auto 10px auto;
+  background: var(--card-bg);
+  border: 1px solid rgba(197, 168, 128, 0.25);
+  border-left: 4px solid var(--primary-gold);
+  border-radius: var(--radius-md);
+  padding: 30px 32px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-normal);
+}
+
+.pricing-notice-box:hover {
+  box-shadow: var(--shadow-md);
+  border-color: rgba(197, 168, 128, 0.45);
+}
+
+.pricing-notice-content h3 {
+  font-size: 1.85rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+.pricing-notice-content p {
+  font-size: 1.35rem;
+  color: var(--text-muted);
+  line-height: 2.2rem;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.pricing-action-links {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(197, 168, 128, 0.2);
+}
+
+.notice-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  padding: 11px 18px;
+  background-color: var(--light-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.notice-link svg {
+  color: var(--primary-gold-dark);
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.notice-link:hover {
+  background-color: var(--primary-gold);
+  color: #ffffff;
+  border-color: var(--primary-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(197, 168, 128, 0.25);
+}
+
+.notice-link:hover svg {
+  color: #ffffff;
+}
+
+@media (max-width: 600px) {
+  .pricing-notice-box {
+    padding: 22px 18px;
+  }
+  .pricing-notice-content h3 {
+    font-size: 1.6rem;
+  }
+  .pricing-action-links {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .notice-link {
+    width: 100%;
+  }
+}
+    width: 100%;
+  }
+}
+
 /* Prices section (Cjenik) */
 #cjenik {
   background: var(--light-bg);
